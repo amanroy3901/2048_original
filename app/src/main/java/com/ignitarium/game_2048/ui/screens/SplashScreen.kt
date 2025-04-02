@@ -42,51 +42,53 @@ import com.ignitarium.game_2048.ui.theme._2048OriginalTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-// Data class to hold the state for a single tile
+// Data class remains the same
 data class TileState(
-    val id: Char, // Original letter
-    val targetChar: Char, // Target number
+    val id: Char, // Now the initial number
+    val targetChar: Char, // Now the target letter
     val displayChar: MutableState<Char>,
-    val offsetY: Animatable<Float, AnimationVector1D>, // Changed to Float
+    val offsetY: Animatable<Float, AnimationVector1D>,
     val alpha: Animatable<Float, AnimationVector1D>,
     val scale: Animatable<Float, AnimationVector1D>
 )
 
 @Composable
 fun rememberTileState(
-    initialChar: Char,
-    targetChar: Char,
-    initialOffsetY: Dp = (-100).dp, // Start above the screen
+    initialChar: Char, // Will be the number ('2', '0', '4', '8')
+    targetChar: Char,  // Will be the letter ('E', 'S', 'H', 'A')
+    initialOffsetY: Dp = (-100).dp,
     initialAlpha: Float = 0f,
     initialScale: Float = 1f
 ): TileState {
+    // Initialize displayChar with the initial number
     val displayCharState = remember { mutableStateOf(initialChar) }
-    val initialOffsetYFloat = remember { initialOffsetY.value}
+    val initialOffsetYFloat = remember { initialOffsetY.value }
     return remember {
         TileState(
-            id = initialChar,
-            targetChar = targetChar,
-            displayChar = displayCharState,
-            offsetY = Animatable(initialOffsetYFloat), // Store as Float
+            id = initialChar,       // Keep original ID as the number if needed, or use targetChar
+            targetChar = targetChar, // Store the letter
+            displayChar = displayCharState, // Start showing the number
+            offsetY = Animatable(initialOffsetYFloat),
             alpha = Animatable(initialAlpha),
             scale = Animatable(initialScale)
         )
     }
 }
 
+// Tile Composable remains the same
 @Composable
 fun Tile(
     state: TileState,
     modifier: Modifier = Modifier,
-    backgroundColor: Color = MaterialTheme.colorScheme.primary, // Use M3 colorScheme
-    contentColor: Color = MaterialTheme.colorScheme.onPrimary // Use M3 colorScheme
+    backgroundColor: Color = MaterialTheme.colorScheme.primary,
+    contentColor: Color = MaterialTheme.colorScheme.onPrimary
 ) {
     Box(
         modifier = modifier
-            .offset(y = state.offsetY.value.dp) // Apply drop animation
-            .scale(state.scale.value)      // Apply scale animation (for transform/vanish)
-            .alpha(state.alpha.value)      // Apply alpha animation (for appear/vanish)
-            .size(60.dp) // Fixed size for the tile
+            .offset(y = state.offsetY.value.dp)
+            .scale(state.scale.value)
+            .alpha(state.alpha.value)
+            .size(75.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(backgroundColor)
             .border(1.dp, contentColor.copy(alpha = 0.5f), RoundedCornerShape(8.dp)),
@@ -95,12 +97,14 @@ fun Tile(
         Text(
             text = state.displayChar.value.toString(),
             color = contentColor,
-            fontSize = 24.sp,
+            fontSize = 28.sp,
             fontWeight = FontWeight.Bold
         )
     }
 }
 
+
+// Previews remain the same
 @Preview(showSystemUi = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 fun DarkModePreviewSplash() {
@@ -113,7 +117,6 @@ fun DarkModePreviewSplash() {
     }
 }
 
-//If you want to have a dynamic color preview:
 @Preview(showSystemUi = true, apiLevel = 31)
 @Composable
 fun DynamicDarkModePreviewSplash() {
@@ -125,92 +128,96 @@ fun DynamicDarkModePreviewSplash() {
     }
 }
 
+
 @Composable
 fun SplashScreen(navController: NavController) {
     // --- Tile Animation Setup ---
-    val tilesData = remember { // Remember the list itself
+    val tilesData = remember {
+        // Initial character is the number, target is the letter
         listOf(
-            'E' to '2', 'S' to '0', 'H' to '4', 'A' to '8'
+            '2' to 'E', '0' to 'S', '4' to 'H', '8' to 'A'
         )
     }
 
-    // Remember state for each tile
     val tileStates = tilesData.map { (initial, target) ->
-        // Pass initial state values if needed, otherwise use defaults in rememberTileState
+        // Pass the number as initialChar, letter as targetChar
         rememberTileState(initialChar = initial, targetChar = target)
     }
     // --- End Tile Animation Setup ---
 
-
-    LaunchedEffect(key1 = true) { // Use Unit or true for one-time effect
+    LaunchedEffect(key1 = true) {
         // --- Animation Sequence ---
         val dropDelay = 150L
-        val transformDelay = 100L
-        val vanishDelay = 100L
+        val glowDelay = 100L // Delay between glows starting
+        val moveUpDelay = 100L // Delay between move-ups starting
         val pauseAfterDrop = 300L
-        val pauseAfterTransform = 500L
-        val pauseAfterVanish = 200L
+        val pauseAfterGlow = 500L // Pause after the glow sequence
+        val pauseBeforeNav = 200L // Final pause before navigating
 
         // Animation Specs
-        val dropSpec = tween<Dp>(durationMillis = 500, easing = LinearOutSlowInEasing)
-        val alphaSpec = tween<Float>(durationMillis = 300)
-        val scaleSpec = tween<Float>(durationMillis = 200, easing = LinearEasing) // Simple scale
-        val vanishSpec = tween<Float>(durationMillis = 300)
+        val dropOffsetYSpec = tween<Float>(durationMillis = 500, easing = LinearOutSlowInEasing)
+        val dropAlphaSpec = tween<Float>(durationMillis = 300)
+        val glowScaleSpec = tween<Float>(durationMillis = 200, easing = LinearEasing) // For glow pulse
+        // Combined spec for moving up, fading out, and scaling down
+        val moveUpCombinedSpec = tween<Float>(durationMillis = 500) // Adjust duration as needed
 
 
-        // 1. Drop tiles sequentially
+        // 1. Drop tiles (showing numbers) sequentially
         tileStates.forEachIndexed { index, state ->
             launch {
-                delay(index * dropDelay) // Stagger start
-                // Animate drop and fade in simultaneously
-                launch { state.offsetY.animateTo(0f, animationSpec = tween(durationMillis = 500, easing = LinearOutSlowInEasing)) } // Animate to 0f
-                launch { state.alpha.animateTo(1f, animationSpec = alphaSpec) }
+                delay(index * dropDelay)
+                launch { state.offsetY.animateTo(0f, animationSpec = dropOffsetYSpec) }
+                launch { state.alpha.animateTo(1f, animationSpec = dropAlphaSpec) }
             }
         }
         // Wait for all drops to roughly finish
-        delay(tileStates.size * dropDelay + dropSpec.durationMillis)
-        delay(pauseAfterDrop) // Pause after landing
+        val dropDuration = dropOffsetYSpec.durationMillis // Use the longer duration
+        delay(tileStates.size * dropDelay + dropDuration)
+        delay(pauseAfterDrop)
 
-        // 2. Transform letters to numbers sequentially
+        // 2. Glow tiles sequentially (scale pulse)
         tileStates.forEachIndexed { index, state ->
             launch {
-                delay(index * transformDelay) // Stagger transformation
-                // Optional: Quick scale pulse during transformation
-                state.scale.animateTo(1.2f, animationSpec = scaleSpec)
-                state.displayChar.value = state.targetChar // Change the character
-                state.scale.animateTo(1.0f, animationSpec = scaleSpec)
+                delay(index * glowDelay)
+                state.scale.animateTo(1.2f, animationSpec = glowScaleSpec)
+                state.scale.animateTo(1.0f, animationSpec = glowScaleSpec)
             }
         }
-        // Wait for transformations to finish
-        delay(tileStates.size * transformDelay + (scaleSpec.durationMillis * 2))
-        delay(pauseAfterTransform) // Pause after transformation
+        // Wait for glows to finish
+        val glowDuration = glowScaleSpec.durationMillis * 2
+        delay(tileStates.size * glowDelay + glowDuration)
+        delay(pauseAfterGlow)
 
-        // 3. Vanish tiles sequentially
+        // 3. Move tiles up, scale down, fade out, and transform to letters sequentially
+        val targetOffsetY = (-400).dp.value // Target Y offset (off-screen top)
+        val targetScale = 1.5f              // Target scale when vanishing
         tileStates.forEachIndexed { index, state ->
             launch {
-                delay(index * vanishDelay) // Stagger vanishing
-                // Animate fade out and scale down simultaneously
-                launch { state.alpha.animateTo(0f, animationSpec = vanishSpec) }
-                launch { state.scale.animateTo(0.5f, animationSpec = vanishSpec) }
-                // Optional: Move up slightly while vanishing
-                // launch { state.offsetY.animateTo((-20).dp, animationSpec = vanishSpec) }
+                delay(index * moveUpDelay)
+                // Change character to the letter *at the start* of this tile's move-up animation
+                state.displayChar.value = state.targetChar
+
+                // Animate move up, fade out, and scale down simultaneously
+                launch { state.offsetY.animateTo(targetOffsetY, animationSpec = moveUpCombinedSpec) }
+                launch { state.alpha.animateTo(0f, animationSpec = moveUpCombinedSpec) }
+                launch { state.scale.animateTo(targetScale, animationSpec = moveUpCombinedSpec) }
             }
         }
         // Wait for vanishing
-        delay(tileStates.size * vanishDelay + vanishSpec.durationMillis)
-        delay(pauseAfterVanish) // Final short pause
+        val moveUpDuration = moveUpCombinedSpec.durationMillis
+        delay(tileStates.size * moveUpDelay + moveUpDuration)
+        delay(pauseBeforeNav) // Final short pause
         // --- End Animation Sequence ---
 
 
         // --- Navigation ---
-        // Navigate after all animations are complete
         navController.navigate("main") {
             popUpTo("splash") { inclusive = true }
         }
         // --- End Navigation ---
     }
 
-    // --- Layout ---
+    // --- Layout --- (Remains the same)
     Surface(
         modifier = Modifier
             .fillMaxSize(),
@@ -218,20 +225,16 @@ fun SplashScreen(navController: NavController) {
     ) {
         Box(
             modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center // Center the Row of tiles
+            contentAlignment = Alignment.Center
         ) {
             Row(
-                horizontalArrangement = Arrangement.spacedBy(10.dp) // Space between tiles
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 tileStates.forEach { state ->
-                    // Use colors from your theme for the tiles
                     Tile(
                         state = state,
-                        backgroundColor = HighLighter, // Example: Use HighLighter for tile bg
-                        contentColor = PurpleDarkBackground // Example: Use background for text
-                        // Or use MaterialTheme.colorScheme.primary/onPrimary etc.
-                        // backgroundColor = MaterialTheme.colorScheme.primaryContainer,
-                        // contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        backgroundColor = HighLighter,
+                        contentColor = Color.White
                     )
                 }
             }
