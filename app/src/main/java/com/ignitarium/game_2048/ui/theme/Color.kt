@@ -2,6 +2,8 @@ package com.ignitarium.game_2048.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
+val Purplefade = Color(0xE1181F31)
+val PurpleDarkBackground = Color(0xFF121318)
 val Purple80 = Color(0xFF070F2B)
 val PurpleGrey80 = Color(0xFF1B1A55)
 val Pink80 = Color(0xFFEFB8C8)

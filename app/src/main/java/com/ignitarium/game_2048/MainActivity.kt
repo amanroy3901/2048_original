@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -19,6 +20,8 @@ import com.ignitarium.game_2048.ui.theme._2048OriginalTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+//        // Enable edge-to-edge explicitly if not already enabled in theme
+//        enableEdgeToEdge()
         setContent {
             _2048OriginalTheme {
                 val navController = rememberNavController()
@@ -26,7 +29,9 @@ class MainActivity : ComponentActivity() {
                     NavHost(
                         navController = navController,
                         startDestination = "splash",
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding) // Apply innerPadding here
                     ) {
                         composable("splash") {
                             SplashScreen(navController)
