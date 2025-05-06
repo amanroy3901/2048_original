@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.ignitarium.game_2048"
+    namespace = "com.avfusionapps.game_2048"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.ignitarium.game_2048"
+        applicationId = "com.avfusionapps.game_2048"
         minSdk = 25
         targetSdk = 35
         versionCode = 1
@@ -64,6 +64,10 @@ dependencies {
 //    implementation(libs.kotlinx.coroutines.android)
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.1")
+    implementation("com.google.android.play:app-update:2.1.0")
+    implementation("com.google.android.play:app-update-ktx:2.1.0")
+    implementation("com.google.android.gms:play-services-tasks:18.0.2")
+
 
 
 }
