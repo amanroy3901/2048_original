@@ -12,8 +12,8 @@ android {
         applicationId = "com.avfusionapps.game_2048"
         minSdk = 25
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -67,7 +67,5 @@ dependencies {
     implementation("com.google.android.play:app-update:2.1.0")
     implementation("com.google.android.play:app-update-ktx:2.1.0")
     implementation("com.google.android.gms:play-services-tasks:18.0.2")
-
-
 
 }

@@ -69,7 +69,7 @@ class MainActivity : ComponentActivity() {
             }
             InstallStatus.FAILED -> {
                 lifecycleScope.launch {
-                    showSnackbar("Update failed. Please try again later.")
+//                    showSnackbar("Update failed. Please try again later.")
                 }
             }
             InstallStatus.CANCELED -> {

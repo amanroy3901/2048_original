@@ -110,7 +110,7 @@ fun GameScreen(navController: NavController, viewModel: GameViewModel = viewMode
     val persistentHighScore by viewModel.persistentHighScore.collectAsState()
     val persistentPlayerName by viewModel.persistentPlayerName.collectAsState()
 
-    var showGridSizeDialog by remember { mutableStateOf(false) }
+    var showGridSizeDialog by remember { mutableStateOf(true) }
     // ... (other state collection) ...
     val hapticFeedback = LocalHapticFeedback.current
     val context = LocalContext.current // *** Get context ***
