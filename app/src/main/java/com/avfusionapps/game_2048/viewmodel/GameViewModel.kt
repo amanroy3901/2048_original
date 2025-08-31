@@ -7,6 +7,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.avfusionapps.game_2048.data.GameSettingsRepository
+import com.avfusionapps.game_2048.notification.ReminderManager
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -70,6 +71,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     // Repository for handling persistent data storage (name, high score)
     private val settingsRepository = GameSettingsRepository(application)
+    private val reminderManager = ReminderManager(application)
 
     // --- State Management ---
 
@@ -256,7 +258,9 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 moveCount = gameState.moveCount + 1 // Increment move counter
             )
 
-            if (gameOver) { println("Game Over! Final Score: $newScore") }
+            if (gameOver) {
+                println("Game Over! Final Score: $newScore")
+            }
 
         } else {
             // If no tiles moved at all, check if the board is full and stuck (Game Over)
@@ -265,6 +269,10 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 println("Game Over! (No valid moves left)")
             }
         }
+    }
+
+    fun enableNotification() {
+        reminderManager.scheduleReminders()
     }
 
     /** Clears the animation information map, typically called by UI after animations complete. */
