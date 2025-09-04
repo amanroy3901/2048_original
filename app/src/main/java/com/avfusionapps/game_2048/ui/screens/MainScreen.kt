@@ -90,6 +90,7 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
 
     // *** LaunchedEffect to check the name when it loads or changes ***
     LaunchedEffect(persistentPlayerName) {
+        viewModel.enableNotification()
         // Check if the check hasn't been done AND the name is the default
         if (!initialNameCheckDone && persistentPlayerName == GameSettingsRepository.DEFAULT_PLAYER_NAME) {
             showNameDialog = true       // Show the dialog

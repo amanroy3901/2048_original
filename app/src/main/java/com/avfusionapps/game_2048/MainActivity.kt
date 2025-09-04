@@ -1,5 +1,8 @@
 package com.avfusionapps.game_2048
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -12,10 +15,12 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.avfusionapps.game_2048.notification.ReminderManager
 import com.avfusionapps.game_2048.ui.screens.GameScreen
 import com.avfusionapps.game_2048.ui.screens.MainScreen
 import com.avfusionapps.game_2048.ui.screens.SplashScreen
@@ -36,6 +41,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var appUpdateManager: AppUpdateManager
     private val updateRequestCode = 100
     private lateinit var snackbarHostState: SnackbarHostState
+    private lateinit var reminderManager: ReminderManager
 
     // Register activity result launcher for update flow
     private val updateResultLauncher =
@@ -83,16 +89,49 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    // Register the permission launcher
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            Log.d("Notification", "Permission granted")
+        } else {
+            Log.d("Notification", "Permission denied")
+        }
+    }
+
+    private fun requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            when {
+                ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED -> {
+                    Log.d("Notification", "Permission already granted")
+                }
+                shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS) -> {
+                    lifecycleScope.launch {
+                        showSnackbar("Notifications help you stay engaged with the game!")
+                        requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    }
+                }
+                else -> {
+                    requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Initialize AppUpdateManager
         appUpdateManager = AppUpdateManagerFactory.create(this)
-        // Register listener for flexible updates
+        reminderManager = ReminderManager(this)
         appUpdateManager.registerListener(installStateUpdatedListener)
+
+        requestNotificationPermission()
 
         setContent {
             _2048OriginalTheme {
-                // Initialize SnackbarHostState for showing messages
                 snackbarHostState = remember { SnackbarHostState() }
                 val navController = rememberNavController()
                 Scaffold(
@@ -120,7 +159,6 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        // Check for updates
         checkForUpdates()
     }
 
@@ -148,10 +186,7 @@ class MainActivity : ComponentActivity() {
             if (appUpdateInfo.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE
                 && appUpdateInfo.isUpdateTypeAllowed(AppUpdateType.FLEXIBLE)
             ) {
-                // Start the flexible update flow using Kotlin extension
                 startUpdateFlow(appUpdateInfo)
-            } else if (appUpdateInfo.updateAvailability() == UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS) {
-                // Resume an in-progress update
                 startUpdateFlow(appUpdateInfo)
             } else {
                 Log.d("AppUpdate", "No update available or update not allowed")
