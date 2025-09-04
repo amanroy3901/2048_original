@@ -75,7 +75,7 @@ fun DarkModePreview() {
                 playerName = "Preview Player",
                 highScore = 2048,
                 onEditNameClick = {},
-                showNameDialog = false, // Preview doesn't show dialog initially
+                showNameDialog = false,
                 onDismissDialog = {},
                 onNameChange = {}
             )
@@ -179,7 +179,7 @@ fun MainScreenContent(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "High Score: $highScore",
+                text = "Highest Score: $highScore",
                 style = MaterialTheme.typography.titleLarge,
                 color = Color.White
             )
