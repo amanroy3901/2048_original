@@ -16,6 +16,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -129,7 +130,7 @@ class MainActivity : ComponentActivity() {
         appUpdateManager.registerListener(installStateUpdatedListener)
 
         requestNotificationPermission()
-
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         setContent {
             _2048OriginalTheme {
                 snackbarHostState = remember { SnackbarHostState() }
