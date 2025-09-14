@@ -17,15 +17,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import com.avfusionapps.game_2048.notification.ReminderManager
 import com.avfusionapps.game_2048.ui.screens.GameScreen
 import com.avfusionapps.game_2048.ui.screens.MainScreen
 import com.avfusionapps.game_2048.ui.screens.SplashScreen
 import com.avfusionapps.game_2048.ui.theme._2048OriginalTheme
+import com.avfusionapps.game_2048.viewmodel.GameViewModel
 import com.google.android.play.core.appupdate.AppUpdateManager
 import com.google.android.play.core.appupdate.AppUpdateManagerFactory
 import com.google.android.play.core.appupdate.AppUpdateInfo
@@ -152,7 +156,16 @@ class MainActivity : ComponentActivity() {
                         composable("main") {
                             MainScreen(navController)
                         }
-                        composable("game") {
+                        composable(
+                            route = "game?resume={resume}",
+                            arguments = listOf(
+                                navArgument("resume") {
+                                    type = NavType.StringType
+                                    defaultValue = "false"
+                                    nullable = true
+                                }
+                            )
+                        ) {
                             GameScreen(navController)
                         }
                     }
@@ -163,6 +176,13 @@ class MainActivity : ComponentActivity() {
         checkForUpdates()
     }
 
+    override fun onPause() {
+        super.onPause()
+        // Save the current game state when the app is paused
+        val viewModel = ViewModelProvider(this)[GameViewModel::class.java]
+        viewModel.saveCurrentGameState()
+    }
+    
     override fun onResume() {
         super.onResume()
         // Check if an update was downloaded but not yet installed

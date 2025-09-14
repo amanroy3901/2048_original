@@ -1,15 +1,20 @@
 package com.avfusionapps.game_2048.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
@@ -19,12 +24,11 @@ import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.drawscope.ContentDrawScope
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.avfusionapps.game_2048.ui.theme.HighLighter
-
 
 @Composable
 fun NeonCutCornerButton(
@@ -51,7 +55,7 @@ fun ContentDrawScope.drawNeonGlow(
     drawIntoCanvas { canvas ->
         val paint = Paint().apply {
             style = PaintingStyle.Stroke
-            strokeWidth = 12f  // Slightly reduced stroke width for optimization
+            strokeWidth = 12f
         }
 
         val frameworkPaint = paint.asFrameworkPaint().apply {
@@ -73,42 +77,54 @@ fun ContentDrawScope.drawNeonGlow(
 
 @Composable
 fun NeonRoundedButton(
-    text: String,
+    text: String? = null,
+    icon: Int? = null,
     onClick: () -> Unit,
+    contentDescription: String? = null,
     modifier: Modifier = Modifier,
     buttonColor: Color = HighLighter,
     glowColor: Color = HighLighter.copy(alpha = 0.8f),
     cornerRadius: Dp = 12.dp,
     glowRadius: Dp = 10.dp,
+    enabled: Boolean = true
 ) {
     Button(
         onClick = onClick,
         modifier = modifier
             .drawWithContent {
                 drawContent()
-                drawNeonGlow(glowColor, glowRadius)
+                if (enabled) drawNeonGlow(glowColor, glowRadius)
             },
         shape = RoundedCornerShape(cornerRadius),
         border = BorderStroke(1.dp, Color.Transparent),
-        colors = ButtonDefaults.buttonColors(containerColor = buttonColor)
+        colors = ButtonDefaults.buttonColors(
+            containerColor = buttonColor,
+            disabledContainerColor = buttonColor.copy(alpha = 0.5f)
+        ),
+        enabled = enabled
     ) {
-        Text(
-            text = text, color = Color.White, style = TextStyle(
-                fontSize = MaterialTheme.typography.bodyLarge.fontSize, shadow = Shadow(
-                    color = glowColor, blurRadius = 10f
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            if (icon != null) {
+                Icon(
+                    painter = painterResource(icon),
+                    contentDescription = contentDescription,
+                    tint = if (enabled) Color.White else Color.White.copy(alpha = 0.5f)
                 )
-            )
-        )
+                if (!text.isNullOrBlank()) Spacer(modifier = Modifier.width(8.dp))
+            }
+            if (!text.isNullOrBlank()) {
+                Text(
+                    text = text,
+                    color = if (enabled) Color.White else Color.White.copy(alpha = 0.5f),
+                    style = TextStyle(
+                        fontSize = MaterialTheme.typography.bodyLarge.fontSize,
+                        shadow = if (enabled) Shadow(color = glowColor, blurRadius = 10f) else null
+                    )
+                )
+            }
+        }
     }
 }
-
-//@Preview(showBackground = true)
-//@Composable
-//fun NeonButtonPreview() {
-//    NeonRoundedButton(
-//        text = "Click Me", onClick = { }, buttonColor = Color.Cyan,  // Neon cyan
-//        glowColor = Color.Cyan.copy(alpha = 0.8f), width = 220.dp, height = 55.dp
-//    )
-//}
-
-
