@@ -22,7 +22,6 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -36,25 +35,25 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.viewmodel.compose.viewModel // Standard viewModel import
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
-import com.avfusionapps.game_2048.R // Assuming logo is here
-import com.avfusionapps.game_2048.ui.NeonCutCornerButton // Your custom button
-import com.avfusionapps.game_2048.ui.NeonRoundedButton // Your custom button
-import com.avfusionapps.game_2048.ui.theme.HighLighter // Your theme color
-import com.avfusionapps.game_2048.ui.theme.Purple80 // Your theme color
-import com.avfusionapps.game_2048.ui.theme.PurpleDarkBackground // Your theme color
-import com.avfusionapps.game_2048.ui.theme._2048OriginalTheme // Your theme
+import com.avfusionapps.game_2048.R
+import com.avfusionapps.game_2048.ui.NeonCutCornerButton
+import com.avfusionapps.game_2048.ui.NeonRoundedButton
+import com.avfusionapps.game_2048.ui.theme.HighLighter
+import com.avfusionapps.game_2048.ui.theme.Purple80
+import com.avfusionapps.game_2048.ui.theme.PurpleDarkBackground
+import com.avfusionapps.game_2048.ui.theme._2048OriginalTheme
 import com.avfusionapps.game_2048.viewmodel.Direction
 import com.avfusionapps.game_2048.viewmodel.GameViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlin.math.abs
-import androidx.compose.ui.geometry.Offset // *** Import Offset ***
-import androidx.compose.ui.graphics.Shadow // *** Import Shadow ***
-import androidx.compose.ui.text.TextStyle // *** Import TextStyle ***
-import kotlin.math.log2 // *** Import log2 ***
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.text.TextStyle
+import kotlin.math.log2
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
@@ -68,33 +67,57 @@ import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 
 
-@Preview(showSystemUi = true, uiMode = Configuration.UI_MODE_NIGHT_YES, name = "Game Screen Dark Preview")
+@Preview(
+    showSystemUi = true,
+    uiMode = Configuration.UI_MODE_NIGHT_YES,
+    name = "Game Screen Dark Preview"
+)
 @Composable
 fun DarkModePreviewGame() {
     val previewNavController = rememberNavController()
-    // Provide a dummy ViewModel for preview or display static structure
-    _2048OriginalTheme { // Apply your theme
-        Scaffold { padding -> // Use Scaffold for basic layout structure
-            Box(modifier = Modifier.padding(padding).fillMaxSize().background(PurpleDarkBackground)) {
-                // Static preview content simulating the screen layout
+    _2048OriginalTheme {
+        Scaffold { padding ->
+            Box(
+                modifier = Modifier
+                    .padding(padding)
+                    .fillMaxSize()
+                    .background(PurpleDarkBackground)
+            ) {
                 Column(
-                    modifier = Modifier.fillMaxSize().padding(16.dp),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Top
                 ) {
-                    Image(painter = painterResource(id = R.drawable.ic_logo), contentDescription = "Logo", Modifier.height(100.dp))
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_logo),
+                        contentDescription = "Logo",
+                        Modifier.height(100.dp)
+                    )
                     Spacer(Modifier.height(16.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Column {
-                            Text("Preview Player", color = Color.White, style = MaterialTheme.typography.titleLarge)
+                            Text(
+                                "Preview Player",
+                                color = Color.White,
+                                style = MaterialTheme.typography.titleLarge
+                            )
                             Text("Score: 128", color = Color.White)
                             Text("High Score: 1024", color = Color.White)
                         }
-                        Button(onClick = {}) { Text("New Game") } // Use standard button for preview
+                        Button(onClick = {}) { Text("New Game") }
                     }
                     Spacer(Modifier.height(16.dp))
-                    Box(Modifier.aspectRatio(1f).fillMaxWidth().background(Purple80)) {
-                        Text("4x4 Grid Preview", Modifier.align(Alignment.Center), color = Color.Black)
+                    Box(Modifier
+                        .aspectRatio(1f)
+                        .fillMaxWidth()
+                        .background(Purple80)) {
+                        Text(
+                            "4x4 Grid Preview",
+                            Modifier.align(Alignment.Center),
+                            color = Color.Black
+                        )
                     }
                 }
             }
@@ -106,12 +129,10 @@ fun DarkModePreviewGame() {
 fun GameScreen(navController: NavController, viewModel: GameViewModel = viewModel()) {
 
     val gameState = viewModel.gameState
-    // Collect persistent values, reacting to changes from DataStore
     val persistentHighScore by viewModel.persistentHighScore.collectAsState()
     val persistentPlayerName by viewModel.persistentPlayerName.collectAsState()
 
     var showGridSizeDialog by remember { mutableStateOf(true) }
-    // ... (other state collection) ...
     val hapticFeedback = LocalHapticFeedback.current
     val context = LocalContext.current // *** Get context ***
 
@@ -119,17 +140,17 @@ fun GameScreen(navController: NavController, viewModel: GameViewModel = viewMode
         viewModel.mergeEvent.collectLatest {
             println("Merge event received. Attempting direct vibration.")
 
-            // --- Direct Vibrator Test ---
             val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
             if (vibrator?.hasVibrator() == true) { // Check if vibrator exists
                 try {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        // For Android Oreo (API 26) and above
-                        val vibrationEffect = VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE) // 50ms vibration
+                        val vibrationEffect = VibrationEffect.createOneShot(
+                            50,
+                            VibrationEffect.DEFAULT_AMPLITUDE
+                        ) // 50ms vibration
                         vibrator.vibrate(vibrationEffect)
                         println("Direct vibration (Oreo+) attempted.")
                     } else {
-                        // For older versions (deprecated)
                         @Suppress("DEPRECATION")
                         vibrator.vibrate(50) // 50ms vibration
                         println("Direct vibration (Legacy) attempted.")
@@ -140,36 +161,28 @@ fun GameScreen(navController: NavController, viewModel: GameViewModel = viewMode
             } else {
                 println("Device does not have a vibrator or service not found.")
             }
-            // --- End Direct Vibrator Test ---
-
-            // You can comment out the compose haptic call while testing direct vibration
-            // hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
         }
     }
 
-    // Use DisposableEffect for lifecycle-aware setup and cleanup
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(viewModel, lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                // Show dialog on resume only if game is uninitialized and dialog isn't already showing
                 if (!showGridSizeDialog && gameState.grid.all { r -> r.all { it == 0 } } && gameState.moveCount == 0) {
                     showGridSizeDialog = true
                 }
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
-        // Cleanup: remove observer when effect leaves composition
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
 
-    // Main UI Layout
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(PurpleDarkBackground) // Use theme background
+            .background(PurpleDarkBackground)
             .padding(16.dp)
             // Swipe gesture detection
             .pointerInput(Unit) {
@@ -177,18 +190,19 @@ fun GameScreen(navController: NavController, viewModel: GameViewModel = viewMode
                 var totalY = 0f
                 detectDragGestures(
                     onDragEnd = {
-                        if (!gameState.isGameOver) { // Process moves only if game is active
-                            val minSwipeDistance = 50 // Adjust sensitivity
+                        if (!gameState.isGameOver) {
+                            val minSwipeDistance = 50
                             when {
                                 abs(totalX) > abs(totalY) && abs(totalX) > minSwipeDistance -> {
                                     viewModel.move(if (totalX > 0) Direction.RIGHT else Direction.LEFT)
                                 }
+
                                 abs(totalY) > abs(totalX) && abs(totalY) > minSwipeDistance -> {
                                     viewModel.move(if (totalY > 0) Direction.DOWN else Direction.UP)
                                 }
                             }
                         }
-                        totalX = 0f; totalY = 0f // Reset trackers
+                        totalX = 0f; totalY = 0f
                     }
                 ) { change, dragAmount ->
                     change.consume()
@@ -201,16 +215,15 @@ fun GameScreen(navController: NavController, viewModel: GameViewModel = viewMode
     ) {
         // Game Logo
         Image(
-            painter = painterResource(id = R.drawable.ic_logo), // Ensure this resource exists
+            painter = painterResource(id = R.drawable.ic_logo),
             contentDescription = "Game Logo",
             modifier = Modifier
                 .height(140.dp)
                 .fillMaxWidth()
-                .scale(1.2f) // Adjust scale/size as needed
+                .scale(1.2f)
         )
         Spacer(Modifier.height(32.dp))
 
-        // Header Section: Scores and New Game Button
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -218,92 +231,83 @@ fun GameScreen(navController: NavController, viewModel: GameViewModel = viewMode
         ) {
             Column(horizontalAlignment = Alignment.Start) {
                 Text(
-                    text = persistentPlayerName, // Display persistent name
+                    text = persistentPlayerName,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Score: ${gameState.score}", // Display current score
+                    text = "Score: ${gameState.score}",
                     style = MaterialTheme.typography.titleMedium,
                     color = Color.White
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "High Score: $persistentHighScore", // Display persistent high score
+                    text = "High Score: $persistentHighScore",
                     style = MaterialTheme.typography.titleMedium,
                     color = Color.White
                 )
             }
-            // Use your custom Neon button
             NeonRoundedButton(
-                onClick = { showGridSizeDialog = true }, // Trigger size selection
+                onClick = { showGridSizeDialog = true },
                 text = "New Game"
             )
         }
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Game Board Area
-        GameBoard(viewModel = viewModel) // Pass the ViewModel down
+        GameBoard(viewModel = viewModel)
 
-    } // End Main Column
+    }
 
-    // --- Dialogs ---
 
-    // Grid Size Selection Dialog
     if (showGridSizeDialog) {
         GridSizeDialog(
             onSizeSelected = { size ->
-                viewModel.updateGridSize(size) // Let ViewModel handle grid update/init
+                viewModel.updateGridSize(size)
                 showGridSizeDialog = false
             },
             onDismiss = {
-                // If dismissing initial dialog without starting, navigate back
                 if (gameState.grid.all { r -> r.all { it == 0 } }) {
                     navController.navigateUp()
                 } else {
-                    showGridSizeDialog = false // Just close dialog if game was in progress
+                    showGridSizeDialog = false
                 }
             }
         )
     }
 
-    // Game Over Dialog
     if (gameState.isGameOver) {
         GameOverDialog(
-            score = gameState.score, // Show final score
+            score = gameState.score,
             onNewGame = {
-                showGridSizeDialog = true // Start new game flow via size selection
+                showGridSizeDialog = true
             },
-            onExit = { navController.navigateUp() } // Exit the game screen
+            onExit = { navController.navigateUp() }
         )
     }
 }
-
-
-// ==================================================
-// Game Board and Cell Components
-// ==================================================
 
 @Composable
 fun GameBoard(viewModel: GameViewModel) {
     Box(
         modifier = Modifier
-            .aspectRatio(1f) // Maintain square aspect ratio
+            .aspectRatio(1f)
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
-            .background(Purple80.copy(alpha = 0.8f)) // Slightly transparent grid background
-            .padding(4.dp) // Padding between border and cells
+            .background(Purple80.copy(alpha = 0.8f))
+            .padding(4.dp)
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(4.dp) // Space between rows
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             viewModel.gameState.grid.forEachIndexed { i, row ->
                 Row(
-                    modifier = Modifier.weight(1f).fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp) // Space between cells
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     row.forEachIndexed { j, cellValue ->
                         val tileInfo = viewModel.gameState.tileAnimationInfo[Pair(i, j)]
@@ -319,7 +323,6 @@ fun GameBoard(viewModel: GameViewModel) {
         }
     }
 
-    // Animation Cleanup Effect
     LaunchedEffect(viewModel.gameState.moveCount) {
         if (viewModel.gameState.tileAnimationInfo.isNotEmpty()) {
             delay(300) // Adjust delay based on longest animation
@@ -335,7 +338,6 @@ fun GameCell(
     isNew: Boolean = false,
     isMerged: Boolean = false
 ) {
-    // Background color logic (kept as you provided)
     val backgroundColor = remember(value) {
         when (value) {
             0 -> Color(0xFF79002A).copy(0.45f)
@@ -381,8 +383,6 @@ fun GameCell(
         }
     }
 
-    // --- Cell Glow Calculation ---
-    // Apply glow only to cells with values 2, 4, 8, 16, 32
     val cellShadowModifier = if (value in 2..32) {
         Modifier.shadow(
             elevation = 12.dp,
@@ -392,10 +392,9 @@ fun GameCell(
             spotColor = Color.White.copy(alpha = 0.25f)
         )
     } else {
-        Modifier // No glow for other cells
+        Modifier
     }
 
-    // --- Text Glow Calculation (remains the same) ---
     val textShadow = remember(value) {
         if (value > 0) {
             val logValue = log2(value.toFloat()).coerceAtLeast(1f)
@@ -412,8 +411,6 @@ fun GameCell(
         }
     }
 
-    // --- Cell Stroke Calculation ---
-    // Apply border only to cells with values 2, 4, 8, 16, 32
     val borderModifier = if (value in 2..32) {
         Modifier.border(
             width = 1.dp,
@@ -421,10 +418,9 @@ fun GameCell(
             shape = RoundedCornerShape(6.dp)
         )
     } else {
-        Modifier // No border for other cells
+        Modifier
     }
 
-    // --- Animation State (remains the same) ---
     var scale by remember { mutableStateOf(1f) }
     LaunchedEffect(key1 = value, key2 = isNew, key3 = isMerged) {
         scale = 1f // Reset scale
@@ -437,7 +433,6 @@ fun GameCell(
         }
     }
 
-    // --- Cell Box ---
     Box(
         modifier = modifier
             .aspectRatio(1f)
@@ -462,16 +457,24 @@ fun GameCell(
                     val paint = Paint()
                         .asFrameworkPaint().apply {
                             this.style = android.graphics.Paint.Style.STROKE
-                            this.strokeWidth = 1f
-                            this.color = Color.White.hashCode()
+                            this.strokeWidth = 2f  // Increased stroke width
+                            this.color = Color.White.copy(alpha = 0.7f).hashCode()
                             this.textSize = textSize.toPx()
+                            this.isAntiAlias = true  // Enable anti-aliasing
+                            this.flags = this.flags or android.graphics.Paint.SUBPIXEL_TEXT_FLAG
                         }
 
+                    val textBounds = android.graphics.Rect()
+                    val text = value.toString()
+                    paint.getTextBounds(text, 0, text.length, textBounds)
+
                     drawIntoCanvas { canvas ->
+                        val x = (size.width - textBounds.width()) / 2f
+                        val y = (size.height + textBounds.height()) / 2f
                         canvas.nativeCanvas.drawText(
-                            value.toString(),
-                            0.2f,
-                            textSize.toPx() - 4,
+                            text,
+                            x,
+                            y,
                             paint
                         )
                     }
@@ -480,16 +483,14 @@ fun GameCell(
         }
     }
 }
-// ==================================================
-// Dialog Components
-// ==================================================
+
 @Composable
 fun GridSizeDialog(onSizeSelected: (Int) -> Unit, onDismiss: () -> Unit) {
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 24.dp),
             shape = RoundedCornerShape(16.dp),
-            color = PurpleDarkBackground.copy(alpha = 0.95f), // Slightly transparent dialog
+            color = PurpleDarkBackground.copy(alpha = 0.95f),
             shadowElevation = 8.dp
         ) {
             Column(
@@ -497,10 +498,14 @@ fun GridSizeDialog(onSizeSelected: (Int) -> Unit, onDismiss: () -> Unit) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                Text("Select Grid Size", style = MaterialTheme.typography.headlineSmall, color = Color.White)
+                Text(
+                    "Select Grid Size",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = Color.White
+                )
                 GridSizeButtons(onSizeSelected)
                 TextButton(onClick = onDismiss) {
-                    Text("Cancel", color = HighLighter) // Use theme accent color
+                    Text("Cancel", color = HighLighter)
                 }
             }
         }
@@ -509,7 +514,7 @@ fun GridSizeDialog(onSizeSelected: (Int) -> Unit, onDismiss: () -> Unit) {
 
 @Composable
 fun GameOverDialog(score: Int, onNewGame: () -> Unit, onExit: () -> Unit) {
-    Dialog(onDismissRequest = {}) { // Prevent accidental dismiss
+    Dialog(onDismissRequest = {}) {
         Surface(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 24.dp),
             shape = RoundedCornerShape(16.dp),
@@ -521,12 +526,20 @@ fun GameOverDialog(score: Int, onNewGame: () -> Unit, onExit: () -> Unit) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Text("Game Over!", style = MaterialTheme.typography.headlineMedium, color = HighLighter)
-                Text("Final Score: $score", style = MaterialTheme.typography.titleLarge, color = Color.White)
+                Text(
+                    "Game Over!",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = HighLighter
+                )
+                Text(
+                    "Final Score: $score",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = Color.White
+                )
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                    NeonRoundedButton(onClick = onNewGame, text = "New Game") // Use your custom button
-                    NeonRoundedButton(onClick = onExit, text = "Exit") // Use your custom button
+                    NeonRoundedButton(onClick = onNewGame, text = "New Game")
+                    NeonRoundedButton(onClick = onExit, text = "Exit")
                 }
             }
         }
@@ -536,13 +549,35 @@ fun GameOverDialog(score: Int, onNewGame: () -> Unit, onExit: () -> Unit) {
 @Composable
 fun GridSizeButtons(onSizeSelected: (Int) -> Unit) {
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)) {
-            NeonCutCornerButton(text = "3x3", onClick = { onSizeSelected(3) }, modifier = Modifier.weight(1f))
-            NeonCutCornerButton(text = "4x4", onClick = { onSizeSelected(4) }, modifier = Modifier.weight(1f))
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
+        ) {
+            NeonCutCornerButton(
+                text = "3x3",
+                onClick = { onSizeSelected(3) },
+                modifier = Modifier.weight(1f)
+            )
+            NeonCutCornerButton(
+                text = "4x4",
+                onClick = { onSizeSelected(4) },
+                modifier = Modifier.weight(1f)
+            )
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)) {
-            NeonCutCornerButton(text = "5x5", onClick = { onSizeSelected(5) }, modifier = Modifier.weight(1f))
-            NeonCutCornerButton(text = "6x6", onClick = { onSizeSelected(6) }, modifier = Modifier.weight(1f))
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
+        ) {
+            NeonCutCornerButton(
+                text = "5x5",
+                onClick = { onSizeSelected(5) },
+                modifier = Modifier.weight(1f)
+            )
+            NeonCutCornerButton(
+                text = "6x6",
+                onClick = { onSizeSelected(6) },
+                modifier = Modifier.weight(1f)
+            )
         }
     }
 }
@@ -554,7 +589,9 @@ fun GameCellPreview() {
 
     LazyVerticalGrid(
         columns = GridCells.Fixed(4),
-        modifier = Modifier.fillMaxSize().padding(16.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
         contentPadding = PaddingValues(16.dp)
     ) {
         items(values) { value ->

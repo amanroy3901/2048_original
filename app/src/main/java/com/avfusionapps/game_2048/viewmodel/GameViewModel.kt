@@ -283,7 +283,6 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // --- Private Helper Functions ---
 
     /** Extracts a specific line (row or column) from the grid based on the move direction. */
     private fun getLine(grid: List<List<Int>>, index: Int, direction: Direction): List<Int> {
