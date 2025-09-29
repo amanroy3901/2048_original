@@ -3,6 +3,9 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)}
+    id("com.google.gms.google-services")
+    alias(libs.plugins.google.firebase.crashlytics)
+}
 
 android {
     namespace = "com.avfusionapps.game_2048"
@@ -10,10 +13,12 @@ android {
 
     defaultConfig {
         applicationId = "com.avfusionapps.game_2048"
-        minSdk = 25
+        minSdk = 27
         targetSdk = 35
         versionCode = 3
         versionName = "1.1.1"
+        versionCode = 4
+        versionName = "1.1.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -52,6 +57,7 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.firebase.crashlytics)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -79,5 +85,8 @@ dependencies {
 
     // Gson for JSON serialization/deserialization
     implementation("com.google.code.gson:gson:2.10.1")
+
+    implementation(platform("com.google.firebase:firebase-bom:34.2.0"))
+    implementation("com.google.firebase:firebase-analytics")
 
 }

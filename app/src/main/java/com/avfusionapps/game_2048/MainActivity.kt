@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
@@ -32,14 +33,15 @@ import com.avfusionapps.game_2048.ui.theme._2048OriginalTheme
 import com.avfusionapps.game_2048.viewmodel.GameViewModel
 import com.google.android.play.core.appupdate.AppUpdateManager
 import com.google.android.play.core.appupdate.AppUpdateManagerFactory
-import com.google.android.play.core.appupdate.AppUpdateInfo
-import com.google.android.play.core.appupdate.AppUpdateOptions
 import com.google.android.play.core.install.InstallStateUpdatedListener
 import com.google.android.play.core.install.model.AppUpdateType
 import com.google.android.play.core.install.model.InstallStatus
 import com.google.android.play.core.install.model.UpdateAvailability
 import com.google.android.play.core.ktx.startUpdateFlowForResult
 import kotlinx.coroutines.launch
+import com.google.android.play.core.appupdate.AppUpdateInfo
+import com.google.android.play.core.appupdate.AppUpdateOptions
+
 
 class MainActivity : ComponentActivity() {
 
@@ -48,7 +50,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var snackbarHostState: SnackbarHostState
     private lateinit var reminderManager: ReminderManager
 
-    // Register activity result launcher for update flow
+
     private val updateResultLauncher =
         registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
             when (result.resultCode) {
@@ -60,7 +62,7 @@ class MainActivity : ComponentActivity() {
                     }
                 }
                 else -> {
-                    Log.d("AppUpdate", "Update flow failed: ${result.resultCode}")
+                    Log.d("AppUpdate", "Update flow failed with result code: ${result.resultCode}")
                     lifecycleScope.launch {
                         showSnackbar("Update failed. Please try again later.")
                     }
@@ -68,19 +70,17 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-    // Listener for flexible update state changes
     private val installStateUpdatedListener = InstallStateUpdatedListener { state ->
         when (state.installStatus()) {
             InstallStatus.DOWNLOADED -> {
                 lifecycleScope.launch {
                     showSnackbar("Update downloaded. Restart the app to install.")
                 }
-                // Trigger app restart to complete the update
                 appUpdateManager.completeUpdate()
             }
             InstallStatus.FAILED -> {
                 lifecycleScope.launch {
-//                    showSnackbar("Update failed. Please try again later.")
+                    showSnackbar("Update failed. We will try again later.")
                 }
             }
             InstallStatus.CANCELED -> {
@@ -94,7 +94,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // Register the permission launcher
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
@@ -115,10 +114,7 @@ class MainActivity : ComponentActivity() {
                     Log.d("Notification", "Permission already granted")
                 }
                 shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS) -> {
-                    lifecycleScope.launch {
-                        showSnackbar("Notifications help you stay engaged with the game!")
-                        requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                    }
+                    requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
                 else -> {
                     requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -133,12 +129,19 @@ class MainActivity : ComponentActivity() {
         reminderManager = ReminderManager(this)
         appUpdateManager.registerListener(installStateUpdatedListener)
 
-        requestNotificationPermission()
+
         WindowCompat.setDecorFitsSystemWindows(window, false)
+
         setContent {
             _2048OriginalTheme {
                 snackbarHostState = remember { SnackbarHostState() }
                 val navController = rememberNavController()
+
+                LaunchedEffect(key1 = Unit) {
+                    requestNotificationPermission()
+                    checkForUpdates()
+                }
+
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
                     snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -172,8 +175,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-
-        checkForUpdates()
     }
 
     override fun onPause() {
@@ -185,7 +186,6 @@ class MainActivity : ComponentActivity() {
     
     override fun onResume() {
         super.onResume()
-        // Check if an update was downloaded but not yet installed
         appUpdateManager.appUpdateInfo.addOnSuccessListener { appUpdateInfo ->
             if (appUpdateInfo.installStatus() == InstallStatus.DOWNLOADED) {
                 lifecycleScope.launch {
@@ -198,7 +198,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        // Unregister listener to prevent memory leaks
         appUpdateManager.unregisterListener(installStateUpdatedListener)
     }
 
@@ -207,7 +206,6 @@ class MainActivity : ComponentActivity() {
             if (appUpdateInfo.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE
                 && appUpdateInfo.isUpdateTypeAllowed(AppUpdateType.FLEXIBLE)
             ) {
-                startUpdateFlow(appUpdateInfo)
                 startUpdateFlow(appUpdateInfo)
             } else {
                 Log.d("AppUpdate", "No update available or update not allowed")
@@ -225,9 +223,8 @@ class MainActivity : ComponentActivity() {
             try {
                 appUpdateManager.startUpdateFlowForResult(
                     appUpdateInfo,
-                    AppUpdateType.FLEXIBLE,
-                    this@MainActivity, // Use the activity directly
-                    updateRequestCode
+                    updateResultLauncher,
+                    AppUpdateOptions.newBuilder(AppUpdateType.FLEXIBLE).build()
                 )
                 Log.d("AppUpdate", "Update available, starting flexible update flow")
             } catch (e: Exception) {
@@ -238,8 +235,11 @@ class MainActivity : ComponentActivity() {
     }
 
     private suspend fun showSnackbar(message: String) {
-        // Dismiss any existing snackbar before showing a new one
-        snackbarHostState.currentSnackbarData?.dismiss()
-        snackbarHostState.showSnackbar(message)
+        if (::snackbarHostState.isInitialized) {
+            snackbarHostState.currentSnackbarData?.dismiss()
+            snackbarHostState.showSnackbar(message)
+        } else {
+            Log.e("Snackbar", "SnackbarHostState not initialized. Cannot show snackbar.")
+        }
     }
 }
