@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -54,7 +55,7 @@ data class GameState(
     val isGameOver: Boolean = false,
     val tileAnimationInfo: Map<Pair<Int, Int>, TileAnimationInfo> = emptyMap(),
     val moveCount: Int = 0,
-    val hasSavedGame: Boolean = false // Flag to indicate if there's a saved game to resume
+    val hasSavedGame: Boolean = false
 )
 
 /**
@@ -114,6 +115,9 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     private val _gameStateFlow = MutableStateFlow(GameState())
     val gameStateFlow: StateFlow<GameState> = _gameStateFlow.asStateFlow()
 
+    private val _resumePrompt = MutableStateFlow(false)
+    val resumePrompt: StateFlow<Boolean> = _resumePrompt.asStateFlow()
+
     private fun updateGameState(newState: GameState) {
         gameState = newState
         _gameStateFlow.value = newState
@@ -143,6 +147,20 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     )
     val mergeEvent: SharedFlow<Unit> = _mergeEvent.asSharedFlow()
 
+    val hasSavedGameFlow: StateFlow<Boolean> = gameStateFlow
+        .map { it.hasSavedGame }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    private val _newGamePending = MutableStateFlow(false)
+    val newGamePending = _newGamePending.asStateFlow()
+
+    fun startNewGameFlow() {
+        // Called from the main screen “Play Game” button before navigating
+        _newGamePending.value = true
+    }
+
+    fun consumeNewGamePending() { _newGamePending.value = false }
+
     init {
         viewModelScope.launch {
             val initialName = persistentPlayerName.first()
@@ -159,6 +177,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                         hasSavedGame = true
                     )
                 )
+                _resumePrompt.value = true
             } else {
                 updateGameState(
                     gameState.copy(
@@ -392,19 +411,16 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val lastMove = gameMoveRepository.getLastMove()
             if (lastMove != null) {
-                // Print debug info to verify data is being loaded correctly
                 println("Resuming game with grid: ${lastMove.grid}")
                 println("Grid size: ${lastMove.grid.size}x${lastMove.grid.firstOrNull()?.size ?: 0}")
                 println("Score: ${lastMove.score}, Move: ${lastMove.moveNumber}")
 
-                // Force update the grid size to match the saved grid
                 val gridSize = lastMove.grid.size
 
-                // Update the game state with the saved data
                 updateGameState(
                     gameState.copy(
                         grid = lastMove.grid,
-                        gridSize = gridSize,  // Ensure grid size matches saved data
+                        gridSize = gridSize,
                         score = lastMove.score,
                         moveCount = lastMove.moveNumber,
                         tileAnimationInfo = emptyMap(),
@@ -428,6 +444,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         gameState = gameState.copy(hasSavedGame = false)
         initializeGame() // This will clear saved moves and start a new game
     }
+
+    fun consumeResumePrompt() { _resumePrompt.value = false }
 
     /**
      * Updates the canUndo state based on available moves in the database.

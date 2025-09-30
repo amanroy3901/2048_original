@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -42,9 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -67,85 +64,6 @@ import com.avfusionapps.game_2048.ui.theme.PurpleDarkBackground
 import com.avfusionapps.game_2048.ui.theme._2048OriginalTheme
 import com.avfusionapps.game_2048.viewmodel.GameViewModel
 
-@Composable
-fun ResumeGameDialog(
-    onResumeGame: () -> Unit,
-    onNewGame: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth(0.9f)
-                .shadow(
-                    elevation = 8.dp,
-                    shape = RoundedCornerShape(16.dp),
-                    ambientColor = HighLighter.copy(alpha = 0.5f),
-                    spotColor = HighLighter.copy(alpha = 0.5f)
-                ),
-            shape = RoundedCornerShape(16.dp),
-            color = PurpleDarkBackground
-        ) {
-            Column(
-                modifier = Modifier
-                    .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.ic_logo),
-                    contentDescription = "Game Logo",
-                    modifier = Modifier
-                        .height(80.dp)
-                        .scale(1.1f),
-                    colorFilter = ColorFilter.tint(
-                        color = HighLighter.copy(alpha = 0.7f),
-                        blendMode = BlendMode.SrcAtop
-                    )
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text(
-                    text = "Resume Previous Game?",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text(
-                    text = "You have an unfinished game. Would you like to resume where you left off or start a new game?",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = Color.White.copy(alpha = 0.8f),
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    NeonRoundedButton(
-                        onClick = onNewGame,
-                        text = "New Game",
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    NeonRoundedButton(
-                        onClick = onResumeGame,
-                        text = "Resume",
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
-        }
-    }
-}
-
-
 @Preview(showSystemUi = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 fun DarkModePreview() {
@@ -162,7 +80,8 @@ fun DarkModePreview() {
                 onEditNameClick = {},
                 showNameDialog = false,
                 onDismissDialog = {},
-                onNameChange = {}
+                onNameChange = {},
+                actions = {}
             )
         }
     }
@@ -173,14 +92,16 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
 
     val persistentPlayerName by viewModel.persistentPlayerName.collectAsState()
     val persistentHighScore by viewModel.persistentHighScore.collectAsState()
-    val gameState by viewModel.gameStateFlow.collectAsState()
+    val hasSaved by viewModel.hasSavedGameFlow.collectAsState()
 
     var showNameDialog by remember { mutableStateOf(false) }
-    var showResumeGameDialog by remember { mutableStateOf(false) }
     var initialNameCheckDone by remember { mutableStateOf(false) }
+    val resumePrompt by viewModel.resumePrompt.collectAsState()
 
-    LaunchedEffect(gameState) {
-        showResumeGameDialog = gameState.hasSavedGame
+    LaunchedEffect(resumePrompt) {
+        if (resumePrompt) {
+            viewModel.consumeResumePrompt()
+        }
     }
 
     LaunchedEffect(persistentPlayerName) {
@@ -193,23 +114,6 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
         }
     }
 
-    if (showResumeGameDialog) {
-        ResumeGameDialog(
-            onResumeGame = {
-                viewModel.resumeSavedGame()
-                navController.navigate("game?resume=true")
-                showResumeGameDialog = false
-            },
-            onNewGame = {
-                viewModel.initializeGame()
-                navController.navigate("game")
-                showResumeGameDialog = false
-            },
-            onDismiss = {
-                showResumeGameDialog = false
-            }
-        )
-    }
 
     MainScreenContent(
         navController = navController,
@@ -223,6 +127,35 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
             if (newName.isNotBlank() && newName != GameSettingsRepository.DEFAULT_PLAYER_NAME) {
                 initialNameCheckDone = true
             }
+        },
+        actions = {
+            if (hasSaved) {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    CylinderActionButton(
+                        text = "Resume",
+                        leadingIcon = R.drawable.ic_pause,
+                        onClick = {
+                            viewModel.resumeSavedGame()
+                            navController.navigate("game?resume=true")
+                        }
+                    )
+                    CylinderActionButton(
+                        text = "Play Game",
+                        leadingIcon = R.drawable.ic_play,
+                        onClick = {
+                            viewModel.declineSavedGame()
+                            viewModel.startNewGameFlow()
+                            navController.navigate("game")
+                        }
+                    )
+                }
+            } else {
+                CylinderActionButton(
+                    text = "Play Game",
+                    leadingIcon = R.drawable.ic_play,
+                    onClick = { navController.navigate("game") }
+                )
+            }
         }
     )
 }
@@ -235,7 +168,8 @@ fun MainScreenContent(
     onEditNameClick: () -> Unit,
     showNameDialog: Boolean,
     onDismissDialog: () -> Unit,
-    onNameChange: (String) -> Unit
+    onNameChange: (String) -> Unit,
+    actions: @Composable () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -286,7 +220,12 @@ fun MainScreenContent(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "Highest Score: $highScore",
+                text = buildAnnotatedString {
+                    append("Highest Score: ")
+                    withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                        append(highScore.toString())
+                    }
+                },
                 style = MaterialTheme.typography.titleLarge,
                 color = Color.White
             )
@@ -309,7 +248,7 @@ fun MainScreenContent(
                 .padding(bottom = 32.dp),
             horizontalArrangement = Arrangement.Center
         ) {
-            CylinderPlayButton(navController)
+            actions()
         }
         Spacer(modifier = Modifier.weight(1f))
 
@@ -326,12 +265,17 @@ fun MainScreenContent(
 
 
 @Composable
-fun CylinderPlayButton(navController: NavController) {
+fun CylinderActionButton(
+    modifier: Modifier = Modifier
+        .width(220.dp)
+        .height(60.dp),
+    text: String,
+    onClick: () -> Unit,
+    leadingIcon: Int? = null,
+) {
     Button(
-        onClick = { navController.navigate("game") },
-        modifier = Modifier
-            .width(220.dp)
-            .height(60.dp),
+        onClick = onClick,
+        modifier = modifier,
         colors = ButtonDefaults.buttonColors(containerColor = HighLighter),
         shape = RoundedCornerShape(percent = 50),
         elevation = ButtonDefaults.buttonElevation(
@@ -344,12 +288,10 @@ fun CylinderPlayButton(navController: NavController) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Icon(
-                Icons.Default.PlayArrow,
-                contentDescription = "Play button icon",
-                tint = Color.White
-            )
-            Text("Play Game", color = Color.White, style = MaterialTheme.typography.titleMedium)
+            if (leadingIcon != null) {
+                Icon(painter = painterResource(leadingIcon), contentDescription = null, tint = Color.White)
+            }
+            Text(text, color = Color.White, style = MaterialTheme.typography.titleMedium)
         }
     }
 }

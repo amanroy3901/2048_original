@@ -20,10 +20,11 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import com.avfusionapps.game_2048.notification.ReminderManager
 import com.avfusionapps.game_2048.ui.screens.GameScreen
@@ -31,16 +32,15 @@ import com.avfusionapps.game_2048.ui.screens.MainScreen
 import com.avfusionapps.game_2048.ui.screens.SplashScreen
 import com.avfusionapps.game_2048.ui.theme._2048OriginalTheme
 import com.avfusionapps.game_2048.viewmodel.GameViewModel
+import com.google.android.play.core.appupdate.AppUpdateInfo
 import com.google.android.play.core.appupdate.AppUpdateManager
 import com.google.android.play.core.appupdate.AppUpdateManagerFactory
+import com.google.android.play.core.appupdate.AppUpdateOptions
 import com.google.android.play.core.install.InstallStateUpdatedListener
 import com.google.android.play.core.install.model.AppUpdateType
 import com.google.android.play.core.install.model.InstallStatus
 import com.google.android.play.core.install.model.UpdateAvailability
-import com.google.android.play.core.ktx.startUpdateFlowForResult
 import kotlinx.coroutines.launch
-import com.google.android.play.core.appupdate.AppUpdateInfo
-import com.google.android.play.core.appupdate.AppUpdateOptions
 
 
 class MainActivity : ComponentActivity() {
@@ -149,15 +149,20 @@ class MainActivity : ComponentActivity() {
                     NavHost(
                         navController = navController,
                         startDestination = "splash",
+                        route = "root",
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(innerPadding)
                     ) {
-                        composable("splash") {
+                        composable("splash") { backStackEntry ->
+                            val parentEntry = remember(backStackEntry) { navController.getBackStackEntry("root") }
+                            val vm: GameViewModel = viewModel(parentEntry)
                             SplashScreen(navController)
                         }
-                        composable("main") {
-                            MainScreen(navController)
+                        composable("main") { backStackEntry ->
+                            val parentEntry = remember(backStackEntry) { navController.getBackStackEntry("root") }
+                            val vm: GameViewModel = viewModel(parentEntry)
+                            MainScreen(navController = navController, viewModel = vm)
                         }
                         composable(
                             route = "game?resume={resume}",
@@ -168,8 +173,10 @@ class MainActivity : ComponentActivity() {
                                     nullable = true
                                 }
                             )
-                        ) {
-                            GameScreen(navController)
+                        ) { backStackEntry ->
+                            val parentEntry = remember(backStackEntry) { navController.getBackStackEntry("root") }
+                            val vm: GameViewModel = viewModel(parentEntry)
+                            GameScreen(navController = navController, viewModel = vm)
                         }
                     }
                 }

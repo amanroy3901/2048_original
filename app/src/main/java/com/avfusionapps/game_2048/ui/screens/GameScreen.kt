@@ -5,6 +5,7 @@ import android.content.res.Configuration
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -22,11 +23,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -56,6 +60,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -146,14 +151,19 @@ fun GameScreen(navController: NavController, viewModel: GameViewModel = viewMode
 
     val isResuming = navController.currentBackStackEntry
         ?.arguments?.getString("resume") == "true"
+    val newGamePending by viewModel.newGamePending.collectAsState()
 
     var showGridSizeDialog by remember { mutableStateOf(false) }
     val hapticFeedback = LocalHapticFeedback.current
     val canUndo by viewModel.canUndo.collectAsState()
-    val context = LocalContext.current // *** Get context ***
+    val context = LocalContext.current
+    var showExitDialog by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        showGridSizeDialog = !isResuming && gameState.grid.all { row -> row.all { it == 0 } }
+    LaunchedEffect(isResuming, newGamePending) {
+        showGridSizeDialog = !isResuming && newGamePending
+        if (showGridSizeDialog) {
+            viewModel.consumeNewGamePending()
+        }
     }
 
     LaunchedEffect(key1 = viewModel) {
@@ -188,14 +198,71 @@ fun GameScreen(navController: NavController, viewModel: GameViewModel = viewMode
     DisposableEffect(viewModel, lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                if (!showGridSizeDialog && gameState.grid.all { r -> r.all { it == 0 } } && gameState.moveCount == 0) {
+                if (newGamePending && !isResuming) {
                     showGridSizeDialog = true
+                    viewModel.consumeNewGamePending()
                 }
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    // helper condition (inline or as a val)
+    val hasProgress = viewModel.gameState.moveCount > 0 ||
+            viewModel.gameState.grid.any { row -> row.any { it != 0 } }
+
+    BackHandler(enabled = true) {
+        if (hasProgress) {
+            showExitDialog = true
+        } else {
+            navController.navigateUp()
+        }
+    }
+
+    if (showExitDialog) {
+        Dialog(onDismissRequest = { showExitDialog = false }) {
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = PurpleDarkBackground.copy(alpha = 0.95f),
+                shadowElevation = 8.dp
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text(
+                        text = "Exit current game?",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = Color.White
+                    )
+                    Text(
+                        text = "Progress will be cleared.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = 0.8f)
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        NeonRoundedButton(
+                            text = "Cancel",
+                            onClick = { showExitDialog = false },
+                        )
+                        NeonRoundedButton(
+                            text = "Exit",
+                            onClick = {
+                                viewModel.declineSavedGame()
+                                showExitDialog = false
+                                navController.navigateUp()
+                            },
+                        )
+                    }
+                }
+            }
         }
     }
 
@@ -276,7 +343,13 @@ fun GameScreen(navController: NavController, viewModel: GameViewModel = viewMode
                 contentDescription = "Undo Button"
             )
             NeonRoundedButton(
-                onClick = { },
+                onClick = {
+                    if (hasProgress) {
+                    showExitDialog = true
+                    } else {
+                    navController.navigateUp()
+                    }
+                          },
                 icon = R.drawable.ic_close,
                 contentDescription = "Close Button"
             )
