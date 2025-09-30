@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -31,7 +30,13 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.runtime.* // Import everything needed from runtime
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
@@ -52,14 +57,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.avfusionapps.game_2048.R
-import com.avfusionapps.game_2048.data.GameSettingsRepository // *** Import Repository ***
+import com.avfusionapps.game_2048.data.GameSettingsRepository
 import com.avfusionapps.game_2048.ui.NeonRoundedButton
 import com.avfusionapps.game_2048.ui.theme.HighLighter
-// import com.avfusionapps.game_2048.ui.theme.Purple80 // Keep if used
 import com.avfusionapps.game_2048.ui.theme.PurpleDarkBackground
 import com.avfusionapps.game_2048.ui.theme._2048OriginalTheme
 import com.avfusionapps.game_2048.viewmodel.GameViewModel
-
 
 @Preview(showSystemUi = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
@@ -68,8 +71,8 @@ fun DarkModePreview() {
     _2048OriginalTheme {
         Scaffold(
             contentWindowInsets = WindowInsets.safeDrawing,
-            modifier = Modifier.fillMaxSize()) {
-            innerPadding ->
+            modifier = Modifier.fillMaxSize()
+        ) { innerPadding ->
             MainScreenContent(
                 navController = previewNavController,
                 playerName = "Preview Player",
@@ -77,7 +80,8 @@ fun DarkModePreview() {
                 onEditNameClick = {},
                 showNameDialog = false,
                 onDismissDialog = {},
-                onNameChange = {}
+                onNameChange = {},
+                actions = {}
             )
         }
     }
@@ -88,32 +92,69 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
 
     val persistentPlayerName by viewModel.persistentPlayerName.collectAsState()
     val persistentHighScore by viewModel.persistentHighScore.collectAsState()
+    val hasSaved by viewModel.hasSavedGameFlow.collectAsState()
 
     var showNameDialog by remember { mutableStateOf(false) }
     var initialNameCheckDone by remember { mutableStateOf(false) }
+    val resumePrompt by viewModel.resumePrompt.collectAsState()
+
+    LaunchedEffect(resumePrompt) {
+        if (resumePrompt) {
+            viewModel.consumeResumePrompt()
+        }
+    }
 
     LaunchedEffect(persistentPlayerName) {
         viewModel.enableNotification()
         if (!initialNameCheckDone && persistentPlayerName == GameSettingsRepository.DEFAULT_PLAYER_NAME) {
             showNameDialog = true
             initialNameCheckDone = true
-        }
-        else if (persistentPlayerName != GameSettingsRepository.DEFAULT_PLAYER_NAME) {
+        } else if (persistentPlayerName != GameSettingsRepository.DEFAULT_PLAYER_NAME) {
             initialNameCheckDone = true
         }
     }
+
 
     MainScreenContent(
         navController = navController,
         playerName = persistentPlayerName,
         highScore = persistentHighScore,
-        onEditNameClick = { showNameDialog = true }, // Allow manual opening too
+        onEditNameClick = { showNameDialog = true },
         showNameDialog = showNameDialog,
         onDismissDialog = { showNameDialog = false },
         onNameChange = { newName ->
             viewModel.updatePlayerName(newName)
             if (newName.isNotBlank() && newName != GameSettingsRepository.DEFAULT_PLAYER_NAME) {
                 initialNameCheckDone = true
+            }
+        },
+        actions = {
+            if (hasSaved) {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    CylinderActionButton(
+                        text = "Resume",
+                        leadingIcon = R.drawable.ic_pause,
+                        onClick = {
+                            viewModel.resumeSavedGame()
+                            navController.navigate("game?resume=true")
+                        }
+                    )
+                    CylinderActionButton(
+                        text = "Play Game",
+                        leadingIcon = R.drawable.ic_play,
+                        onClick = {
+                            viewModel.declineSavedGame()
+                            viewModel.startNewGameFlow()
+                            navController.navigate("game")
+                        }
+                    )
+                }
+            } else {
+                CylinderActionButton(
+                    text = "Play Game",
+                    leadingIcon = R.drawable.ic_play,
+                    onClick = { navController.navigate("game") }
+                )
             }
         }
     )
@@ -127,7 +168,8 @@ fun MainScreenContent(
     onEditNameClick: () -> Unit,
     showNameDialog: Boolean,
     onDismissDialog: () -> Unit,
-    onNameChange: (String) -> Unit
+    onNameChange: (String) -> Unit,
+    actions: @Composable () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -135,7 +177,6 @@ fun MainScreenContent(
             .background(PurpleDarkBackground)
             .padding(16.dp), // Consistent padding
     ) {
-        // Top Row: Edit Name IconButton
         Row(
             modifier = Modifier
                 .weight(1f)
@@ -146,7 +187,7 @@ fun MainScreenContent(
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .shadow( // Apply shadow for depth
+                    .shadow(
                         elevation = 8.dp,
                         shape = RoundedCornerShape(8.dp),
                         ambientColor = HighLighter.copy(alpha = 0.5f),
@@ -179,7 +220,12 @@ fun MainScreenContent(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "Highest Score: $highScore",
+                text = buildAnnotatedString {
+                    append("Highest Score: ")
+                    withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                        append(highScore.toString())
+                    }
+                },
                 style = MaterialTheme.typography.titleLarge,
                 color = Color.White
             )
@@ -202,7 +248,7 @@ fun MainScreenContent(
                 .padding(bottom = 32.dp),
             horizontalArrangement = Arrangement.Center
         ) {
-            CylinderPlayButton(navController)
+            actions()
         }
         Spacer(modifier = Modifier.weight(1f))
 
@@ -219,27 +265,33 @@ fun MainScreenContent(
 
 
 @Composable
-fun CylinderPlayButton(navController: NavController) {
+fun CylinderActionButton(
+    modifier: Modifier = Modifier
+        .width(220.dp)
+        .height(60.dp),
+    text: String,
+    onClick: () -> Unit,
+    leadingIcon: Int? = null,
+) {
     Button(
-        onClick = { navController.navigate("game") },
-        modifier = Modifier
-            .width(220.dp)
-            .height(60.dp),
+        onClick = onClick,
+        modifier = modifier,
         colors = ButtonDefaults.buttonColors(containerColor = HighLighter),
         shape = RoundedCornerShape(percent = 50),
-        elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp, pressedElevation = 4.dp),
+        elevation = ButtonDefaults.buttonElevation(
+            defaultElevation = 8.dp,
+            pressedElevation = 4.dp
+        ),
         contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Icon(
-                Icons.Default.PlayArrow,
-                contentDescription = "Play button icon",
-                tint = Color.White
-            )
-            Text("Play Game", color = Color.White, style = MaterialTheme.typography.titleMedium)
+            if (leadingIcon != null) {
+                Icon(painter = painterResource(leadingIcon), contentDescription = null, tint = Color.White)
+            }
+            Text(text, color = Color.White, style = MaterialTheme.typography.titleMedium)
         }
     }
 }

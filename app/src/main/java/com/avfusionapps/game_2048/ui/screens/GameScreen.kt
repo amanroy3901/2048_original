@@ -5,28 +5,63 @@ import android.content.res.Configuration
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -50,22 +85,7 @@ import com.avfusionapps.game_2048.viewmodel.GameViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlin.math.abs
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.text.TextStyle
 import kotlin.math.log2
-
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.material3.Text // Use Material 3 Text
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.graphics.Paint
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
-import androidx.compose.ui.graphics.nativeCanvas
-
 
 @Preview(
     showSystemUi = true,
@@ -90,11 +110,6 @@ fun DarkModePreviewGame() {
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Top
                 ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.ic_logo),
-                        contentDescription = "Logo",
-                        Modifier.height(100.dp)
-                    )
                     Spacer(Modifier.height(16.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Column {
@@ -109,10 +124,12 @@ fun DarkModePreviewGame() {
                         Button(onClick = {}) { Text("New Game") }
                     }
                     Spacer(Modifier.height(16.dp))
-                    Box(Modifier
-                        .aspectRatio(1f)
-                        .fillMaxWidth()
-                        .background(Purple80)) {
+                    Box(
+                        Modifier
+                            .aspectRatio(1f)
+                            .fillMaxWidth()
+                            .background(Purple80)
+                    ) {
                         Text(
                             "4x4 Grid Preview",
                             Modifier.align(Alignment.Center),
@@ -132,9 +149,22 @@ fun GameScreen(navController: NavController, viewModel: GameViewModel = viewMode
     val persistentHighScore by viewModel.persistentHighScore.collectAsState()
     val persistentPlayerName by viewModel.persistentPlayerName.collectAsState()
 
-    var showGridSizeDialog by remember { mutableStateOf(true) }
+    val isResuming = navController.currentBackStackEntry
+        ?.arguments?.getString("resume") == "true"
+    val newGamePending by viewModel.newGamePending.collectAsState()
+
+    var showGridSizeDialog by remember { mutableStateOf(false) }
     val hapticFeedback = LocalHapticFeedback.current
-    val context = LocalContext.current // *** Get context ***
+    val canUndo by viewModel.canUndo.collectAsState()
+    val context = LocalContext.current
+    var showExitDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(isResuming, newGamePending) {
+        showGridSizeDialog = !isResuming && newGamePending
+        if (showGridSizeDialog) {
+            viewModel.consumeNewGamePending()
+        }
+    }
 
     LaunchedEffect(key1 = viewModel) {
         viewModel.mergeEvent.collectLatest {
@@ -147,7 +177,7 @@ fun GameScreen(navController: NavController, viewModel: GameViewModel = viewMode
                         val vibrationEffect = VibrationEffect.createOneShot(
                             50,
                             VibrationEffect.DEFAULT_AMPLITUDE
-                        ) // 50ms vibration
+                        )
                         vibrator.vibrate(vibrationEffect)
                         println("Direct vibration (Oreo+) attempted.")
                     } else {
@@ -168,14 +198,71 @@ fun GameScreen(navController: NavController, viewModel: GameViewModel = viewMode
     DisposableEffect(viewModel, lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                if (!showGridSizeDialog && gameState.grid.all { r -> r.all { it == 0 } } && gameState.moveCount == 0) {
+                if (newGamePending && !isResuming) {
                     showGridSizeDialog = true
+                    viewModel.consumeNewGamePending()
                 }
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    // helper condition (inline or as a val)
+    val hasProgress = viewModel.gameState.moveCount > 0 ||
+            viewModel.gameState.grid.any { row -> row.any { it != 0 } }
+
+    BackHandler(enabled = true) {
+        if (hasProgress) {
+            showExitDialog = true
+        } else {
+            navController.navigateUp()
+        }
+    }
+
+    if (showExitDialog) {
+        Dialog(onDismissRequest = { showExitDialog = false }) {
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = PurpleDarkBackground.copy(alpha = 0.95f),
+                shadowElevation = 8.dp
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text(
+                        text = "Exit current game?",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = Color.White
+                    )
+                    Text(
+                        text = "Progress will be cleared.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = 0.8f)
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        NeonRoundedButton(
+                            text = "Cancel",
+                            onClick = { showExitDialog = false },
+                        )
+                        NeonRoundedButton(
+                            text = "Exit",
+                            onClick = {
+                                viewModel.declineSavedGame()
+                                showExitDialog = false
+                                navController.navigateUp()
+                            },
+                        )
+                    }
+                }
+            }
         }
     }
 
@@ -213,17 +300,6 @@ fun GameScreen(navController: NavController, viewModel: GameViewModel = viewMode
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Top
     ) {
-        // Game Logo
-        Image(
-            painter = painterResource(id = R.drawable.ic_logo),
-            contentDescription = "Game Logo",
-            modifier = Modifier
-                .height(140.dp)
-                .fillMaxWidth()
-                .scale(1.2f)
-        )
-        Spacer(Modifier.height(32.dp))
-
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -257,9 +333,28 @@ fun GameScreen(navController: NavController, viewModel: GameViewModel = viewMode
         Spacer(modifier = Modifier.height(24.dp))
 
         GameBoard(viewModel = viewModel)
+        Spacer(modifier = Modifier.height(24.dp))
 
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            NeonRoundedButton(
+                onClick = { viewModel.undoMove() },
+                enabled = canUndo,
+                icon = R.drawable.ic_undo,
+                contentDescription = "Undo Button"
+            )
+            NeonRoundedButton(
+                onClick = {
+                    if (hasProgress) {
+                    showExitDialog = true
+                    } else {
+                    navController.navigateUp()
+                    }
+                          },
+                icon = R.drawable.ic_close,
+                contentDescription = "Close Button"
+            )
+        }
     }
-
 
     if (showGridSizeDialog) {
         GridSizeDialog(

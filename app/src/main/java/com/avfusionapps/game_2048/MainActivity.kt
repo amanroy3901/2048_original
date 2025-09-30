@@ -18,25 +18,29 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.avfusionapps.game_2048.notification.ReminderManager
 import com.avfusionapps.game_2048.ui.screens.GameScreen
 import com.avfusionapps.game_2048.ui.screens.MainScreen
 import com.avfusionapps.game_2048.ui.screens.SplashScreen
 import com.avfusionapps.game_2048.ui.theme._2048OriginalTheme
+import com.avfusionapps.game_2048.viewmodel.GameViewModel
+import com.google.android.play.core.appupdate.AppUpdateInfo
 import com.google.android.play.core.appupdate.AppUpdateManager
 import com.google.android.play.core.appupdate.AppUpdateManagerFactory
+import com.google.android.play.core.appupdate.AppUpdateOptions
 import com.google.android.play.core.install.InstallStateUpdatedListener
 import com.google.android.play.core.install.model.AppUpdateType
 import com.google.android.play.core.install.model.InstallStatus
 import com.google.android.play.core.install.model.UpdateAvailability
-import com.google.android.play.core.ktx.startUpdateFlowForResult
 import kotlinx.coroutines.launch
-import com.google.android.play.core.appupdate.AppUpdateInfo
-import com.google.android.play.core.appupdate.AppUpdateOptions
 
 
 class MainActivity : ComponentActivity() {
@@ -145,18 +149,34 @@ class MainActivity : ComponentActivity() {
                     NavHost(
                         navController = navController,
                         startDestination = "splash",
+                        route = "root",
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(innerPadding)
                     ) {
-                        composable("splash") {
+                        composable("splash") { backStackEntry ->
+                            val parentEntry = remember(backStackEntry) { navController.getBackStackEntry("root") }
+                            val vm: GameViewModel = viewModel(parentEntry)
                             SplashScreen(navController)
                         }
-                        composable("main") {
-                            MainScreen(navController)
+                        composable("main") { backStackEntry ->
+                            val parentEntry = remember(backStackEntry) { navController.getBackStackEntry("root") }
+                            val vm: GameViewModel = viewModel(parentEntry)
+                            MainScreen(navController = navController, viewModel = vm)
                         }
-                        composable("game") {
-                            GameScreen(navController)
+                        composable(
+                            route = "game?resume={resume}",
+                            arguments = listOf(
+                                navArgument("resume") {
+                                    type = NavType.StringType
+                                    defaultValue = "false"
+                                    nullable = true
+                                }
+                            )
+                        ) { backStackEntry ->
+                            val parentEntry = remember(backStackEntry) { navController.getBackStackEntry("root") }
+                            val vm: GameViewModel = viewModel(parentEntry)
+                            GameScreen(navController = navController, viewModel = vm)
                         }
                     }
                 }
@@ -164,6 +184,13 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onPause() {
+        super.onPause()
+        // Save the current game state when the app is paused
+        val viewModel = ViewModelProvider(this)[GameViewModel::class.java]
+        viewModel.saveCurrentGameState()
+    }
+    
     override fun onResume() {
         super.onResume()
         appUpdateManager.appUpdateInfo.addOnSuccessListener { appUpdateInfo ->
