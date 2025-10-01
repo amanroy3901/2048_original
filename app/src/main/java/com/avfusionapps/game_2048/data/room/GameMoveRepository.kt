@@ -58,7 +58,8 @@ class GameMoveRepository(private val context: Context) {
     suspend fun keepOnlyLastMoves(keepCount: Int) {
         gameMoveDao.keepOnlyLastMoves(keepCount)
     }
-    
+    suspend fun deleteMoveByNumber(moveNumber: Int) = gameMoveDao.deleteMoveByNumber(moveNumber)
+
     /**
      * Get the total number of moves stored in the database.
      * @return The count of moves
