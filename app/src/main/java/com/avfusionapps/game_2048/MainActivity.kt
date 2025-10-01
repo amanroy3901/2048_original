@@ -171,6 +171,11 @@ class MainActivity : ComponentActivity() {
                                     type = NavType.StringType
                                     defaultValue = "false"
                                     nullable = true
+                                },
+                                navArgument("newGame") {
+                                    type = NavType.StringType
+                                    defaultValue = "false"
+                                    nullable = true
                                 }
                             )
                         ) { backStackEntry ->

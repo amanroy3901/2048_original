@@ -60,4 +60,7 @@ interface GameMoveDao {
      */
     @Query("SELECT * FROM game_moves ORDER BY moveNumber DESC LIMIT 1")
     fun observeLastMove(): Flow<GameMove?>
+
+    @Query("DELETE FROM game_moves WHERE moveNumber = :moveNumber")
+    suspend fun deleteMoveByNumber(moveNumber: Int)
 }

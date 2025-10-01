@@ -1,6 +1,9 @@
 package com.avfusionapps.game_2048.viewmodel
 
 import android.app.Application
+import android.content.Context
+import android.util.Log
+import android.widget.Toast
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -151,16 +154,6 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         .map { it.hasSavedGame }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
-    private val _newGamePending = MutableStateFlow(false)
-    val newGamePending = _newGamePending.asStateFlow()
-
-    fun startNewGameFlow() {
-        // Called from the main screen “Play Game” button before navigating
-        _newGamePending.value = true
-    }
-
-    fun consumeNewGamePending() { _newGamePending.value = false }
-
     init {
         viewModelScope.launch {
             val initialName = persistentPlayerName.first()
@@ -190,6 +183,21 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
             updateCanUndoState()
+        }
+    }
+
+    fun markResumableWithoutMove() {
+        val hasTiles = gameState.grid.any { row -> row.any { it != 0 } }
+        if (hasTiles && !gameState.isGameOver) {
+            updateGameState(gameState.copy(hasSavedGame = true))
+            viewModelScope.launch {
+                gameMoveRepository.saveMove(
+                    gameState.grid,
+                    gameState.score,
+                    gameState.moveCount
+                )
+                updateCanUndoState()
+            }
         }
     }
 
@@ -375,30 +383,33 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
      * Undoes the last move by restoring the previous game state from the database.
      * @return True if the undo was successful, false if there are no moves to undo.
      */
-    fun undoMove() {
+    fun undoMove(context: Context) {
         viewModelScope.launch {
-            // Get the last two moves (current and previous)
             val moves = gameMoveRepository.getLastMoves(2)
 
             if (moves.size >= 2) {
-                // We have at least 2 moves, so we can undo to the previous one
-                val previousMove =
-                    moves[1] // Index 1 is the previous move (moves are ordered by moveNumber DESC)
+                val latest = moves[0]
+                val previousMove = moves[1]
 
-                // Update the game state with the previous move's data
+                Log.d("VIVEK", "undoMove: $latest")
+                Log.d("VIVEK", "undoMove: $previousMove")
+
+                val restoredGrid: List<List<Int>> = previousMove.grid.map { it.toList() }
+
                 updateGameState(
                     gameState.copy(
-                        grid = previousMove.grid,
+                        grid = restoredGrid,
                         score = previousMove.score,
                         moveCount = previousMove.moveNumber,
-                        tileAnimationInfo = emptyMap(), // Clear animations for clean transition
-                        isGameOver = false // If game was over, it's not anymore after undo
+                        tileAnimationInfo = emptyMap(),
+                        isGameOver = false
                     )
                 )
 
-                // Delete the most recent move from the database
-                gameMoveRepository.keepOnlyLastMoves(moves.size - 1)
+                gameMoveRepository.deleteMoveByNumber(latest.moveNumber)
                 updateCanUndoState()
+            } else {
+                Toast.makeText(context, "At least 2 move is required to use Undo", Toast.LENGTH_SHORT).show()
             }
         }
     }

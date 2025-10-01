@@ -23,14 +23,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -58,9 +55,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLifecycleOwner
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -68,7 +63,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
@@ -143,28 +137,19 @@ fun DarkModePreviewGame() {
 }
 
 @Composable
-fun GameScreen(navController: NavController, viewModel: GameViewModel = viewModel()) {
+fun GameScreen(
+    navController: NavController,
+    viewModel: GameViewModel = viewModel(),
+    ) {
 
     val gameState = viewModel.gameState
     val persistentHighScore by viewModel.persistentHighScore.collectAsState()
     val persistentPlayerName by viewModel.persistentPlayerName.collectAsState()
 
-    val isResuming = navController.currentBackStackEntry
-        ?.arguments?.getString("resume") == "true"
-    val newGamePending by viewModel.newGamePending.collectAsState()
-
     var showGridSizeDialog by remember { mutableStateOf(false) }
-    val hapticFeedback = LocalHapticFeedback.current
     val canUndo by viewModel.canUndo.collectAsState()
     val context = LocalContext.current
     var showExitDialog by remember { mutableStateOf(false) }
-
-    LaunchedEffect(isResuming, newGamePending) {
-        showGridSizeDialog = !isResuming && newGamePending
-        if (showGridSizeDialog) {
-            viewModel.consumeNewGamePending()
-        }
-    }
 
     LaunchedEffect(key1 = viewModel) {
         viewModel.mergeEvent.collectLatest {
@@ -196,21 +181,11 @@ fun GameScreen(navController: NavController, viewModel: GameViewModel = viewMode
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(viewModel, lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                if (newGamePending && !isResuming) {
-                    showGridSizeDialog = true
-                    viewModel.consumeNewGamePending()
-                }
-            }
-        }
+        val observer = LifecycleEventObserver { _, _ -> /* no-op */ }
         lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-        }
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    // helper condition (inline or as a val)
     val hasProgress = viewModel.gameState.moveCount > 0 ||
             viewModel.gameState.grid.any { row -> row.any { it != 0 } }
 
@@ -253,9 +228,9 @@ fun GameScreen(navController: NavController, viewModel: GameViewModel = viewMode
                             onClick = { showExitDialog = false },
                         )
                         NeonRoundedButton(
-                            text = "Exit",
+                            text = "Save & Exit",
                             onClick = {
-                                viewModel.declineSavedGame()
+                                viewModel.markResumableWithoutMove()
                                 showExitDialog = false
                                 navController.navigateUp()
                             },
@@ -270,8 +245,7 @@ fun GameScreen(navController: NavController, viewModel: GameViewModel = viewMode
         modifier = Modifier
             .fillMaxSize()
             .background(PurpleDarkBackground)
-            .padding(16.dp)
-            // Swipe gesture detection
+            .padding(start = 16.dp, end = 16.dp, top = 50.dp)
             .pointerInput(Unit) {
                 var totalX = 0f
                 var totalY = 0f
@@ -337,7 +311,7 @@ fun GameScreen(navController: NavController, viewModel: GameViewModel = viewMode
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             NeonRoundedButton(
-                onClick = { viewModel.undoMove() },
+                onClick = { viewModel.undoMove(context) },
                 enabled = canUndo,
                 icon = R.drawable.ic_undo,
                 contentDescription = "Undo Button"

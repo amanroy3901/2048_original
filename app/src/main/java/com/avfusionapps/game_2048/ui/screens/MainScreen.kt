@@ -95,6 +95,7 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
     val hasSaved by viewModel.hasSavedGameFlow.collectAsState()
 
     var showNameDialog by remember { mutableStateOf(false) }
+    var showGridSizeDialogMain by remember { mutableStateOf(false) }
     var initialNameCheckDone by remember { mutableStateOf(false) }
     val resumePrompt by viewModel.resumePrompt.collectAsState()
 
@@ -114,6 +115,18 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
         }
     }
 
+    if (showGridSizeDialogMain) {
+        GridSizeDialog(
+            onSizeSelected = { size ->
+                viewModel.updateGridSize(size)
+                showGridSizeDialogMain = false
+                navController.navigate("game?resume=false&newGame=false")
+            },
+            onDismiss = {
+                showGridSizeDialogMain = false
+            }
+        )
+    }
 
     MainScreenContent(
         navController = navController,
@@ -136,7 +149,7 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
                         leadingIcon = R.drawable.ic_pause,
                         onClick = {
                             viewModel.resumeSavedGame()
-                            navController.navigate("game?resume=true")
+                            navController.navigate("game?resume=true&newGame=false")
                         }
                     )
                     CylinderActionButton(
@@ -144,8 +157,7 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
                         leadingIcon = R.drawable.ic_play,
                         onClick = {
                             viewModel.declineSavedGame()
-                            viewModel.startNewGameFlow()
-                            navController.navigate("game")
+                            showGridSizeDialogMain = true
                         }
                     )
                 }
@@ -153,12 +165,15 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
                 CylinderActionButton(
                     text = "Play Game",
                     leadingIcon = R.drawable.ic_play,
-                    onClick = { navController.navigate("game") }
+                    onClick = {
+                        showGridSizeDialogMain = true
+                    }
                 )
             }
         }
     )
 }
+
 
 @Composable
 fun MainScreenContent(
@@ -171,6 +186,7 @@ fun MainScreenContent(
     onNameChange: (String) -> Unit,
     actions: @Composable () -> Unit
 ) {
+
     Column(
         modifier = Modifier
             .fillMaxSize()
