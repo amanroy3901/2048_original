@@ -124,18 +124,7 @@ fun GoogleAuthScreen(
         CylinderActionButton(
             text = "Play as Guest",
             onClick = {
-                isLoading = true
-                errorMessage = ""
-                
-                firebaseAuth.signInAnonymously()
-                    .addOnCompleteListener { task ->
-                        isLoading = false
-                        if (task.isSuccessful) {
-                            onAuthSuccess()
-                        } else {
-                            errorMessage = "Anonymous sign-in failed: ${task.exception?.message}"
-                        }
-                    }
+                onAuthSuccess()
             },
         )
 
