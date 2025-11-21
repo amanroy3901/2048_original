@@ -292,6 +292,8 @@ fun MainScreenContent(
             )
         }
 
+        Spacer(modifier = Modifier.height(48.dp))
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
