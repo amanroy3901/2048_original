@@ -1,5 +1,6 @@
 package com.avfusionapps.game_2048
 
+// Removed deprecated Google Sign-In imports - now using Credential Manager
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
@@ -7,6 +8,7 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -28,6 +30,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.avfusionapps.game_2048.notification.ReminderManager
 import com.avfusionapps.game_2048.ui.screens.GameScreen
+import com.avfusionapps.game_2048.ui.screens.GoogleAuthScreen
 import com.avfusionapps.game_2048.ui.screens.MainScreen
 import com.avfusionapps.game_2048.ui.screens.SplashScreen
 import com.avfusionapps.game_2048.ui.theme._2048OriginalTheme
@@ -40,15 +43,18 @@ import com.google.android.play.core.install.InstallStateUpdatedListener
 import com.google.android.play.core.install.model.AppUpdateType
 import com.google.android.play.core.install.model.InstallStatus
 import com.google.android.play.core.install.model.UpdateAvailability
+import com.google.firebase.Firebase
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.auth
 import kotlinx.coroutines.launch
 
 
 class MainActivity : ComponentActivity() {
 
     private lateinit var appUpdateManager: AppUpdateManager
-    private val updateRequestCode = 100
     private lateinit var snackbarHostState: SnackbarHostState
     private lateinit var reminderManager: ReminderManager
+    private lateinit var firebaseAuth: FirebaseAuth
 
 
     private val updateResultLauncher =
@@ -125,17 +131,21 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+        
         appUpdateManager = AppUpdateManagerFactory.create(this)
         reminderManager = ReminderManager(this)
+        firebaseAuth = Firebase.auth
+        
+        initializeFirebaseAuth()
         appUpdateManager.registerListener(installStateUpdatedListener)
-
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         setContent {
             _2048OriginalTheme {
-                snackbarHostState = remember { SnackbarHostState() }
                 val navController = rememberNavController()
+                snackbarHostState = remember { SnackbarHostState() }
 
                 LaunchedEffect(key1 = Unit) {
                     requestNotificationPermission()
@@ -157,7 +167,25 @@ class MainActivity : ComponentActivity() {
                         composable("splash") { backStackEntry ->
                             val parentEntry = remember(backStackEntry) { navController.getBackStackEntry("root") }
                             val vm: GameViewModel = viewModel(parentEntry)
-                            SplashScreen(navController)
+                            SplashScreen(navController = navController, onSplashComplete = {
+                                // Always navigate to Google auth first
+                                navController.navigate("googleAuth") {
+                                    popUpTo("splash") { inclusive = true }
+                                }
+                            })
+                        }
+                        composable("googleAuth") { backStackEntry ->
+                            val parentEntry = remember(backStackEntry) { navController.getBackStackEntry("root") }
+                            val vm: GameViewModel = viewModel(parentEntry)
+                            GoogleAuthScreen(
+                                firebaseAuth = firebaseAuth,
+                                onAuthSuccess = {
+                                    vm.loadUserDataFromFirebase()
+                                    navController.navigate("main") {
+                                        popUpTo("googleAuth") { inclusive = true }
+                                    }
+                                }
+                            )
                         }
                         composable("main") { backStackEntry ->
                             val parentEntry = remember(backStackEntry) { navController.getBackStackEntry("root") }
@@ -189,9 +217,20 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun initializeFirebaseAuth() {
+        // Check if user is already signed in
+        if (firebaseAuth.currentUser == null) {
+            Log.d("FirebaseAuth", "No authenticated user found. User will be prompted for Google authentication.")
+            // The Google auth screen will handle the authentication flow
+        } else {
+            Log.d("FirebaseAuth", "User already authenticated: ${firebaseAuth.currentUser?.uid}")
+            Log.d("FirebaseAuth", "Email: ${firebaseAuth.currentUser?.email}")
+            Log.d("FirebaseAuth", "Display Name: ${firebaseAuth.currentUser?.displayName}")
+        }
+    }
+
     override fun onPause() {
         super.onPause()
-        // Save the current game state when the app is paused
         val viewModel = ViewModelProvider(this)[GameViewModel::class.java]
         viewModel.saveCurrentGameState()
     }

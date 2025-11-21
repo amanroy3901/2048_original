@@ -12,7 +12,28 @@
           "package_name": "com.avfusionapps.game_2048"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "305513134474-78drkbeh0h47m1qi06063amtravp11fb.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.avfusionapps.game_2048",
+            "certificate_hash": "98387d3e43c2c8dd6a22b6d29855d1461011bb76"
+          }
+        },
+        {
+          "client_id": "305513134474-q3k4jrina8nqkgmtt20mhb4g0k071cuh.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.avfusionapps.game_2048",
+            "certificate_hash": "63dcd04c8ac4b125cab73c6a1f4a72f698dc1431"
+          }
+        },
+        {
+          "client_id": "305513134474-v65v4qb636fnkhvrbl7k9m9tpu07ap5v.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDEpjRARESg5saflz0aIntkrPN37u87gQQ"
@@ -20,7 +41,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "305513134474-v65v4qb636fnkhvrbl7k9m9tpu07ap5v.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

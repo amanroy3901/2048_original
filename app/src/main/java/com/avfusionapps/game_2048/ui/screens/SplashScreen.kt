@@ -128,7 +128,15 @@ fun DynamicDarkModePreviewSplash() {
 
 
 @Composable
-fun SplashScreen(navController: NavController) {
+fun SplashScreen(
+    navController: NavController,
+    onSplashComplete: () -> Unit = {
+        // Default behavior - navigate to main screen
+        navController.navigate("main") {
+            popUpTo("splash") { inclusive = true }
+        }
+    }
+) {
     val tilesData = remember {
         listOf(
             '2' to 'E', '0' to 'S', '4' to 'H', '8' to 'A'
@@ -192,9 +200,7 @@ fun SplashScreen(navController: NavController) {
         val moveUpDuration = moveUpCombinedSpec.durationMillis
         delay(tileStates.size * moveUpDelay + moveUpDuration)
         delay(pauseBeforeNav)
-        navController.navigate("main") {
-            popUpTo("splash") { inclusive = true }
-        }
+        onSplashComplete()
 
     }
 
