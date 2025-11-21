@@ -1,12 +1,5 @@
 package com.avfusionapps.game_2048.ui.screens
 
-// Legacy Google Sign-In imports - kept for compatibility but not used with Credential Manager
-// import com.google.android.gms.auth.api.signin.GoogleSignIn
-// import com.google.android.gms.auth.api.signin.GoogleSignInAccount
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -23,7 +16,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,38 +47,6 @@ fun GoogleAuthScreen(
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
     val coroutineScope = rememberCoroutineScope()
-
-    val broadcastReceiver = remember {
-        object : BroadcastReceiver() {
-            override fun onReceive(context: Context, intent: Intent) {
-                when (intent.action) {
-                    "com.avfusionapps.game_2048.GOOGLE_SIGN_IN_CANCELLED" -> {
-                        isLoading = false
-                        errorMessage = "Google Sign-In was cancelled"
-                    }
-                    "com.avfusionapps.game_2048.GOOGLE_SIGN_IN_ERROR" -> {
-                        isLoading = false
-                        errorMessage = "Google Sign-In failed. Please try again."
-                    }
-                }
-            }
-        }
-    }
-
-    DisposableEffect(Unit) {
-        val filter = IntentFilter().apply {
-            addAction("com.avfusionapps.game_2048.GOOGLE_SIGN_IN_CANCELLED")
-            addAction("com.avfusionapps.game_2048.GOOGLE_SIGN_IN_ERROR")
-        }
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            context.registerReceiver(broadcastReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
-        } else {
-            context.registerReceiver(broadcastReceiver, filter)
-        }
-        onDispose {
-            context.unregisterReceiver(broadcastReceiver)
-        }
-    }
 
     // Configure Credential Manager for Google Sign-In
     val credentialManager = remember { CredentialManager.create(context) }
