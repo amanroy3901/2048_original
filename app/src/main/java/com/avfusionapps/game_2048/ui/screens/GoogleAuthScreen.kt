@@ -1,5 +1,6 @@
 package com.avfusionapps.game_2048.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -7,14 +8,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Button
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.ui.graphics.Color
+import com.avfusionapps.game_2048.ui.theme.PurpleDarkBackground
+import com.avfusionapps.game_2048.ui.theme.HighLighter
+import com.avfusionapps.game_2048.ui.NeonRoundedButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -67,6 +69,7 @@ fun GoogleAuthScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(PurpleDarkBackground)
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
@@ -75,17 +78,20 @@ fun GoogleAuthScreen(
             text = "Google Sign-In",
             fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 16.dp)
+            modifier = Modifier.padding(bottom = 16.dp),
+            color = Color.White
         )
 
         Text(
             text = "Sign in to save your progress and play across devices",
             fontSize = 16.sp,
             modifier = Modifier.padding(bottom = 32.dp),
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            color = Color.White.copy(alpha = 0.8f)
         )
 
-        Button(
+        CylinderActionButton(
+            text = if (isLoading) "Signing in..." else "Sign in with Google",
             onClick = {
                 isLoading = true
                 errorMessage = ""
@@ -111,23 +117,12 @@ fun GoogleAuthScreen(
                     }
                 }
             },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = !isLoading
-        ) {
-            if (isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(16.dp),
-                    strokeWidth = 2.dp
-                )
-            } else {
-                Text("Sign in with Google")
-            }
-        }
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Alternative: Anonymous Sign-In (if you want to keep a fallback)
-        OutlinedButton(
+        CylinderActionButton(
+            text = "Play as Guest",
             onClick = {
                 isLoading = true
                 errorMessage = ""
@@ -142,11 +137,7 @@ fun GoogleAuthScreen(
                         }
                     }
             },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = !isLoading
-        ) {
-            Text("Continue Anonymously")
-        }
+        )
 
         if (errorMessage.isNotBlank()) {
             Spacer(modifier = Modifier.height(16.dp))
@@ -156,51 +147,9 @@ fun GoogleAuthScreen(
                 modifier = Modifier.fillMaxWidth()
             )
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
-            )
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    text = "Setup Required:",
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Text(
-                    text = "1. Add your SHA-1 fingerprint to Firebase Console",
-                    style = MaterialTheme.typography.bodySmall
-                )
-                Text(
-                    text = "2. Enable Google Sign-In in Firebase Console",
-                    style = MaterialTheme.typography.bodySmall
-                )
-                Text(
-                    text = "3. Download updated google-services.json",
-                    style = MaterialTheme.typography.bodySmall
-                )
-                
-                if (errorMessage.contains("Firebase configuration")) {
-                    Text(
-                        text = "⚠️ ERROR: Check FIREBASE_SETUP_CHECKLIST.md",
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-        }
     }
 }
 
-// Function to handle Google Sign-In result with Credential Manager
 fun handleSignInResult(
     result: GetCredentialResponse,
     firebaseAuth: FirebaseAuth,
