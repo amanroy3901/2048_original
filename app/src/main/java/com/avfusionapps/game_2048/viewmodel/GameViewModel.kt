@@ -224,13 +224,14 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
      * Checks if a new level should be unlocked based on the highest tile achieved.
      * Returns the new unlocked level if any, or null if no new level unlocked.
      */
-    private fun checkLevelUnlock(grid: List<List<Int>>, currentUnlockedLevels: Set<Int>): Int? {
+    private fun checkLevelUnlock(
+        grid: List<List<Int>>,
+        currentUnlockedLevels: Set<Int>,
+        previousCurrentLevel: Int
+    ): Int? {
         val highestTile = grid.flatten().maxOrNull() ?: 0
-        val currentLevel = calculateCurrentLevel(grid)
-        
-        // Check if we achieved a tile that unlocks a new level
         val newLevel = LevelProgression.getLevelForTileValue(highestTile)
-        return if (newLevel > currentLevel && newLevel !in currentUnlockedLevels) {
+        return if (newLevel > previousCurrentLevel && newLevel !in currentUnlockedLevels) {
             newLevel
         } else {
             null
@@ -454,7 +455,11 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
             // Check for level unlocks
             val currentLevel = calculateCurrentLevel(newGrid)
-            val newlyUnlockedLevel = checkLevelUnlock(newGrid, gameState.unlockedLevels)
+            val newlyUnlockedLevel = checkLevelUnlock(
+                newGrid,
+                gameState.unlockedLevels,
+                gameState.currentLevel
+            )
             
             val newUnlockedLevels = if (newlyUnlockedLevel != null) {
                 gameState.unlockedLevels + newlyUnlockedLevel

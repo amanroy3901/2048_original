@@ -39,12 +39,12 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import kotlinx.coroutines.delay
 
 @Composable
 fun LevelUnlockDialog(
@@ -53,7 +53,8 @@ fun LevelUnlockDialog(
 ) {
     val scale = remember { Animatable(0.8f) }
     val alpha = remember { Animatable(0f) }
-    
+    val context = LocalContext.current
+
     LaunchedEffect(Unit) {
         // Animate the dialog entrance
         alpha.animateTo(
@@ -65,118 +66,133 @@ fun LevelUnlockDialog(
             animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing)
         )
     }
-    
-    Dialog(onDismissRequest = { /* Prevent dismissal by clicking outside */ }) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .scale(scale.value)
-                .alpha(alpha.value),
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 16.dp)
-        ) {
-            Column(
+
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        LevelCelebrationEffect(
+            isVisible = true,
+            level = unlockedLevel
+        )
+
+        Dialog(onDismissRequest = { /* Prevent dismissal by clicking outside */ }) {
+            Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                    .scale(scale.value)
+                    .alpha(alpha.value),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 16.dp)
             ) {
-                // Celebration icon with animated stars
-                Box(
+                Column(
                     modifier = Modifier
-                        .size(80.dp)
-                        .background(
-                            brush = Brush.verticalGradient(
-                                colors = listOf(
-                                    Color(0xFFFFD700), // Gold
-                                    Color(0xFFFFA500)  // Orange
-                                )
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    // Celebration icon with animated stars
+                    Box(
+                        modifier = Modifier
+                            .size(80.dp)
+                            .background(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color(0xFFFFD700), // Gold
+                                        Color(0xFFFFA500)  // Orange
+                                    )
+                                ),
+                                shape = RoundedCornerShape(40.dp)
                             ),
-                            shape = RoundedCornerShape(40.dp)
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Home,
+                            contentDescription = "Level Unlocked",
+                            tint = Color.White,
+                            modifier = Modifier.size(48.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Title
+                    Text(
+                        text = "LEVEL UNLOCKED!",
+                        style = MaterialTheme.typography.headlineMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
                         ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Home,
-                        contentDescription = "Level Unlocked",
-                        tint = Color.White,
-                        modifier = Modifier.size(48.dp)
+                        textAlign = TextAlign.Center
                     )
-                }
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // Title
-                Text(
-                    text = "LEVEL UNLOCKED!",
-                    style = MaterialTheme.typography.headlineMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    ),
-                    textAlign = TextAlign.Center
-                )
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                // Level number with large display
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Star,
-                        contentDescription = "Star",
-                        tint = Color(0xFFFFD700),
-                        modifier = Modifier.size(32.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Level $unlockedLevel",
-                        style = MaterialTheme.typography.displaySmall.copy(
-                            fontWeight = FontWeight.ExtraBold,
-                            color = MaterialTheme.colorScheme.onSurface
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Level number with large display
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Star,
+                            contentDescription = "Star",
+                            tint = Color(0xFFFFD700),
+                            modifier = Modifier.size(32.dp)
                         )
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Icon(
-                        imageVector = Icons.Default.Star,
-                        contentDescription = "Star",
-                        tint = Color(0xFFFFD700),
-                        modifier = Modifier.size(32.dp)
-                    )
-                }
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // Achievement description
-                Text(
-                    text = "Congratulations! You've unlocked a new level by reaching ${getTileTargetForLevel(unlockedLevel)}!",
-                    style = MaterialTheme.typography.bodyLarge.copy(
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
-                    ),
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(horizontal = 8.dp)
-                )
-                
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                // Continue button
-                Button(
-                    onClick = onDismiss,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Level $unlockedLevel",
+                            style = MaterialTheme.typography.displaySmall.copy(
+                                fontWeight = FontWeight.ExtraBold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Icon(
+                            imageVector = Icons.Default.Star,
+                            contentDescription = "Star",
+                            tint = Color(0xFFFFD700),
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
                     Text(
-                        text = "Continue Playing",
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        text = "Congratulations! You've unlocked a new level by reaching ${
+                            getTileTargetForLevel(
+                                unlockedLevel
+                            )
+                        }!",
                         style = MaterialTheme.typography.bodyLarge.copy(
-                            fontWeight = FontWeight.Bold
-                        )
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                        ),
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(horizontal = 8.dp)
                     )
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // Continue button
+                    Button(
+                        onClick = {
+                            onDismiss()
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(
+                            text = "Continue Playing",
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                    }
                 }
             }
         }
