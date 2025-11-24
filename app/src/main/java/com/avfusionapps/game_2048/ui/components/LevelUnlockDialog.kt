@@ -45,6 +45,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import com.avfusionapps.game_2048.ui.NeonRoundedButton
 
 @Composable
 fun LevelUnlockDialog(
@@ -177,22 +178,12 @@ fun LevelUnlockDialog(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // Continue button
-                    Button(
+                    NeonRoundedButton(
+                        text = "Continue Playing",
                         onClick = {
                             onDismiss()
                         },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text(
-                            text = "Continue Playing",
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                            style = MaterialTheme.typography.bodyLarge.copy(
-                                fontWeight = FontWeight.Bold
-                            )
-                        )
-                    }
+                    )
                 }
             }
         }
