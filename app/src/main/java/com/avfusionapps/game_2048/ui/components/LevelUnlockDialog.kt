@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.avfusionapps.game_2048.ui.NeonRoundedButton
+import android.media.MediaPlayer
 
 @Composable
 fun LevelUnlockDialog(
@@ -55,9 +56,19 @@ fun LevelUnlockDialog(
     val scale = remember { Animatable(0.8f) }
     val alpha = remember { Animatable(0f) }
     val context = LocalContext.current
+    val mediaPlayer = remember { MediaPlayer() }
+    val assetFileName = "next_level_sound.mp3"
 
     LaunchedEffect(Unit) {
-        // Animate the dialog entrance
+        try {
+            val afd = context.assets.openFd(assetFileName)
+            mediaPlayer.reset()
+            mediaPlayer.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
+            mediaPlayer.prepare()
+            mediaPlayer.start()
+        } catch (e: Exception) {
+            // handle error if needed
+        }
         alpha.animateTo(
             targetValue = 1f,
             animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing)
@@ -66,6 +77,15 @@ fun LevelUnlockDialog(
             targetValue = 1f,
             animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing)
         )
+    }
+
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        onDispose {
+            if (mediaPlayer.isPlaying) {
+                mediaPlayer.stop()
+            }
+            mediaPlayer.release()
+        }
     }
 
     Box(

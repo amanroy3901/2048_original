@@ -47,10 +47,10 @@ fun LevelCelebrationEffect(
     LaunchedEffect(isVisible, level) {
         if (isVisible) {
             val particleCount = when (level) {
-                2 -> 500
-                3 -> 1000
-                4 -> 2000
-                else -> 5000
+                2 -> 2000
+                3 -> 4000
+                4 -> 8000
+                else -> 10000
             }
             
             particles = generateParticles(particleCount, level)
