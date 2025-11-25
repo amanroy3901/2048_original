@@ -168,9 +168,14 @@ class MainActivity : ComponentActivity() {
                             val parentEntry = remember(backStackEntry) { navController.getBackStackEntry("root") }
                             val vm: GameViewModel = viewModel(parentEntry)
                             SplashScreen(navController = navController, onSplashComplete = {
-                                // Always navigate to Google auth first
-                                navController.navigate("googleAuth") {
-                                    popUpTo("splash") { inclusive = true }
+                                if (firebaseAuth.currentUser == null) {
+                                    navController.navigate("googleAuth") {
+                                        popUpTo("splash") { inclusive = true }
+                                    }
+                                } else {
+                                    navController.navigate("main") {
+                                        popUpTo("splash") { inclusive = true }
+                                    }
                                 }
                             })
                         }
@@ -218,10 +223,8 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun initializeFirebaseAuth() {
-        // Check if user is already signed in
         if (firebaseAuth.currentUser == null) {
             Log.d("FirebaseAuth", "No authenticated user found. User will be prompted for Google authentication.")
-            // The Google auth screen will handle the authentication flow
         } else {
             Log.d("FirebaseAuth", "User already authenticated: ${firebaseAuth.currentUser?.uid}")
             Log.d("FirebaseAuth", "Email: ${firebaseAuth.currentUser?.email}")
