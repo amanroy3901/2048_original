@@ -103,8 +103,8 @@ fun LevelUnlockDialog(
                             .background(
                                 brush = Brush.verticalGradient(
                                     colors = listOf(
-                                        Color(0xFFFFD700), // Gold
-                                        Color(0xFFFFA500)  // Orange
+                                        Color(0xFFED0053),
+                                        Color(0xFFFF0077)
                                     )
                                 ),
                                 shape = RoundedCornerShape(40.dp)
@@ -133,7 +133,6 @@ fun LevelUnlockDialog(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // Level number with large display
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Center
@@ -141,7 +140,7 @@ fun LevelUnlockDialog(
                         Icon(
                             imageVector = Icons.Default.Star,
                             contentDescription = "Star",
-                            tint = Color(0xFFFFD700),
+                            tint = Color(0xFFED0053),
                             modifier = Modifier.size(32.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -156,7 +155,7 @@ fun LevelUnlockDialog(
                         Icon(
                             imageVector = Icons.Default.Star,
                             contentDescription = "Star",
-                            tint = Color(0xFFFFD700),
+                            tint = Color(0xFFED0053),
                             modifier = Modifier.size(32.dp)
                         )
                     }
