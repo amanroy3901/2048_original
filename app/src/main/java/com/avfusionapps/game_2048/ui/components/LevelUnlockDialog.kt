@@ -22,9 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -43,10 +41,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.avfusionapps.game_2048.ui.NeonRoundedButton
 import android.media.MediaPlayer
+import com.avfusionapps.game_2048.R
+import androidx.compose.ui.res.painterResource
 
 @Composable
 fun LevelUnlockDialog(
@@ -116,28 +115,13 @@ fun LevelUnlockDialog(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    // Celebration icon with animated stars
-                    Box(
-                        modifier = Modifier
-                            .size(80.dp)
-                            .background(
-                                brush = Brush.verticalGradient(
-                                    colors = listOf(
-                                        Color(0xFFED0053),
-                                        Color(0xFFFF0077)
-                                    )
-                                ),
-                                shape = RoundedCornerShape(40.dp)
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Home,
-                            contentDescription = "Level Unlocked",
-                            tint = Color.White,
-                            modifier = Modifier.size(48.dp)
-                        )
-                    }
+
+                    Icon(
+                        painter = painterResource(R.drawable.ic_level_up),
+                        contentDescription = "Level Unlocked",
+                        modifier = Modifier.size(80.dp),
+                        tint = Color.Unspecified
+                    )
 
                     Spacer(modifier = Modifier.height(16.dp))
 
@@ -210,14 +194,7 @@ fun LevelUnlockDialog(
 }
 
 private fun getTileTargetForLevel(level: Int): String {
-    return when (level) {
-        2 -> "2048"
-        4 -> "4096"
-        8 -> "8192"
-        16 -> "16384"
-        32 -> "32768"
-        else -> "${2048 * (level / 2)}"
-    }
+    return "${level * 2}"
 }
 
 @Composable
