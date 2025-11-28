@@ -10,8 +10,13 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.avfusionapps.game_2048.data.GameSettingsRepository
-import com.avfusionapps.game_2048.data.room.GameMoveRepository
 import com.avfusionapps.game_2048.notification.ReminderManager
+import com.avfusionapps.game_2048.data.model.LevelProgression
+import com.avfusionapps.game_2048.data.repository.LevelProgressionRepository
+import com.avfusionapps.game_2048.data.room.GameMoveRepository
+import com.google.firebase.Firebase
+import com.google.firebase.analytics.analytics
+import com.google.firebase.auth.auth
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -48,6 +53,9 @@ data class TileAnimationInfo(
  * @param tileAnimationInfo A map where the key is the *final* grid position (row, col) of a tile,
  *                          and the value contains information about how it arrived there (moved from, new, merged).
  * @param moveCount Counter for the number of moves made.
+ * @param currentLevel The current level based on the highest tile achieved.
+ * @param unlockedLevels Set of levels that have been unlocked by the player.
+ * @param hasSavedGame Indicates if there is a saved game state.
  */
 data class GameState(
     val grid: List<List<Int>> = emptyList(), // Initialize empty, set properly in init
@@ -58,6 +66,8 @@ data class GameState(
     val isGameOver: Boolean = false,
     val tileAnimationInfo: Map<Pair<Int, Int>, TileAnimationInfo> = emptyMap(),
     val moveCount: Int = 0,
+    val currentLevel: Int = 1,
+    val unlockedLevels: Set<Int> = setOf(1),
     val hasSavedGame: Boolean = false
 )
 
@@ -110,6 +120,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     private val settingsRepository = GameSettingsRepository(application)
     private val reminderManager = ReminderManager(application)
     private val gameMoveRepository = GameMoveRepository(application)
+    private val levelProgressionRepository = LevelProgressionRepository(application)
+    private val firebaseAnalytics = Firebase.analytics
 
 
     var gameState by mutableStateOf(GameState())
@@ -121,9 +133,49 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     private val _resumePrompt = MutableStateFlow(false)
     val resumePrompt: StateFlow<Boolean> = _resumePrompt.asStateFlow()
 
+    private val _newlyUnlockedLevel = MutableStateFlow<Int?>(null)
+    val newlyUnlockedLevel: StateFlow<Int?> = _newlyUnlockedLevel.asStateFlow()
+
+    private val _newlyUnlockedTileValue = MutableStateFlow<Int?>(null)
+    val newlyUnlockedTileValue: StateFlow<Int?> = _newlyUnlockedTileValue.asStateFlow()
+
     private fun updateGameState(newState: GameState) {
         gameState = newState
         _gameStateFlow.value = newState
+        
+        // Save to Firebase whenever game state changes
+        viewModelScope.launch {
+            saveGameStateToFirebase(newState)
+        }
+    }
+
+    /**
+     * Saves the complete game state to Firebase Firestore
+     */
+    private suspend fun saveGameStateToFirebase(state: GameState) {
+        try {
+            val user = Firebase.auth.currentUser
+            if (user != null) {
+                // Save level progression
+                val progression = LevelProgression(
+                    playerId = user.uid,
+                    playerName = user.displayName ?: state.playerName,
+                    currentLevel = state.currentLevel,
+                    unlockedLevels = state.unlockedLevels.toList(),
+                    lastUpdated = com.google.firebase.Timestamp.now()
+                )
+                levelProgressionRepository.saveLevelProgression(progression)
+                
+                // Update high score in settings if it's higher
+                if (state.score > persistentHighScore.value) {
+                    settingsRepository.updateHighScoreIfHigher(state.score)
+                }
+                
+                Log.d("GameViewModel", "Game state saved to Firebase: Level ${state.currentLevel}, Score ${state.score}")
+            }
+        } catch (e: Exception) {
+            Log.e("GameViewModel", "Error saving game state to Firebase", e)
+        }
     }
 
     private var _canUndo = MutableStateFlow(false)
@@ -154,10 +206,64 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         .map { it.hasSavedGame }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
+    val currentLevel: StateFlow<Int> = gameStateFlow
+        .map { it.currentLevel }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 1)
+
+    val unlockedLevels: StateFlow<Set<Int>> = gameStateFlow
+        .map { it.unlockedLevels }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), setOf(1))
+
+    /**
+     * Calculates the current level based on the highest tile value in the grid.
+     * Level progression: 2048 -> Level 2, 4096 -> Level 4, 8192 -> Level 8, etc.
+     */
+    private fun calculateCurrentLevel(grid: List<List<Int>>): Int {
+        val highestTile = grid.flatten().maxOrNull() ?: 0
+        return LevelProgression.getLevelForTileValue(highestTile)
+    }
+
+    /**
+     * Checks if a new level should be unlocked based on the highest tile achieved.
+     * Returns the new unlocked level if any, or null if no new level unlocked.
+     */
+    private fun checkLevelUnlock(
+        grid: List<List<Int>>,
+        currentUnlockedLevels: Set<Int>,
+        previousCurrentLevel: Int
+    ): Int? {
+        val highestTile = grid.flatten().maxOrNull() ?: 0
+        val newLevel = LevelProgression.getLevelForTileValue(highestTile)
+        return if (newLevel > previousCurrentLevel && newLevel !in currentUnlockedLevels) {
+            newLevel
+        } else {
+            null
+        }
+    }
+
     init {
         viewModelScope.launch {
             val initialName = persistentPlayerName.first()
             val initialHighScore = persistentHighScore.first()
+
+            // Check if user is authenticated and load their data
+            val user = Firebase.auth.currentUser
+            var currentLevel = 1
+            var unlockedLevels = setOf(1)
+            
+            if (user != null) {
+                // User is authenticated, load their data from Firebase
+                loadUserDataFromFirebase()
+                // Get the loaded data from Firebase
+                val levelProgression = levelProgressionRepository.getLevelProgression().first()
+                currentLevel = levelProgression?.currentLevel ?: 1
+                unlockedLevels = levelProgression?.unlockedLevels?.toSet() ?: setOf(1)
+            } else {
+                // User not authenticated, load from local storage
+                val levelProgression = levelProgressionRepository.getLevelProgression().first()
+                currentLevel = levelProgression?.currentLevel ?: 1
+                unlockedLevels = levelProgression?.unlockedLevels?.toSet() ?: setOf(1)
+            }
 
             val lastMove = gameMoveRepository.getLastMove()
 
@@ -166,6 +272,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     gameState.copy(
                         playerName = initialName,
                         highScore = initialHighScore,
+                        currentLevel = currentLevel,
+                        unlockedLevels = unlockedLevels,
                         grid = List(gameState.gridSize) { List(gameState.gridSize) { 0 } },
                         hasSavedGame = true
                     )
@@ -176,6 +284,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     gameState.copy(
                     playerName = initialName,
                     highScore = initialHighScore,
+                    currentLevel = currentLevel,
+                    unlockedLevels = unlockedLevels,
                     grid = List(gameState.gridSize) { List(gameState.gridSize) { 0 } }
                 ))
                 if (gameState.grid.all { row -> row.all { it == 0 } }) {
@@ -205,7 +315,14 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     fun updatePlayerName(name: String) {
         val validName = name.ifBlank { GameSettingsRepository.DEFAULT_PLAYER_NAME }
         updateGameState(gameState.copy(playerName = validName)) // Update UI state immediately
-        viewModelScope.launch { settingsRepository.updatePlayerName(validName) } // Save in background
+        viewModelScope.launch { 
+            settingsRepository.updatePlayerName(validName) 
+            // Also save to Firebase if user is authenticated
+            val user = Firebase.auth.currentUser
+            if (user != null) {
+                saveGameStateToFirebase(gameState.copy(playerName = validName))
+            }
+        } // Save in background
     }
 
     /** Sets a new grid size, resets the game board, and initializes it. */
@@ -339,17 +456,57 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
             val gameOver = isGameOver(newGrid)
 
+            // Check for level unlocks
+            val currentLevel = calculateCurrentLevel(newGrid)
+            val newlyUnlockedLevel = checkLevelUnlock(
+                newGrid,
+                gameState.unlockedLevels,
+                gameState.currentLevel
+            )
+            
+            val newUnlockedLevels = if (newlyUnlockedLevel != null) {
+                gameState.unlockedLevels + newlyUnlockedLevel
+            } else {
+                gameState.unlockedLevels
+            }
+
+            val previousHighestTile = gameState.grid.flatten().maxOrNull() ?: 0
+            val currentHighestTile = newGrid.flatten().maxOrNull() ?: 0
+            if (currentHighestTile >= 128 && currentHighestTile > previousHighestTile) {
+                _newlyUnlockedTileValue.value = currentHighestTile
+            }
+
             val newMoveCount = gameState.moveCount + 1
             updateGameState(
                 gameState.copy(
                     grid = newGrid,
                     score = newScore,
                     highScore = newLocalHighScore,
+                    currentLevel = currentLevel,
+                    unlockedLevels = newUnlockedLevels,
                     isGameOver = gameOver,
                     tileAnimationInfo = animationInfoMap,
                     moveCount = newMoveCount
                 )
             )
+
+            // Handle level unlock
+            if (newlyUnlockedLevel != null) {
+                _newlyUnlockedLevel.value = newlyUnlockedLevel
+                viewModelScope.launch {
+                    // Save level progression to Firebase
+                    levelProgressionRepository.unlockLevel(newlyUnlockedLevel, gameState.playerName)
+                    
+                    // Track level unlock in Firebase Analytics
+                    val bundle = android.os.Bundle().apply {
+                        putLong("level", newlyUnlockedLevel.toLong())
+                        putString("player_name", gameState.playerName)
+                        putLong("score", newScore.toLong())
+                        putLong("moves", newMoveCount.toLong())
+                    }
+                    firebaseAnalytics.logEvent("level_unlocked", bundle)
+                }
+            }
 
             viewModelScope.launch {
                 val moveId = gameMoveRepository.saveMove(newGrid, newScore, newMoveCount)
@@ -395,12 +552,18 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 Log.d("VIVEK", "undoMove: $previousMove")
 
                 val restoredGrid: List<List<Int>> = previousMove.grid.map { it.toList() }
+                
+                // Recalculate current level from the restored grid
+                val restoredCurrentLevel = calculateCurrentLevel(previousMove.grid)
+                val restoredUnlockedLevels = gameState.unlockedLevels + restoredCurrentLevel
 
                 updateGameState(
                     gameState.copy(
                         grid = restoredGrid,
                         score = previousMove.score,
                         moveCount = previousMove.moveNumber,
+                        currentLevel = restoredCurrentLevel,
+                        unlockedLevels = restoredUnlockedLevels,
                         tileAnimationInfo = emptyMap(),
                         isGameOver = false
                     )
@@ -427,17 +590,21 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 println("Score: ${lastMove.score}, Move: ${lastMove.moveNumber}")
 
                 val gridSize = lastMove.grid.size
+                
+                // Recalculate current level from the resumed grid
+                val resumedCurrentLevel = calculateCurrentLevel(lastMove.grid)
+                val resumedUnlockedLevels = gameState.unlockedLevels + resumedCurrentLevel
 
-                updateGameState(
-                    gameState.copy(
-                        grid = lastMove.grid,
-                        gridSize = gridSize,
-                        score = lastMove.score,
-                        moveCount = lastMove.moveNumber,
-                        tileAnimationInfo = emptyMap(),
-                        isGameOver = false,
-                        hasSavedGame = false
-                    )
+                gameState = gameState.copy(
+                    grid = lastMove.grid,
+                    gridSize = gridSize,
+                    score = lastMove.score,
+                    moveCount = lastMove.moveNumber,
+                    currentLevel = resumedCurrentLevel,
+                    unlockedLevels = resumedUnlockedLevels,
+                    tileAnimationInfo = emptyMap(),
+                    isGameOver = false,
+                    hasSavedGame = false
                 )
                 updateCanUndoState()
             } else {
@@ -457,6 +624,48 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun consumeResumePrompt() { _resumePrompt.value = false }
+
+    fun consumeNewlyUnlockedLevel() {
+        _newlyUnlockedLevel.value = null
+        _newlyUnlockedTileValue.value = null
+    }
+
+    /**
+     * Loads user data from Firebase after successful authentication
+     * This should be called when the user signs in
+     */
+    fun loadUserDataFromFirebase() {
+        viewModelScope.launch {
+            try {
+                val user = Firebase.auth.currentUser
+                if (user != null) {
+                    Log.d("GameViewModel", "Loading user data from Firebase for user: ${user.uid}")
+                    
+                    // Load level progression from Firebase
+                    val levelProgression = levelProgressionRepository.getLevelProgression().first()
+                    if (levelProgression != null) {
+                        // Update game state with Firebase data
+                        val newState = gameState.copy(
+                            playerName = levelProgression.playerName,
+                            currentLevel = levelProgression.currentLevel,
+                            unlockedLevels = levelProgression.unlockedLevels.toSet()
+                        )
+                        updateGameState(newState)
+                        
+                        Log.d("GameViewModel", "User data loaded from Firebase: Level ${levelProgression.currentLevel}, Unlocked: ${levelProgression.unlockedLevels}")
+                    } else {
+                        Log.d("GameViewModel", "No existing user data found in Firebase, using local data")
+                    }
+                    
+                    // Load high score from local storage (it will sync to Firebase when updated)
+                    val highScore = persistentHighScore.value
+                    Log.d("GameViewModel", "Current high score: $highScore")
+                }
+            } catch (e: Exception) {
+                Log.e("GameViewModel", "Error loading user data from Firebase", e)
+            }
+        }
+    }
 
     /**
      * Updates the canUndo state based on available moves in the database.

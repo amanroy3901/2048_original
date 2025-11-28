@@ -74,6 +74,7 @@ import com.avfusionapps.game_2048.ui.theme.HighLighter
 import com.avfusionapps.game_2048.ui.theme.Purple80
 import com.avfusionapps.game_2048.ui.theme.PurpleDarkBackground
 import com.avfusionapps.game_2048.ui.theme._2048OriginalTheme
+import com.avfusionapps.game_2048.ui.components.AnimatedLevelUnlockDialog
 import com.avfusionapps.game_2048.viewmodel.Direction
 import com.avfusionapps.game_2048.viewmodel.GameViewModel
 import kotlinx.coroutines.delay
@@ -145,6 +146,8 @@ fun GameScreen(
     val gameState = viewModel.gameState
     val persistentHighScore by viewModel.persistentHighScore.collectAsState()
     val persistentPlayerName by viewModel.persistentPlayerName.collectAsState()
+    val newlyUnlockedLevel by viewModel.newlyUnlockedLevel.collectAsState()
+    val newlyUnlockedTileValue by viewModel.newlyUnlockedTileValue.collectAsState()
 
     var showGridSizeDialog by remember { mutableStateOf(false) }
     val canUndo by viewModel.canUndo.collectAsState()
@@ -288,6 +291,13 @@ fun GameScreen(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
+                    text = "Level: ${gameState.currentLevel}",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color(0xFFFFD700), // Gold color for level
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
                     text = "Score: ${gameState.score}",
                     style = MaterialTheme.typography.titleMedium,
                     color = Color.White
@@ -353,6 +363,15 @@ fun GameScreen(
                 showGridSizeDialog = true
             },
             onExit = { navController.navigateUp() }
+        )
+    }
+
+    newlyUnlockedTileValue?.let { unlockedTileValue ->
+        AnimatedLevelUnlockDialog(
+            unlockedTileValue = unlockedTileValue,
+            onDismiss = {
+                viewModel.consumeNewlyUnlockedLevel()
+            }
         )
     }
 }

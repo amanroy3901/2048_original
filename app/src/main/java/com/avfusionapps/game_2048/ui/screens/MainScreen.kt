@@ -72,11 +72,13 @@ fun DarkModePreview() {
         Scaffold(
             contentWindowInsets = WindowInsets.safeDrawing,
             modifier = Modifier.fillMaxSize()
-        ) { innerPadding ->
+        ) { _ ->
             MainScreenContent(
                 navController = previewNavController,
                 playerName = "Preview Player",
                 highScore = 2048,
+                currentLevel = 3,
+                unlockedLevels = setOf(1, 2, 3),
                 onEditNameClick = {},
                 showNameDialog = false,
                 onDismissDialog = {},
@@ -93,6 +95,8 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
     val persistentPlayerName by viewModel.persistentPlayerName.collectAsState()
     val persistentHighScore by viewModel.persistentHighScore.collectAsState()
     val hasSaved by viewModel.hasSavedGameFlow.collectAsState()
+    val currentLevel by viewModel.currentLevel.collectAsState()
+    val unlockedLevels by viewModel.unlockedLevels.collectAsState()
 
     var showNameDialog by remember { mutableStateOf(false) }
     var showGridSizeDialogMain by remember { mutableStateOf(false) }
@@ -132,6 +136,8 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
         navController = navController,
         playerName = persistentPlayerName,
         highScore = persistentHighScore,
+        currentLevel = currentLevel,
+        unlockedLevels = unlockedLevels,
         onEditNameClick = { showNameDialog = true },
         showNameDialog = showNameDialog,
         onDismissDialog = { showNameDialog = false },
@@ -180,6 +186,8 @@ fun MainScreenContent(
     navController: NavController,
     playerName: String,
     highScore: Int,
+    currentLevel: Int,
+    unlockedLevels: Set<Int>,
     onEditNameClick: () -> Unit,
     showNameDialog: Boolean,
     onDismissDialog: () -> Unit,
@@ -246,6 +254,32 @@ fun MainScreenContent(
                 color = Color.White
             )
 
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = buildAnnotatedString {
+                    append("Current Level: ")
+                    withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = Color(0xFFFFD700))) {
+                        append(currentLevel.toString())
+                    }
+                },
+                style = MaterialTheme.typography.titleLarge,
+                color = Color.White
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = buildAnnotatedString {
+                    append("Unlocked Levels: ")
+                    withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                        append(unlockedLevels.size.toString())
+                    }
+                },
+                style = MaterialTheme.typography.bodyLarge,
+                color = Color.White.copy(alpha = 0.8f)
+            )
+
             Spacer(modifier = Modifier.height(32.dp))
 
             Image(
@@ -257,6 +291,8 @@ fun MainScreenContent(
                     .scale(1.2f)
             )
         }
+
+        Spacer(modifier = Modifier.height(48.dp))
 
         Row(
             modifier = Modifier
