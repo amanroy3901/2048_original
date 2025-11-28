@@ -147,6 +147,7 @@ fun GameScreen(
     val persistentHighScore by viewModel.persistentHighScore.collectAsState()
     val persistentPlayerName by viewModel.persistentPlayerName.collectAsState()
     val newlyUnlockedLevel by viewModel.newlyUnlockedLevel.collectAsState()
+    val newlyUnlockedTileValue by viewModel.newlyUnlockedTileValue.collectAsState()
 
     var showGridSizeDialog by remember { mutableStateOf(false) }
     val canUndo by viewModel.canUndo.collectAsState()
@@ -365,9 +366,9 @@ fun GameScreen(
         )
     }
 
-    newlyUnlockedLevel?.let { unlockedLevel ->
+    newlyUnlockedTileValue?.let { unlockedTileValue ->
         AnimatedLevelUnlockDialog(
-            unlockedLevel = unlockedLevel,
+            unlockedTileValue = unlockedTileValue,
             onDismiss = {
                 viewModel.consumeNewlyUnlockedLevel()
             }

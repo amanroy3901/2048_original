@@ -49,7 +49,7 @@ import androidx.compose.ui.res.painterResource
 
 @Composable
 fun LevelUnlockDialog(
-    unlockedLevel: Int,
+    unlockedTileValue: Int,
     onDismiss: () -> Unit
 ) {
     val scale = remember { Animatable(0.8f) }
@@ -93,7 +93,7 @@ fun LevelUnlockDialog(
     ) {
         LevelCelebrationEffect(
             isVisible = true,
-            level = unlockedLevel
+            level = unlockedTileValue
         )
 
         Dialog(onDismissRequest = { /* Prevent dismissal by clicking outside */ }) {
@@ -149,7 +149,7 @@ fun LevelUnlockDialog(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Level $unlockedLevel",
+                            text = "Tile $unlockedTileValue",
                             style = MaterialTheme.typography.displaySmall.copy(
                                 fontWeight = FontWeight.ExtraBold,
                                 color = MaterialTheme.colorScheme.onSurface
@@ -167,11 +167,7 @@ fun LevelUnlockDialog(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Text(
-                        text = "Congratulations! You've unlocked a new level by reaching ${
-                            getTileTargetForLevel(
-                                unlockedLevel
-                            )
-                        }!",
+                        text = "Congratulations! You've reached $unlockedTileValue!\nNext target: ${unlockedTileValue * 2}",
                         style = MaterialTheme.typography.bodyLarge.copy(
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                         ),
@@ -199,17 +195,17 @@ private fun getTileTargetForLevel(level: Int): String {
 
 @Composable
 fun AnimatedLevelUnlockDialog(
-    unlockedLevel: Int?,
+    unlockedTileValue: Int?,
     onDismiss: () -> Unit
 ) {
     AnimatedVisibility(
-        visible = unlockedLevel != null,
+        visible = unlockedTileValue != null,
         enter = fadeIn() + scaleIn(initialScale = 0.8f),
         exit = fadeOut() + scaleOut(targetScale = 0.8f)
     ) {
-        if (unlockedLevel != null) {
+        if (unlockedTileValue != null) {
             LevelUnlockDialog(
-                unlockedLevel = unlockedLevel,
+                unlockedTileValue = unlockedTileValue,
                 onDismiss = onDismiss
             )
         }

@@ -136,6 +136,9 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     private val _newlyUnlockedLevel = MutableStateFlow<Int?>(null)
     val newlyUnlockedLevel: StateFlow<Int?> = _newlyUnlockedLevel.asStateFlow()
 
+    private val _newlyUnlockedTileValue = MutableStateFlow<Int?>(null)
+    val newlyUnlockedTileValue: StateFlow<Int?> = _newlyUnlockedTileValue.asStateFlow()
+
     private fun updateGameState(newState: GameState) {
         gameState = newState
         _gameStateFlow.value = newState
@@ -467,6 +470,12 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 gameState.unlockedLevels
             }
 
+            val previousHighestTile = gameState.grid.flatten().maxOrNull() ?: 0
+            val currentHighestTile = newGrid.flatten().maxOrNull() ?: 0
+            if (currentHighestTile >= 128 && currentHighestTile > previousHighestTile) {
+                _newlyUnlockedTileValue.value = currentHighestTile
+            }
+
             val newMoveCount = gameState.moveCount + 1
             updateGameState(
                 gameState.copy(
@@ -616,7 +625,10 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     fun consumeResumePrompt() { _resumePrompt.value = false }
 
-    fun consumeNewlyUnlockedLevel() { _newlyUnlockedLevel.value = null }
+    fun consumeNewlyUnlockedLevel() {
+        _newlyUnlockedLevel.value = null
+        _newlyUnlockedTileValue.value = null
+    }
 
     /**
      * Loads user data from Firebase after successful authentication
