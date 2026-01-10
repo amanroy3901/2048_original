@@ -56,6 +56,7 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -227,10 +228,12 @@ fun GameScreen(
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
                         NeonRoundedButton(
+                            modifier = Modifier.testTag("CancelExitButton"),
                             text = "Cancel",
                             onClick = { showExitDialog = false },
                         )
                         NeonRoundedButton(
+                            modifier = Modifier.testTag("SaveAndExitButton"),
                             text = "Save & Exit",
                             onClick = {
                                 viewModel.markResumableWithoutMove()
@@ -401,7 +404,9 @@ fun GameBoard(viewModel: GameViewModel) {
                         val tileInfo = viewModel.gameState.tileAnimationInfo[Pair(i, j)]
                         GameCell(
                             value = cellValue,
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("GameCell_${i}_${j}"),
                             isNew = tileInfo?.isNew ?: false,
                             isMerged = tileInfo?.isMerged ?: false
                         )
@@ -626,8 +631,16 @@ fun GameOverDialog(score: Int, onNewGame: () -> Unit, onExit: () -> Unit) {
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                    NeonRoundedButton(onClick = onNewGame, text = "New Game")
-                    NeonRoundedButton(onClick = onExit, text = "Exit")
+                    NeonRoundedButton(
+                        modifier = Modifier.testTag("GameOverNewGameButton"),
+                        onClick = onNewGame,
+                        text = "New Game"
+                    )
+                    NeonRoundedButton(
+                        modifier = Modifier.testTag("GameOverExitButton"),
+                        onClick = onExit,
+                        text = "Exit"
+                    )
                 }
             }
         }

@@ -42,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -169,6 +170,10 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
                 }
             } else {
                 CylinderActionButton(
+                    modifier = Modifier
+                        .width(220.dp)
+                        .height(60.dp)
+                        .testTag("PlayGameButton"),
                     text = "Play Game",
                     leadingIcon = R.drawable.ic_play,
                     onClick = {
@@ -223,6 +228,7 @@ fun MainScreenContent(
                     )
                     .clickable(onClick = onEditNameClick)
                     .padding(10.dp)
+                    .testTag("EditNameButton")
             ) {
                 Icon(
                     Icons.Default.Edit,
@@ -381,7 +387,9 @@ fun NameEditDialog(
                     onValueChange = { nameInput = it },
                     label = { Text("Enter name") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("NameInput"),
                     shape = RoundedCornerShape(8.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = Color.White,

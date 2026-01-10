@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -98,6 +99,10 @@ fun GoogleAuthScreen(
         )
 
         CylinderActionButton(
+            modifier = Modifier
+                .width(220.dp)
+                .height(60.dp)
+                .testTag("GoogleSignInButton"),
             text = if (isLoading) "Signing in..." else "Sign in with Google",
             onClick = {
                 isLoading = true

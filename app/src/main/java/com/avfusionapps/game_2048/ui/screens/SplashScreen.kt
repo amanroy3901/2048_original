@@ -126,12 +126,10 @@ fun DynamicDarkModePreviewSplash() {
     }
 }
 
-
 @Composable
 fun SplashScreen(
     navController: NavController,
     onSplashComplete: () -> Unit = {
-        // Default behavior - navigate to main screen
         navController.navigate("main") {
             popUpTo("splash") { inclusive = true }
         }
@@ -201,7 +199,6 @@ fun SplashScreen(
         delay(tileStates.size * moveUpDelay + moveUpDuration)
         delay(pauseBeforeNav)
         onSplashComplete()
-
     }
 
 
