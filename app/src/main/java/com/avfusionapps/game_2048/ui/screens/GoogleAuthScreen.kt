@@ -10,15 +10,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.ui.graphics.Color
-import com.avfusionapps.game_2048.ui.theme.PurpleDarkBackground
-import com.avfusionapps.game_2048.ui.theme.HighLighter
-import com.avfusionapps.game_2048.ui.NeonRoundedButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,18 +21,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.GetCredentialResponse
+import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.credentials.exceptions.GetCredentialException
 import com.avfusionapps.game_2048.R
+import com.avfusionapps.game_2048.ui.theme.PurpleDarkBackground
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.auth.FirebaseAuth
@@ -118,6 +113,10 @@ fun GoogleAuthScreen(
                             isLoading = false
                             errorMessage = error
                         }
+                    } catch (e: GetCredentialCancellationException) {
+                        isLoading = false
+                        errorMessage = ""
+                        android.util.Log.d("GoogleAuth", "Sign-in cancelled by user")
                     } catch (e: GetCredentialException) {
                         isLoading = false
                         errorMessage = "Google Sign-In failed: ${e.message ?: "Please check your Firebase configuration"}"
@@ -135,6 +134,7 @@ fun GoogleAuthScreen(
 
         CylinderActionButton(
             text = "Play as Guest",
+            modifier = Modifier.testTag("PlayAsGuestButton").width(220.dp).height(60.dp),
             onClick = {
                 onAuthSuccess()
             },

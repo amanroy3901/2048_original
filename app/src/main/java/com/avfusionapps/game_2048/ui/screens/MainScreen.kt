@@ -93,7 +93,17 @@ fun DarkModePreview() {
 @Composable
 fun MainScreen(navController: NavController, viewModel: GameViewModel = viewModel()) {
 
+    // Use gameState.playerName for immediate updates, falling back to persistent for initialization if needed
+    val gameState = viewModel.gameState
     val persistentPlayerName by viewModel.persistentPlayerName.collectAsState()
+    
+    // Prefer the name from gameState if it's not default, otherwise fallback to persistent or default
+    val playerName = if (gameState.playerName != GameSettingsRepository.DEFAULT_PLAYER_NAME) {
+        gameState.playerName
+    } else {
+        persistentPlayerName
+    }
+    
     val persistentHighScore by viewModel.persistentHighScore.collectAsState()
     val hasSaved by viewModel.hasSavedGameFlow.collectAsState()
     val currentLevel by viewModel.currentLevel.collectAsState()
@@ -103,10 +113,18 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
     var showGridSizeDialogMain by remember { mutableStateOf(false) }
     var initialNameCheckDone by remember { mutableStateOf(false) }
     val resumePrompt by viewModel.resumePrompt.collectAsState()
+    val shouldShowNameEditDialog by viewModel.shouldShowNameEditDialog.collectAsState()
 
     LaunchedEffect(resumePrompt) {
         if (resumePrompt) {
             viewModel.consumeResumePrompt()
+        }
+    }
+
+    LaunchedEffect(shouldShowNameEditDialog) {
+        if (shouldShowNameEditDialog) {
+            showNameDialog = true
+            viewModel.resetNameEditDialogState()
         }
     }
 
@@ -135,7 +153,7 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
 
     MainScreenContent(
         navController = navController,
-        playerName = persistentPlayerName,
+        playerName = playerName,
         highScore = persistentHighScore,
         currentLevel = currentLevel,
         unlockedLevels = unlockedLevels,
@@ -153,6 +171,7 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     CylinderActionButton(
                         text = "Resume",
+                        modifier = Modifier.testTag("ResumeGameButton"),
                         leadingIcon = R.drawable.ic_pause,
                         onClick = {
                             viewModel.resumeSavedGame()
@@ -161,6 +180,7 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
                     )
                     CylinderActionButton(
                         text = "Play Game",
+                        modifier = Modifier.testTag("PlayGameButton"),
                         leadingIcon = R.drawable.ic_play,
                         onClick = {
                             viewModel.declineSavedGame()
@@ -361,6 +381,8 @@ fun NameEditDialog(
     onDismiss: () -> Unit
 ) {
     var nameInput by remember(currentName) { mutableStateOf(currentName) }
+    // Derived state for error checking - if name exceeds 15 chars, it's an error
+    val isError = nameInput.length > 15
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -384,13 +406,27 @@ fun NameEditDialog(
 
                 OutlinedTextField(
                     value = nameInput,
-                    onValueChange = { nameInput = it },
+                    onValueChange = {
+                        if (it.length <= 25) {
+                            nameInput = it
+                        }
+                    },
                     label = { Text("Enter name") },
                     singleLine = true,
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("NameInput"),
                     shape = RoundedCornerShape(8.dp),
+                    isError = isError,
+                    supportingText = {
+                        if (isError) {
+                            Text(
+                                text = "Only 15 characters are allowed",
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    },
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = Color.White,
                         unfocusedTextColor = Color.White.copy(0.8f),
@@ -400,7 +436,10 @@ fun NameEditDialog(
                         focusedLabelColor = HighLighter,
                         unfocusedLabelColor = Color.White.copy(alpha = 0.7f),
                         focusedContainerColor = Color.Transparent,
-                        unfocusedContainerColor = Color.Transparent
+                        unfocusedContainerColor = Color.Transparent,
+                        errorCursorColor = MaterialTheme.colorScheme.error,
+                        errorBorderColor = MaterialTheme.colorScheme.error,
+                        errorLabelColor = MaterialTheme.colorScheme.error
                     )
                 )
 
@@ -415,12 +454,13 @@ fun NameEditDialog(
                     Spacer(modifier = Modifier.width(8.dp))
                     NeonRoundedButton(
                         onClick = {
-                            if (nameInput.isNotBlank()) {
+                            if (nameInput.isNotBlank() && !isError) {
                                 onNameChange(nameInput.trim())
+                                onDismiss()
                             }
-                            onDismiss()
                         },
-                        text = "Save"
+                        text = "Save",
+                        enabled = nameInput.isNotBlank() && !isError
                     )
                 }
             }

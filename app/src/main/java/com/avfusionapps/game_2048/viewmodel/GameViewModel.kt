@@ -139,6 +139,13 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     private val _newlyUnlockedTileValue = MutableStateFlow<Int?>(null)
     val newlyUnlockedTileValue: StateFlow<Int?> = _newlyUnlockedTileValue.asStateFlow()
 
+    private val _shouldShowNameEditDialog = MutableStateFlow(false)
+    val shouldShowNameEditDialog: StateFlow<Boolean> = _shouldShowNameEditDialog.asStateFlow()
+
+    fun resetNameEditDialogState() {
+        _shouldShowNameEditDialog.value = false
+    }
+
     private fun updateGameState(newState: GameState) {
         gameState = newState
         _gameStateFlow.value = newState
@@ -316,7 +323,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         val validName = name.ifBlank { GameSettingsRepository.DEFAULT_PLAYER_NAME }
         updateGameState(gameState.copy(playerName = validName)) // Update UI state immediately
         viewModelScope.launch { 
-            settingsRepository.updatePlayerName(validName) 
+            settingsRepository.updatePlayerName(validName)
+            Toast.makeText(getApplication(), "Name updated!", Toast.LENGTH_SHORT).show()
             // Also save to Firebase if user is authenticated
             val user = Firebase.auth.currentUser
             if (user != null) {
@@ -643,19 +651,47 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     
                     // Load level progression from Firebase
                     val levelProgression = levelProgressionRepository.getLevelProgression().first()
-                    if (levelProgression != null) {
-                        // Update game state with Firebase data
-                        val newState = gameState.copy(
-                            playerName = levelProgression.playerName,
-                            currentLevel = levelProgression.currentLevel,
-                            unlockedLevels = levelProgression.unlockedLevels.toSet()
-                        )
-                        updateGameState(newState)
-                        
-                        Log.d("GameViewModel", "User data loaded from Firebase: Level ${levelProgression.currentLevel}, Unlocked: ${levelProgression.unlockedLevels}")
-                    } else {
-                        Log.d("GameViewModel", "No existing user data found in Firebase, using local data")
+                    
+                    var nameToUse = levelProgression?.playerName ?: GameSettingsRepository.DEFAULT_PLAYER_NAME
+                    var currentLevel = levelProgression?.currentLevel ?: 1
+                    var unlockedLevels = levelProgression?.unlockedLevels?.toSet() ?: setOf(1)
+                    
+                    var wasNameGenerated = false
+
+                    // If name is default, try to generate from email
+                    if (nameToUse == GameSettingsRepository.DEFAULT_PLAYER_NAME) {
+                        val email = user.email
+                        if (email != null) {
+                            val generatedName = generateNameFromEmail(email)
+                            if (generatedName.isNotBlank()) {
+                                nameToUse = generatedName
+                                wasNameGenerated = true
+                                
+                                // Save the generated name immediately
+                                settingsRepository.updatePlayerName(nameToUse)
+                            }
+                        }
                     }
+
+                    // Update game state with data
+                    val newState = gameState.copy(
+                        playerName = nameToUse,
+                        currentLevel = currentLevel,
+                        unlockedLevels = unlockedLevels
+                    )
+                    updateGameState(newState)
+                    
+                    // Show dialog AFTER state update
+                    if (wasNameGenerated) {
+                        _shouldShowNameEditDialog.value = true
+                    }
+                    
+                    // If we generated a name, save it to Firebase as well
+                    if (levelProgression == null || levelProgression.playerName == GameSettingsRepository.DEFAULT_PLAYER_NAME) {
+                         saveGameStateToFirebase(newState)
+                    }
+
+                    Log.d("GameViewModel", "User data loaded: Name $nameToUse, Level $currentLevel")
                     
                     // Load high score from local storage (it will sync to Firebase when updated)
                     val highScore = persistentHighScore.value
@@ -665,6 +701,14 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 Log.e("GameViewModel", "Error loading user data from Firebase", e)
             }
         }
+    }
+
+    private fun generateNameFromEmail(email: String): String {
+        val namePart = email.substringBefore('@')
+        val alphaNumeric = namePart.filter { it.isLetterOrDigit() }
+        // Take up to 20 characters to capture more of the name, 
+        // relying on UI to handle truncation/editing if needed
+        return alphaNumeric.take(20) 
     }
 
     /**

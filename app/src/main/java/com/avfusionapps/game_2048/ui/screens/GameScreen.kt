@@ -48,6 +48,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
@@ -581,7 +582,9 @@ fun GameCell(
 fun GridSizeDialog(onSizeSelected: (Int) -> Unit, onDismiss: () -> Unit) {
     Dialog(onDismissRequest = onDismiss) {
         Surface(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 24.dp),
+            modifier = Modifier
+                .testTag("GridSizeDialog")
+                .padding(horizontal = 16.dp, vertical = 24.dp),
             shape = RoundedCornerShape(16.dp),
             color = PurpleDarkBackground.copy(alpha = 0.95f),
             shadowElevation = 8.dp
@@ -597,7 +600,10 @@ fun GridSizeDialog(onSizeSelected: (Int) -> Unit, onDismiss: () -> Unit) {
                     color = Color.White
                 )
                 GridSizeButtons(onSizeSelected)
-                TextButton(onClick = onDismiss) {
+                TextButton(
+                    modifier = Modifier.testTag("CancelGridSizeButton"),
+                    onClick = onDismiss
+                ) {
                     Text("Cancel", color = HighLighter)
                 }
             }
@@ -657,12 +663,12 @@ fun GridSizeButtons(onSizeSelected: (Int) -> Unit) {
             NeonCutCornerButton(
                 text = "3x3",
                 onClick = { onSizeSelected(3) },
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f).testTag("GridSize3x3")
             )
             NeonCutCornerButton(
                 text = "4x4",
                 onClick = { onSizeSelected(4) },
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f).testTag("GridSize4x4")
             )
         }
         Row(
@@ -672,12 +678,12 @@ fun GridSizeButtons(onSizeSelected: (Int) -> Unit) {
             NeonCutCornerButton(
                 text = "5x5",
                 onClick = { onSizeSelected(5) },
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f).testTag("GridSize5x5")
             )
             NeonCutCornerButton(
                 text = "6x6",
                 onClick = { onSizeSelected(6) },
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f).testTag("GridSize6x6")
             )
         }
     }
