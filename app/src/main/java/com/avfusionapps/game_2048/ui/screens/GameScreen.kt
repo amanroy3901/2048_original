@@ -57,7 +57,6 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -314,6 +313,7 @@ fun GameScreen(
                 )
             }
             NeonRoundedButton(
+                modifier = Modifier.testTag("NewGameButton"),
                 onClick = { showGridSizeDialog = true },
                 text = "New Game"
             )
@@ -325,12 +325,14 @@ fun GameScreen(
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             NeonRoundedButton(
+                modifier = Modifier.testTag("UndoButton"),
                 onClick = { viewModel.undoMove(context) },
                 enabled = canUndo,
                 icon = R.drawable.ic_undo,
                 contentDescription = "Undo Button"
             )
             NeonRoundedButton(
+                modifier = Modifier.testTag("CloseGameButton"),
                 onClick = {
                     if (hasProgress) {
                     showExitDialog = true

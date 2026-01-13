@@ -171,7 +171,10 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     CylinderActionButton(
                         text = "Resume",
-                        modifier = Modifier.testTag("ResumeGameButton"),
+                        modifier = Modifier
+                            .width(220.dp)
+                            .height(60.dp)
+                            .testTag("ResumeGameButton"),
                         leadingIcon = R.drawable.ic_pause,
                         onClick = {
                             viewModel.resumeSavedGame()
@@ -180,7 +183,10 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
                     )
                     CylinderActionButton(
                         text = "Play Game",
-                        modifier = Modifier.testTag("PlayGameButton"),
+                        modifier = Modifier
+                            .width(220.dp)
+                            .height(60.dp)
+                            .testTag("PlayGameButton"),
                         leadingIcon = R.drawable.ic_play,
                         onClick = {
                             viewModel.declineSavedGame()
@@ -448,11 +454,15 @@ fun NameEditDialog(
                     horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    TextButton(onClick = onDismiss) {
+                    TextButton(
+                        modifier = Modifier.testTag("CancelEditNameButton"),
+                        onClick = onDismiss
+                    ) {
                         Text("Cancel", color = Color.White.copy(alpha = 0.8f))
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     NeonRoundedButton(
+                        modifier = Modifier.testTag("SaveEditNameButton"),
                         onClick = {
                             if (nameInput.isNotBlank() && !isError) {
                                 onNameChange(nameInput.trim())
