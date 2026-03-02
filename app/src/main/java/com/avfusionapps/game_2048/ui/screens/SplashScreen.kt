@@ -206,7 +206,7 @@ fun SplashScreen(
     Surface(
         modifier = Modifier
             .fillMaxSize()
-            .testTag("SplashScreen"),
+            .testTag("SplashScreen_Root"),
         color = PurpleDarkBackground
     ) {
         Box(

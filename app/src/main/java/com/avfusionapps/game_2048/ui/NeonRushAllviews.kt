@@ -28,6 +28,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import com.avfusionapps.game_2048.ui.theme.HighLighter
 
 @Composable
@@ -91,6 +93,9 @@ fun NeonRoundedButton(
     Button(
         onClick = onClick,
         modifier = modifier
+            .semantics {
+                stateDescription = if (enabled) "Enabled" else "Disabled"
+            }
             .drawWithContent {
                 drawContent()
                 if (enabled) drawNeonGlow(glowColor, glowRadius)

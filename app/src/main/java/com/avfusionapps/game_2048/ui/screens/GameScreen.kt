@@ -90,7 +90,7 @@ import kotlin.math.log2
 )
 @Composable
 fun DarkModePreviewGame() {
-    val previewNavController = rememberNavController()
+    rememberNavController()
     _2048OriginalTheme {
         Scaffold { padding ->
             Box(
@@ -147,7 +147,6 @@ fun GameScreen(
     val gameState = viewModel.gameState
     val persistentHighScore by viewModel.persistentHighScore.collectAsState()
     val persistentPlayerName by viewModel.persistentPlayerName.collectAsState()
-    val newlyUnlockedLevel by viewModel.newlyUnlockedLevel.collectAsState()
     val newlyUnlockedTileValue by viewModel.newlyUnlockedTileValue.collectAsState()
 
     var showGridSizeDialog by remember { mutableStateOf(false) }
@@ -228,12 +227,12 @@ fun GameScreen(
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
                         NeonRoundedButton(
-                            modifier = Modifier.testTag("CancelExitButton"),
+                            modifier = Modifier.testTag("GameScreen_Button_CancelExit"),
                             text = "Cancel",
                             onClick = { showExitDialog = false },
                         )
                         NeonRoundedButton(
-                            modifier = Modifier.testTag("SaveAndExitButton"),
+                            modifier = Modifier.testTag("GameScreen_Button_SaveAndExit"),
                             text = "Save & Exit",
                             onClick = {
                                 viewModel.markResumableWithoutMove()
@@ -250,6 +249,7 @@ fun GameScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .testTag("GameScreen_Root")
             .background(PurpleDarkBackground)
             .padding(start = 16.dp, end = 16.dp, top = 50.dp)
             .pointerInput(Unit) {
@@ -313,7 +313,7 @@ fun GameScreen(
                 )
             }
             NeonRoundedButton(
-                modifier = Modifier.testTag("NewGameButton"),
+                modifier = Modifier.testTag("GameScreen_Button_NewGame"),
                 onClick = { showGridSizeDialog = true },
                 text = "New Game"
             )
@@ -325,14 +325,14 @@ fun GameScreen(
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             NeonRoundedButton(
-                modifier = Modifier.testTag("UndoButton"),
+                modifier = Modifier.testTag("GameScreen_Button_Undo"),
                 onClick = { viewModel.undoMove(context) },
                 enabled = canUndo,
                 icon = R.drawable.ic_undo,
                 contentDescription = "Undo Button"
             )
             NeonRoundedButton(
-                modifier = Modifier.testTag("CloseGameButton"),
+                modifier = Modifier.testTag("GameScreen_Button_CloseGame"),
                 onClick = {
                     if (hasProgress) {
                     showExitDialog = true
@@ -409,7 +409,7 @@ fun GameBoard(viewModel: GameViewModel) {
                             value = cellValue,
                             modifier = Modifier
                                 .weight(1f)
-                                .testTag("GameCell_${i}_${j}"),
+                                .testTag("GameScreen_Item_GameCell_${i}_${j}"),
                             isNew = tileInfo?.isNew ?: false,
                             isMerged = tileInfo?.isMerged ?: false
                         )
@@ -585,7 +585,7 @@ fun GridSizeDialog(onSizeSelected: (Int) -> Unit, onDismiss: () -> Unit) {
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             modifier = Modifier
-                .testTag("GridSizeDialog")
+                .testTag("GameScreen_Dialog_GridSize")
                 .padding(horizontal = 16.dp, vertical = 24.dp),
             shape = RoundedCornerShape(16.dp),
             color = PurpleDarkBackground.copy(alpha = 0.95f),
@@ -603,7 +603,7 @@ fun GridSizeDialog(onSizeSelected: (Int) -> Unit, onDismiss: () -> Unit) {
                 )
                 GridSizeButtons(onSizeSelected)
                 TextButton(
-                    modifier = Modifier.testTag("CancelGridSizeButton"),
+                    modifier = Modifier.testTag("GameScreen_Button_CancelGridSize"),
                     onClick = onDismiss
                 ) {
                     Text("Cancel", color = HighLighter)
@@ -617,7 +617,9 @@ fun GridSizeDialog(onSizeSelected: (Int) -> Unit, onDismiss: () -> Unit) {
 fun GameOverDialog(score: Int, onNewGame: () -> Unit, onExit: () -> Unit) {
     Dialog(onDismissRequest = {}) {
         Surface(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 24.dp),
+            modifier = Modifier
+                .testTag("GameScreen_Dialog_GameOver")
+                .padding(horizontal = 16.dp, vertical = 24.dp),
             shape = RoundedCornerShape(16.dp),
             color = PurpleDarkBackground.copy(alpha = 0.95f),
             shadowElevation = 8.dp
@@ -640,12 +642,12 @@ fun GameOverDialog(score: Int, onNewGame: () -> Unit, onExit: () -> Unit) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                     NeonRoundedButton(
-                        modifier = Modifier.testTag("GameOverNewGameButton"),
+                        modifier = Modifier.testTag("GameScreen_Button_GameOverNewGame"),
                         onClick = onNewGame,
                         text = "New Game"
                     )
                     NeonRoundedButton(
-                        modifier = Modifier.testTag("GameOverExitButton"),
+                        modifier = Modifier.testTag("GameScreen_Button_GameOverExit"),
                         onClick = onExit,
                         text = "Exit"
                     )
@@ -665,12 +667,12 @@ fun GridSizeButtons(onSizeSelected: (Int) -> Unit) {
             NeonCutCornerButton(
                 text = "3x3",
                 onClick = { onSizeSelected(3) },
-                modifier = Modifier.weight(1f).testTag("GridSize3x3")
+                modifier = Modifier.weight(1f).testTag("GameScreen_Button_GridSize3x3")
             )
             NeonCutCornerButton(
                 text = "4x4",
                 onClick = { onSizeSelected(4) },
-                modifier = Modifier.weight(1f).testTag("GridSize4x4")
+                modifier = Modifier.weight(1f).testTag("GameScreen_Button_GridSize4x4")
             )
         }
         Row(
@@ -680,12 +682,12 @@ fun GridSizeButtons(onSizeSelected: (Int) -> Unit) {
             NeonCutCornerButton(
                 text = "5x5",
                 onClick = { onSizeSelected(5) },
-                modifier = Modifier.weight(1f).testTag("GridSize5x5")
+                modifier = Modifier.weight(1f).testTag("GameScreen_Button_GridSize5x5")
             )
             NeonCutCornerButton(
                 text = "6x6",
                 onClick = { onSizeSelected(6) },
-                modifier = Modifier.weight(1f).testTag("GridSize6x6")
+                modifier = Modifier.weight(1f).testTag("GameScreen_Button_GridSize6x6")
             )
         }
     }

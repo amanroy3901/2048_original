@@ -167,14 +167,17 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
             }
         },
         actions = {
-            if (hasSaved) {
-                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                if (hasSaved) {
                     CylinderActionButton(
                         text = "Resume",
                         modifier = Modifier
                             .width(220.dp)
                             .height(60.dp)
-                            .testTag("ResumeGameButton"),
+                            .testTag("MainScreen_Button_ResumeGame"),
                         leadingIcon = R.drawable.ic_pause,
                         onClick = {
                             viewModel.resumeSavedGame()
@@ -186,26 +189,26 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
                         modifier = Modifier
                             .width(220.dp)
                             .height(60.dp)
-                            .testTag("PlayGameButton"),
+                            .testTag("MainScreen_Button_PlayGame"),
                         leadingIcon = R.drawable.ic_play,
                         onClick = {
                             viewModel.declineSavedGame()
                             showGridSizeDialogMain = true
                         }
                     )
+                } else {
+                    CylinderActionButton(
+                        modifier = Modifier
+                            .width(220.dp)
+                            .height(60.dp)
+                            .testTag("MainScreen_Button_PlayGame"),
+                        text = "Play Game",
+                        leadingIcon = R.drawable.ic_play,
+                        onClick = {
+                            showGridSizeDialogMain = true
+                        }
+                    )
                 }
-            } else {
-                CylinderActionButton(
-                    modifier = Modifier
-                        .width(220.dp)
-                        .height(60.dp)
-                        .testTag("PlayGameButton"),
-                    text = "Play Game",
-                    leadingIcon = R.drawable.ic_play,
-                    onClick = {
-                        showGridSizeDialogMain = true
-                    }
-                )
             }
         }
     )
@@ -229,6 +232,7 @@ fun MainScreenContent(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .testTag("MainScreen_Root")
             .background(PurpleDarkBackground)
             .padding(16.dp), // Consistent padding
     ) {
@@ -254,7 +258,7 @@ fun MainScreenContent(
                     )
                     .clickable(onClick = onEditNameClick)
                     .padding(10.dp)
-                    .testTag("EditNameButton")
+                    .testTag("MainScreen_Button_EditName")
             ) {
                 Icon(
                     Icons.Default.Edit,
@@ -421,7 +425,7 @@ fun NameEditDialog(
                     singleLine = true,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .testTag("NameInput"),
+                        .testTag("MainScreen_TextField_NameInput"),
                     shape = RoundedCornerShape(8.dp),
                     isError = isError,
                     supportingText = {
@@ -455,14 +459,14 @@ fun NameEditDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     TextButton(
-                        modifier = Modifier.testTag("CancelEditNameButton"),
+                        modifier = Modifier.testTag("MainScreen_Button_CancelEditName"),
                         onClick = onDismiss
                     ) {
                         Text("Cancel", color = Color.White.copy(alpha = 0.8f))
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     NeonRoundedButton(
-                        modifier = Modifier.testTag("SaveEditNameButton"),
+                        modifier = Modifier.testTag("MainScreen_Button_SaveEditName"),
                         onClick = {
                             if (nameInput.isNotBlank() && !isError) {
                                 onNameChange(nameInput.trim())

@@ -100,6 +100,7 @@ fun LevelUnlockDialog(
         Dialog(onDismissRequest = { /* Prevent dismissal by clicking outside */ }) {
             Card(
                 modifier = Modifier
+                    .testTag("LevelUnlockDialog_Root")
                     .fillMaxWidth()
                     .scale(scale.value)
                     .alpha(alpha.value),
@@ -180,7 +181,7 @@ fun LevelUnlockDialog(
 
                     NeonRoundedButton(
                         text = "Continue Playing",
-                        modifier = Modifier.testTag("ContinuePlayingButton"),
+                        modifier = Modifier.testTag("LevelUnlockDialog_Button_Continue"),
                         onClick = {
                             onDismiss()
                         },

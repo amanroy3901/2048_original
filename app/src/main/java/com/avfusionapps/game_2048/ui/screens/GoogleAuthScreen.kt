@@ -69,6 +69,7 @@ fun GoogleAuthScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .testTag("GoogleAuthScreen_Root")
             .background(PurpleDarkBackground)
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -97,7 +98,7 @@ fun GoogleAuthScreen(
             modifier = Modifier
                 .width(220.dp)
                 .height(60.dp)
-                .testTag("GoogleSignInButton"),
+                .testTag("GoogleAuthScreen_Button_GoogleSignIn"),
             text = if (isLoading) "Signing in..." else "Sign in with Google",
             onClick = {
                 isLoading = true
@@ -134,7 +135,7 @@ fun GoogleAuthScreen(
 
         CylinderActionButton(
             text = "Play as Guest",
-            modifier = Modifier.testTag("PlayAsGuestButton").width(220.dp).height(60.dp),
+            modifier = Modifier.testTag("GoogleAuthScreen_Button_PlayAsGuest").width(220.dp).height(60.dp),
             onClick = {
                 onAuthSuccess()
             },
