@@ -82,6 +82,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlin.math.abs
 import kotlin.math.log2
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 
 @Preview(
     showSystemUi = true,
@@ -409,7 +411,10 @@ fun GameBoard(viewModel: GameViewModel) {
                             value = cellValue,
                             modifier = Modifier
                                 .weight(1f)
-                                .testTag("GameScreen_Item_GameCell_${i}_${j}"),
+                                .testTag("GameScreen_Item_GameCell_${i}_${j}")
+                                .semantics {
+                                    contentDescription = if (cellValue == 0) "Empty Tile at row $i column $j" else "Tile $cellValue at row $i column $j"
+                                },
                             isNew = tileInfo?.isNew ?: false,
                             isMerged = tileInfo?.isMerged ?: false
                         )
@@ -603,7 +608,9 @@ fun GridSizeDialog(onSizeSelected: (Int) -> Unit, onDismiss: () -> Unit) {
                 )
                 GridSizeButtons(onSizeSelected)
                 TextButton(
-                    modifier = Modifier.testTag("GameScreen_Button_CancelGridSize"),
+                    modifier = Modifier
+                        .testTag("GameScreen_Button_CancelGridSize")
+                        .semantics { contentDescription = "Cancel Grid Selection" },
                     onClick = onDismiss
                 ) {
                     Text("Cancel", color = HighLighter)

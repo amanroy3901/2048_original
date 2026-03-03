@@ -32,6 +32,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import com.avfusionapps.game_2048.ui.theme.HighLighter
 
+import androidx.compose.ui.semantics.contentDescription
+
 @Composable
 fun NeonCutCornerButton(
     text: String,
@@ -42,7 +44,9 @@ fun NeonCutCornerButton(
 ) {
     Button(
         onClick = onClick,
-        modifier = modifier,
+        modifier = modifier.semantics { 
+            this.contentDescription = text 
+        },
         shape = CutCornerShape(cornerRadius.dp),
         colors = ButtonDefaults.buttonColors(buttonColor),
         contentPadding = PaddingValues(8.dp)
@@ -95,6 +99,7 @@ fun NeonRoundedButton(
         modifier = modifier
             .semantics {
                 stateDescription = if (enabled) "Enabled" else "Disabled"
+                this.contentDescription = contentDescription ?: text ?: "Button"
             }
             .drawWithContent {
                 drawContent()

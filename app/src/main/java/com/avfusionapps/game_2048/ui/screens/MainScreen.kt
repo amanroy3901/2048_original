@@ -64,6 +64,8 @@ import com.avfusionapps.game_2048.ui.theme.HighLighter
 import com.avfusionapps.game_2048.ui.theme.PurpleDarkBackground
 import com.avfusionapps.game_2048.ui.theme._2048OriginalTheme
 import com.avfusionapps.game_2048.viewmodel.GameViewModel
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 
 @Preview(showSystemUi = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
@@ -259,10 +261,11 @@ fun MainScreenContent(
                     .clickable(onClick = onEditNameClick)
                     .padding(10.dp)
                     .testTag("MainScreen_Button_EditName")
+                    .semantics { contentDescription = "Edit Player Name" }
             ) {
                 Icon(
                     Icons.Default.Edit,
-                    contentDescription = "Edit Player Name",
+                    contentDescription = null, // Content description provided by parent Box
                     tint = Color.White
                 )
             }
@@ -363,7 +366,7 @@ fun CylinderActionButton(
 ) {
     Button(
         onClick = onClick,
-        modifier = modifier,
+        modifier = modifier.semantics { this.contentDescription = text },
         colors = ButtonDefaults.buttonColors(containerColor = HighLighter),
         shape = RoundedCornerShape(percent = 50),
         elevation = ButtonDefaults.buttonElevation(
@@ -459,7 +462,9 @@ fun NameEditDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     TextButton(
-                        modifier = Modifier.testTag("MainScreen_Button_CancelEditName"),
+                        modifier = Modifier
+                            .testTag("MainScreen_Button_CancelEditName")
+                            .semantics { contentDescription = "Cancel Edit Name" },
                         onClick = onDismiss
                     ) {
                         Text("Cancel", color = Color.White.copy(alpha = 0.8f))
