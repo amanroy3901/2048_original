@@ -17,6 +17,9 @@ workRuntimeKtx = "2.10.3"
 room = "2.6.1"
 firebaseCrashlytics = "20.0.1"
 googleFirebaseCrashlytics = "3.0.6"
+unityAdsMediation = "9.2.0"
+playServicesAdsIdentifier = "18.1.0"
+playServicesAppSet = "16.0.0"
 
 
 [libraries]
@@ -44,6 +47,9 @@ androidx-room-runtime = { group = "androidx.room", name = "room-runtime", versio
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 firebase-crashlytics = { group = "com.google.firebase", name = "firebase-crashlytics", version.ref = "firebaseCrashlytics" }
+unity-ads-mediation = { group = "com.unity3d.ads-mediation", name = "mediation-sdk", version.ref = "unityAdsMediation" }
+play-services-ads-identifier = { group = "com.google.android.gms", name = "play-services-ads-identifier", version.ref = "playServicesAdsIdentifier" }
+play-services-appset = { group = "com.google.android.gms", name = "play-services-appset", version.ref = "playServicesAppSet" }
 
 
 [plugins]

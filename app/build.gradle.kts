@@ -100,4 +100,9 @@ dependencies {
     
     // Google Identity Services
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
+
+    // Unity LevelPlay
+    implementation(libs.unity.ads.mediation)
+    implementation(libs.play.services.ads.identifier)
+    implementation(libs.play.services.appset)
 }

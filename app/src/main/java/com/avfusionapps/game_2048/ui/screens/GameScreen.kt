@@ -75,6 +75,7 @@ import com.avfusionapps.game_2048.ui.theme.HighLighter
 import com.avfusionapps.game_2048.ui.theme.Purple80
 import com.avfusionapps.game_2048.ui.theme.PurpleDarkBackground
 import com.avfusionapps.game_2048.ui.theme._2048OriginalTheme
+import com.avfusionapps.game_2048.ui.components.LevelPlayBanner
 import com.avfusionapps.game_2048.ui.components.AnimatedLevelUnlockDialog
 import com.avfusionapps.game_2048.viewmodel.Direction
 import com.avfusionapps.game_2048.viewmodel.GameViewModel
@@ -344,6 +345,15 @@ fun GameScreen(
                 contentDescription = "Close Button"
             )
         }
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        LevelPlayBanner(
+            adUnitId = "6az0ef2t7g5ql0te",
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp)
+        )
     }
 
     if (showGridSizeDialog) {
