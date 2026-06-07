@@ -36,8 +36,10 @@ import com.avfusionapps.game_2048.ui.screens.GameScreen
 import com.avfusionapps.game_2048.ui.screens.GoogleAuthScreen
 import com.avfusionapps.game_2048.ui.screens.MainScreen
 import com.avfusionapps.game_2048.ui.screens.SplashScreen
+import com.avfusionapps.game_2048.ui.screens.ThemeSettingsScreen
 import com.avfusionapps.game_2048.ui.theme._2048OriginalTheme
 import com.avfusionapps.game_2048.viewmodel.GameViewModel
+import com.avfusionapps.game_2048.viewmodel.ThemeViewModel
 import com.google.android.play.core.appupdate.AppUpdateInfo
 import com.google.android.play.core.appupdate.AppUpdateManager
 import com.google.android.play.core.appupdate.AppUpdateManagerFactory
@@ -147,7 +149,10 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         setContent {
-            _2048OriginalTheme {
+            val themeViewModel: ThemeViewModel = viewModel()
+            val currentTheme by themeViewModel.currentTheme.collectAsState()
+
+            _2048OriginalTheme(theme = currentTheme) {
                 val navController = rememberNavController()
                 snackbarHostState = remember { SnackbarHostState() }
 
@@ -202,6 +207,9 @@ class MainActivity : ComponentActivity() {
                             val parentEntry = remember(backStackEntry) { navController.getBackStackEntry("root") }
                             val vm: GameViewModel = viewModel(parentEntry)
                             MainScreen(navController = navController, viewModel = vm)
+                        }
+                        composable("themeSettings") {
+                            ThemeSettingsScreen(navController = navController)
                         }
                         composable(
                             route = "game?resume={resume}",

@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -245,6 +246,34 @@ fun MainScreenContent(
                 .padding(bottom = 16.dp),
             horizontalArrangement = Arrangement.End
         ) {
+            // Theme Button
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .padding(end = 8.dp)
+                    .shadow(
+                        elevation = 8.dp,
+                        shape = RoundedCornerShape(8.dp),
+                        ambientColor = HighLighter.copy(alpha = 0.5f),
+                        spotColor = HighLighter.copy(alpha = 0.5f)
+                    )
+                    .background(
+                        color = HighLighter,
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    .clickable(onClick = { navController.navigate("themeSettings") })
+                    .padding(10.dp)
+                    .testTag("MainScreen_Button_ThemeSettings")
+                    .semantics { contentDescription = "Theme Settings" }
+            ) {
+                Icon(
+                    Icons.Default.Palette,
+                    contentDescription = null,
+                    tint = Color.White
+                )
+            }
+
+            // Edit Name Button
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
@@ -265,7 +294,7 @@ fun MainScreenContent(
             ) {
                 Icon(
                     Icons.Default.Edit,
-                    contentDescription = null, // Content description provided by parent Box
+                    contentDescription = null,
                     tint = Color.White
                 )
             }

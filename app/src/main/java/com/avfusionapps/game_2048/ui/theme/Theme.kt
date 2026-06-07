@@ -19,32 +19,49 @@ private val DarkColorScheme = darkColorScheme(
 
 @Composable
 fun _2048OriginalTheme(
-    darkTheme: Boolean = true, // Force dark theme
-    dynamicColor: Boolean = true, content: @Composable () -> Unit
+    theme: GameTheme = GameTheme.NeonRush,
+    darkTheme: Boolean = theme.isDark,
+    dynamicColor: Boolean = false,
+    content: @Composable () -> Unit
 ) {
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
-            dynamicDarkColorScheme(context) // Always use dynamic dark if available
+            if (darkTheme) dynamicDarkColorScheme(context) else dynamicDarkColorScheme(context)
         }
-
-        else -> DarkColorScheme // Always use DarkColorScheme if dynamic is not available
+        else -> {
+            // Create color scheme based on theme
+            if (theme.isDark) {
+                darkColorScheme(
+                    primary = theme.primaryColor,
+                    secondary = theme.secondaryColor,
+                    background = theme.backgroundColor,
+                    surface = theme.surfaceColor,
+                    onBackground = theme.textColor,
+                    onSurface = theme.textColor
+                )
+            } else {
+                androidx.compose.material3.lightColorScheme(
+                    primary = theme.primaryColor,
+                    secondary = theme.secondaryColor,
+                    background = theme.backgroundColor,
+                    surface = theme.surfaceColor,
+                    onBackground = theme.textColor,
+                    onSurface = theme.textColor
+                )
+            }
+        }
     }
 
     val view = LocalView.current
     val context = LocalContext.current
-    val useDarkIcons = !darkTheme // Use light icons if not in dark theme
+    val useDarkIcons = !darkTheme
 
     // Set status bar color and enable edge-to-edge
     SideEffect {
         val window = (context as Activity).window
-        // Enable edge-to-edge by not fitting system windows
         WindowCompat.setDecorFitsSystemWindows(window, false)
-
-        // Set the status bar color
-        window.statusBarColor = PurpleDarkBackground.toArgb()
-
-        // Control the status bar icon color (light/dark)
+        window.statusBarColor = theme.backgroundColor.toArgb()
         val insetsController = WindowCompat.getInsetsController(window, view)
         insetsController.isAppearanceLightStatusBars = useDarkIcons
     }
