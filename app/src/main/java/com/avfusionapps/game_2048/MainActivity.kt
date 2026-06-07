@@ -16,6 +16,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -37,6 +39,8 @@ import com.avfusionapps.game_2048.ui.screens.GoogleAuthScreen
 import com.avfusionapps.game_2048.ui.screens.MainScreen
 import com.avfusionapps.game_2048.ui.screens.SplashScreen
 import com.avfusionapps.game_2048.ui.screens.ThemeSettingsScreen
+import com.avfusionapps.game_2048.ui.screens.TimeAttackScreen
+import com.avfusionapps.game_2048.ui.theme.GameTheme
 import com.avfusionapps.game_2048.ui.theme._2048OriginalTheme
 import com.avfusionapps.game_2048.viewmodel.GameViewModel
 import com.avfusionapps.game_2048.viewmodel.ThemeViewModel
@@ -150,7 +154,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val themeViewModel: ThemeViewModel = viewModel()
-            val currentTheme by themeViewModel.currentTheme.collectAsState()
+            val currentTheme by themeViewModel.currentTheme.collectAsState(initial = GameTheme.NeonRush)
 
             _2048OriginalTheme(theme = currentTheme) {
                 val navController = rememberNavController()
@@ -210,6 +214,9 @@ class MainActivity : ComponentActivity() {
                         }
                         composable("themeSettings") {
                             ThemeSettingsScreen(navController = navController)
+                        }
+                        composable("timeAttack") {
+                            TimeAttackScreen(navController = navController)
                         }
                         composable(
                             route = "game?resume={resume}",

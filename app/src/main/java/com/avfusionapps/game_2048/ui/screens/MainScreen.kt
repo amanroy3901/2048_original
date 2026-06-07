@@ -188,7 +188,7 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
                         }
                     )
                     CylinderActionButton(
-                        text = "Play Game",
+                        text = "Classic 2048",
                         modifier = Modifier
                             .width(220.dp)
                             .height(60.dp)
@@ -205,13 +205,26 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
                             .width(220.dp)
                             .height(60.dp)
                             .testTag("MainScreen_Button_PlayGame"),
-                        text = "Play Game",
+                        text = "Classic 2048",
                         leadingIcon = R.drawable.ic_play,
                         onClick = {
                             showGridSizeDialogMain = true
                         }
                     )
                 }
+                
+                // Time Attack Button
+                CylinderActionButton(
+                    modifier = Modifier
+                        .width(220.dp)
+                        .height(60.dp)
+                        .testTag("MainScreen_Button_TimeAttack"),
+                    text = "Time Attack",
+                    leadingIcon = R.drawable.ic_play,
+                    onClick = {
+                        navController.navigate("timeAttack")
+                    }
+                )
             }
         }
     )
