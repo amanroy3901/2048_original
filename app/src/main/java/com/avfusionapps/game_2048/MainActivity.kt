@@ -170,14 +170,12 @@ class MainActivity : ComponentActivity() {
                         .fillMaxSize()
                         .semantics { testTagsAsResourceId = true },
                     snackbarHost = { SnackbarHost(snackbarHostState) }
-                ) { innerPadding ->
+                ) {
                     NavHost(
                         navController = navController,
-                        startDestination = "splash",
+                        startDestination = "main",
                         route = "root",
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(innerPadding)
+                        modifier = Modifier.fillMaxSize()
                     ) {
                         composable("splash") { backStackEntry ->
                             val parentEntry = remember(backStackEntry) { navController.getBackStackEntry("root") }

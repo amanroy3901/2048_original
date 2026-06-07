@@ -32,7 +32,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -71,6 +70,7 @@ import androidx.navigation.compose.rememberNavController
 import com.avfusionapps.game_2048.R
 import com.avfusionapps.game_2048.ui.NeonCutCornerButton
 import com.avfusionapps.game_2048.ui.NeonRoundedButton
+import com.avfusionapps.game_2048.ui.components.GridSizeBottomSheet
 import com.avfusionapps.game_2048.ui.theme.HighLighter
 import com.avfusionapps.game_2048.ui.theme.Purple80
 import com.avfusionapps.game_2048.ui.theme.PurpleDarkBackground
@@ -349,7 +349,8 @@ fun GameScreen(
     }
 
     if (showGridSizeDialog) {
-        GridSizeDialog(
+        GridSizeBottomSheet(
+            currentSize = gameState.gridSize,
             onSizeSelected = { size ->
                 viewModel.updateGridSize(size)
                 showGridSizeDialog = false
@@ -586,41 +587,6 @@ fun GameCell(
 }
 
 @Composable
-fun GridSizeDialog(onSizeSelected: (Int) -> Unit, onDismiss: () -> Unit) {
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            modifier = Modifier
-                .testTag("GameScreen_Dialog_GridSize")
-                .padding(horizontal = 16.dp, vertical = 24.dp),
-            shape = RoundedCornerShape(16.dp),
-            color = PurpleDarkBackground.copy(alpha = 0.95f),
-            shadowElevation = 8.dp
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(20.dp)
-            ) {
-                Text(
-                    "Select Grid Size",
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = Color.White
-                )
-                GridSizeButtons(onSizeSelected)
-                TextButton(
-                    modifier = Modifier
-                        .testTag("GameScreen_Button_CancelGridSize")
-                        .semantics { contentDescription = "Cancel Grid Selection" },
-                    onClick = onDismiss
-                ) {
-                    Text("Cancel", color = HighLighter)
-                }
-            }
-        }
-    }
-}
-
-@Composable
 fun GameOverDialog(score: Int, onNewGame: () -> Unit, onExit: () -> Unit) {
     Dialog(onDismissRequest = {}) {
         Surface(
@@ -660,42 +626,6 @@ fun GameOverDialog(score: Int, onNewGame: () -> Unit, onExit: () -> Unit) {
                     )
                 }
             }
-        }
-    }
-}
-
-@Composable
-fun GridSizeButtons(onSizeSelected: (Int) -> Unit) {
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
-        ) {
-            NeonCutCornerButton(
-                text = "3x3",
-                onClick = { onSizeSelected(3) },
-                modifier = Modifier.weight(1f).testTag("GameScreen_Button_GridSize3x3")
-            )
-            NeonCutCornerButton(
-                text = "4x4",
-                onClick = { onSizeSelected(4) },
-                modifier = Modifier.weight(1f).testTag("GameScreen_Button_GridSize4x4")
-            )
-        }
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
-        ) {
-            NeonCutCornerButton(
-                text = "5x5",
-                onClick = { onSizeSelected(5) },
-                modifier = Modifier.weight(1f).testTag("GameScreen_Button_GridSize5x5")
-            )
-            NeonCutCornerButton(
-                text = "6x6",
-                onClick = { onSizeSelected(6) },
-                modifier = Modifier.weight(1f).testTag("GameScreen_Button_GridSize6x6")
-            )
         }
     }
 }

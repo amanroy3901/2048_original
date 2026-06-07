@@ -1,0 +1,215 @@
+package com.avfusionapps.game_2048.ui.components
+
+import android.util.Log
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AccountCircle
+import androidx.compose.material.icons.rounded.Login
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.credentials.CredentialManager
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.exceptions.GetCredentialCancellationException
+import androidx.credentials.exceptions.GetCredentialException
+import com.avfusionapps.game_2048.R
+import com.avfusionapps.game_2048.ui.screens.handleSignInResult
+import com.avfusionapps.game_2048.ui.theme.LocalGameTheme
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.launch
+
+@Composable
+fun GoogleSignInCard(
+    firebaseAuth: FirebaseAuth,
+    modifier: Modifier = Modifier,
+    onAuthSuccess: () -> Unit,
+) {
+    val context = LocalContext.current
+    val theme = LocalGameTheme.current
+    val coroutineScope = rememberCoroutineScope()
+    val currentUser = firebaseAuth.currentUser
+    var isLoading by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf("") }
+
+    val credentialManager = remember { CredentialManager.create(context) }
+    val googleIdOption = remember {
+        GetGoogleIdOption.Builder()
+            .setFilterByAuthorizedAccounts(false)
+            .setServerClientId("305513134474-v65v4qb636fnkhvrbl7k9m9tpu07ap5v.apps.googleusercontent.com")
+            .build()
+    }
+    val request = remember {
+        GetCredentialRequest.Builder()
+            .addCredentialOption(googleIdOption)
+            .build()
+    }
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(theme.surfaceColor)
+            .border(
+                width = 1.dp,
+                color = theme.primaryColor.copy(alpha = 0.35f),
+                shape = RoundedCornerShape(18.dp)
+            )
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        if (currentUser == null) {
+            Text(
+                text = stringResource(R.string.sign_in_sync_progress),
+                color = theme.textColor.copy(alpha = 0.75f),
+                style = MaterialTheme.typography.bodyMedium
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Button(
+                    onClick = {
+                        isLoading = true
+                        errorMessage = ""
+
+                        coroutineScope.launch {
+                            try {
+                                val result = credentialManager.getCredential(
+                                    context = context,
+                                    request = request
+                                )
+                                handleSignInResult(
+                                    result = result,
+                                    firebaseAuth = firebaseAuth,
+                                    onSuccess = {
+                                        isLoading = false
+                                        onAuthSuccess()
+                                    },
+                                    onError = { error ->
+                                        isLoading = false
+                                        errorMessage = error
+                                    }
+                                )
+                            } catch (_: GetCredentialCancellationException) {
+                                isLoading = false
+                            } catch (e: GetCredentialException) {
+                                isLoading = false
+                                errorMessage = context.getString(
+                                    R.string.google_sign_in_failed,
+                                    e.message ?: context.getString(R.string.google_sign_in_config_hint)
+                                )
+                                Log.e("GoogleAuth", "GetCredentialException: ${e.message}", e)
+                            } catch (e: Exception) {
+                                isLoading = false
+                                errorMessage = context.getString(
+                                    R.string.unexpected_error,
+                                    e.message ?: ""
+                                )
+                                Log.e("GoogleAuth", "Unexpected error: ${e.message}", e)
+                            }
+                        }
+                    },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = theme.primaryColor,
+                        contentColor = theme.textColor
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Login,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.size(8.dp))
+                    Text(
+                        text = if (isLoading) {
+                            stringResource(R.string.signing_in)
+                        } else {
+                            stringResource(R.string.sign_in_google)
+                        },
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+
+                Button(
+                    onClick = onAuthSuccess,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = theme.surfaceColor,
+                        contentColor = theme.textColor
+                    )
+                ) {
+                    Text(
+                        text = stringResource(R.string.continue_as_guest),
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        } else {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.AccountCircle,
+                    contentDescription = null,
+                    tint = theme.primaryColor,
+                    modifier = Modifier.size(28.dp)
+                )
+                Column {
+                    Text(
+                        text = stringResource(
+                            R.string.signed_in_as,
+                            currentUser.displayName ?: currentUser.email ?: currentUser.uid
+                        ),
+                        color = theme.textColor,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = stringResource(R.string.sync_enabled),
+                        color = theme.textColor.copy(alpha = 0.55f),
+                        fontSize = 12.sp
+                    )
+                }
+            }
+        }
+
+        if (errorMessage.isNotBlank()) {
+            Text(
+                text = errorMessage,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+    }
+}
