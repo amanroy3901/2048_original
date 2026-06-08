@@ -12,7 +12,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.BarChart
 import androidx.compose.material.icons.rounded.GridView
-import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -172,18 +172,6 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
                 verticalArrangement = Arrangement.spacedBy(24.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                key(currentUser?.uid) {
-                    GoogleSignInCard(
-                        firebaseAuth = firebaseAuth,
-                        onAuthSuccess = {
-                            currentUser = firebaseAuth.currentUser
-                            if (currentUser != null) {
-                                viewModel.loadUserDataFromFirebase()
-                            }
-                        }
-                    )
-                }
-
                 if (hasSaved) {
                     // Extract best tile from current game state, or use a default
                     val maxTile = gameState.grid.flatten().maxOrNull() ?: 0
@@ -197,10 +185,6 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
                         }
                     )
                 }
-
-                BestScoreCard(
-                    score = persistentHighScore
-                )
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -275,77 +259,59 @@ fun MainScreenContent(
             .safeDrawingPadding(),
     ) {
         // Top Bar
-        Row(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 24.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                .padding(bottom = 24.dp)
         ) {
-            MainTopIconButton(
-                label = stringResource(R.string.stats),
-                icon = {
-                    Icon(
-                        imageVector = Icons.Rounded.BarChart,
-                        contentDescription = null,
-                        tint = theme.primaryColor,
-                        modifier = Modifier.size(24.dp)
-                    )
-                },
-                onClick = { }
-            )
+            // Title Section (Centered)
+            Column(
+                modifier = Modifier.align(Alignment.TopCenter),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "2048",
+                    fontSize = 56.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontFamily = lilitaOneFontFamily,
+                    fontStyle = FontStyle.Italic,
+                    color = Color.Transparent,
+                    style = LocalTextStyle.current.copy(
+                        brush = Brush.horizontalGradient(
+                            listOf(theme.primaryColor, theme.secondaryColor)
+                        )
+                    ),
+                    letterSpacing = 4.sp
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "N E O N   R U S H",
+                    color = theme.primaryColor,
+                    fontSize = 16.sp,
+                    letterSpacing = 4.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontStyle = FontStyle.Italic
+                )
+            }
 
-            MainTopIconButton(
-                label = stringResource(R.string.theme),
-                icon = {
-                    Icon(
-                        imageVector = Icons.Rounded.Palette,
-                        contentDescription = null,
-                        tint = theme.primaryColor,
-                        modifier = Modifier.size(24.dp)
-                    )
-                },
-                onClick = { navController.navigate("themeSettings") }
-            )
+            // Profile Button (Top Right)
+            Box(
+                modifier = Modifier.align(Alignment.TopEnd)
+            ) {
+                MainTopIconButton(
+                    label = "PROFILE",
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Rounded.AccountCircle,
+                            contentDescription = null,
+                            tint = theme.primaryColor,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    },
+                    onClick = { navController.navigate("profile") }
+                )
+            }
         }
-
-        // Title Section
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = stringResource(R.string.number),
-                color = theme.textColor,
-                fontSize = 38.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 2.sp
-            )
-            Text(
-                text = stringResource(R.string.shift),
-                fontSize = 52.sp,
-                fontWeight = FontWeight.ExtraBold,
-                fontFamily = lilitaOneFontFamily,
-                fontStyle = FontStyle.Italic,
-                color = Color.Transparent,
-                style = LocalTextStyle.current.copy(
-                    brush = Brush.horizontalGradient(
-                        listOf(theme.primaryColor, theme.secondaryColor)
-                    )
-                ),
-                letterSpacing = 4.sp
-            )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = stringResource(R.string.merge_match_master),
-                color = textSecondary,
-                fontSize = 12.sp,
-                letterSpacing = 2.sp,
-                fontWeight = FontWeight.Medium
-            )
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
 
         // Actions / Game Content
         actions()

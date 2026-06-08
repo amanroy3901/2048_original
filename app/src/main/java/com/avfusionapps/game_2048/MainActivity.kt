@@ -40,6 +40,7 @@ import com.avfusionapps.game_2048.ui.screens.MainScreen
 import com.avfusionapps.game_2048.ui.screens.SplashScreen
 import com.avfusionapps.game_2048.ui.screens.ThemeSettingsScreen
 import com.avfusionapps.game_2048.ui.screens.TimeAttackScreen
+import com.avfusionapps.game_2048.ui.screens.ProfileScreen
 import com.avfusionapps.game_2048.ui.theme.GameTheme
 import com.avfusionapps.game_2048.ui.theme._2048OriginalTheme
 import com.avfusionapps.game_2048.viewmodel.GameViewModel
@@ -209,6 +210,11 @@ class MainActivity : ComponentActivity() {
                             val parentEntry = remember(backStackEntry) { navController.getBackStackEntry("root") }
                             val vm: GameViewModel = viewModel(parentEntry)
                             MainScreen(navController = navController, viewModel = vm)
+                        }
+                        composable("profile") { backStackEntry ->
+                            val parentEntry = remember(backStackEntry) { navController.getBackStackEntry("root") }
+                            val vm: GameViewModel = viewModel(parentEntry)
+                            ProfileScreen(navController = navController, gameViewModel = vm)
                         }
                         composable("themeSettings") {
                             ThemeSettingsScreen(navController = navController)
