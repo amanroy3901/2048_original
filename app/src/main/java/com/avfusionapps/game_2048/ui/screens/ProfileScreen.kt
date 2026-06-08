@@ -13,7 +13,9 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.rounded.ColorLens
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.EmojiEvents
+import com.avfusionapps.game_2048.ui.components.NameEditDialog
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Palette
@@ -60,6 +62,7 @@ fun ProfileScreen(
     
     val firebaseAuth = remember { Firebase.auth }
     var currentUser by remember { mutableStateOf(firebaseAuth.currentUser) }
+    var showNameDialog by remember { mutableStateOf(false) }
 
     val playerName = if (gameViewModel.gameState.playerName != GameSettingsRepository.DEFAULT_PLAYER_NAME) {
         gameViewModel.gameState.playerName
@@ -170,12 +173,23 @@ fun ProfileScreen(
                         }
                         Spacer(modifier = Modifier.width(16.dp))
                         Column {
-                            Text(
-                                text = playerName,
-                                color = theme.textColor,
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = playerName,
+                                    color = theme.textColor,
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Icon(
+                                    imageVector = Icons.Rounded.Edit,
+                                    contentDescription = "Edit Name",
+                                    tint = theme.primaryColor,
+                                    modifier = Modifier
+                                        .size(16.dp)
+                                        .clickable { showNameDialog = true }
+                                )
+                            }
                             Text(
                                 text = "Neon Master",
                                 color = theme.textColor.copy(alpha = 0.6f),
@@ -406,6 +420,16 @@ fun ProfileScreen(
             
             Spacer(modifier = Modifier.height(24.dp))
         }
+    }
+
+    if (showNameDialog) {
+        NameEditDialog(
+            currentName = playerName,
+            onNameChange = { newName ->
+                gameViewModel.updatePlayerName(newName)
+            },
+            onDismiss = { showNameDialog = false }
+        )
     }
 }
 

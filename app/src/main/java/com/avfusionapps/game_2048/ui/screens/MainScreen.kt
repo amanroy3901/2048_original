@@ -72,12 +72,8 @@ fun DarkModePreview() {
                 navController = previewNavController,
                 playerName = "Preview Player",
                 highScore = 2048,
-                currentLevel = 3,
-                unlockedLevels = setOf(1, 2, 3),
-                onEditNameClick = {},
-                showNameDialog = false,
-                onDismissDialog = {},
-                onNameChange = {},
+                currentLevel = 1,
+                unlockedLevels = setOf(1),
                 actions = {}
             )
         }
@@ -105,11 +101,8 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
     val currentLevel by viewModel.currentLevel.collectAsState()
     val unlockedLevels by viewModel.unlockedLevels.collectAsState()
 
-    var showNameDialog by remember { mutableStateOf(false) }
     var showGridSizeDialogMain by remember { mutableStateOf(false) }
-    var initialNameCheckDone by remember { mutableStateOf(false) }
     val resumePrompt by viewModel.resumePrompt.collectAsState()
-    val shouldShowNameEditDialog by viewModel.shouldShowNameEditDialog.collectAsState()
 
     LaunchedEffect(resumePrompt) {
         if (resumePrompt) {
@@ -117,21 +110,8 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
         }
     }
 
-    LaunchedEffect(shouldShowNameEditDialog) {
-        if (shouldShowNameEditDialog) {
-            showNameDialog = true
-            viewModel.resetNameEditDialogState()
-        }
-    }
-
     LaunchedEffect(persistentPlayerName) {
         viewModel.enableNotification()
-        if (!initialNameCheckDone && persistentPlayerName == GameSettingsRepository.DEFAULT_PLAYER_NAME) {
-            showNameDialog = true
-            initialNameCheckDone = true
-        } else if (persistentPlayerName != GameSettingsRepository.DEFAULT_PLAYER_NAME) {
-            initialNameCheckDone = true
-        }
     }
 
     if (showGridSizeDialogMain) {
@@ -154,15 +134,6 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
         highScore = persistentHighScore,
         currentLevel = currentLevel,
         unlockedLevels = unlockedLevels,
-        onEditNameClick = { showNameDialog = true },
-        showNameDialog = showNameDialog,
-        onDismissDialog = { showNameDialog = false },
-        onNameChange = { newName ->
-            viewModel.updatePlayerName(newName)
-            if (newName.isNotBlank() && newName != GameSettingsRepository.DEFAULT_PLAYER_NAME) {
-                initialNameCheckDone = true
-            }
-        },
         actions = {
             val theme = LocalGameTheme.current
             val textSecondary = theme.textColor.copy(alpha = 0.6f)
@@ -239,10 +210,6 @@ fun MainScreenContent(
     highScore: Int,
     currentLevel: Int,
     unlockedLevels: Set<Int>,
-    onEditNameClick: () -> Unit,
-    showNameDialog: Boolean,
-    onDismissDialog: () -> Unit,
-    onNameChange: (String) -> Unit,
     actions: @Composable () -> Unit
 ) {
     val theme = LocalGameTheme.current
@@ -271,7 +238,7 @@ fun MainScreenContent(
             ) {
                 Text(
                     text = "2048",
-                    fontSize = 56.sp,
+                    fontSize = 62.sp,
                     fontWeight = FontWeight.ExtraBold,
                     fontFamily = lilitaOneFontFamily,
                     fontStyle = FontStyle.Italic,
@@ -317,14 +284,6 @@ fun MainScreenContent(
         actions()
 
         Spacer(modifier = Modifier.weight(1f))
-    }
-
-    if (showNameDialog) {
-        NameEditDialog(
-            currentName = playerName,
-            onNameChange = onNameChange,
-            onDismiss = onDismissDialog
-        )
     }
 }
 
@@ -416,107 +375,6 @@ fun CylinderActionButton(
     }
 }
 
-@Composable
-fun NameEditDialog(
-    currentName: String,
-    onNameChange: (String) -> Unit,
-    onDismiss: () -> Unit
-) {
-    val theme = LocalGameTheme.current
-    var nameInput by remember(currentName) { mutableStateOf(currentName) }
-    // Derived state for error checking - if name exceeds 15 chars, it's an error
-    val isError = nameInput.length > 15
-    val cancelEditDescription = stringResource(R.string.cancel_edit_name)
-
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            shape = RoundedCornerShape(16.dp),
-            color = theme.surfaceColor.copy(alpha = 0.95f),
-            shadowElevation = 8.dp
-        ) {
-            Column(
-                modifier = Modifier.padding(20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Text(
-                    text = stringResource(R.string.edit_player_name),
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = theme.textColor
-                )
-
-                OutlinedTextField(
-                    value = nameInput,
-                    onValueChange = {
-                        if (it.length <= 25) {
-                            nameInput = it
-                        }
-                    },
-                    label = { Text(stringResource(R.string.enter_name)) },
-                    singleLine = true,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("MainScreen_TextField_NameInput"),
-                    shape = RoundedCornerShape(8.dp),
-                    isError = isError,
-                    supportingText = {
-                        if (isError) {
-                            Text(
-                                text = stringResource(R.string.name_too_long),
-                                color = MaterialTheme.colorScheme.error,
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
-                    },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = theme.textColor,
-                        unfocusedTextColor = theme.textColor.copy(0.8f),
-                        cursorColor = theme.primaryColor,
-                        focusedBorderColor = theme.primaryColor,
-                        unfocusedBorderColor = theme.primaryColor.copy(alpha = 0.6f),
-                        focusedLabelColor = theme.primaryColor,
-                        unfocusedLabelColor = theme.textColor.copy(alpha = 0.7f),
-                        focusedContainerColor = Color.Transparent,
-                        unfocusedContainerColor = Color.Transparent,
-                        errorCursorColor = MaterialTheme.colorScheme.error,
-                        errorBorderColor = MaterialTheme.colorScheme.error,
-                        errorLabelColor = MaterialTheme.colorScheme.error
-                    )
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    TextButton(
-                        modifier = Modifier
-                            .testTag("MainScreen_Button_CancelEditName")
-                            .semantics { contentDescription = cancelEditDescription },
-                        onClick = onDismiss
-                    ) {
-                        Text(stringResource(R.string.cancel), color = theme.textColor.copy(alpha = 0.8f))
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    NeonRoundedButton(
-                        modifier = Modifier.testTag("MainScreen_Button_SaveEditName"),
-                        onClick = {
-                            if (nameInput.isNotBlank() && !isError) {
-                                onNameChange(nameInput.trim())
-                                onDismiss()
-                            }
-                        },
-                        text = stringResource(R.string.save),
-                        enabled = nameInput.isNotBlank() && !isError
-                    )
-                }
-            }
-        }
-    }
-}
 
 val lilitaOneFontFamily = FontFamily(Font(R.font.lilitaone_regular))
 
