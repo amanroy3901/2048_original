@@ -18,7 +18,7 @@ class ThemeRepository(private val context: Context) {
 
     companion object {
         val SELECTED_THEME_KEY = stringPreferencesKey("selected_theme")
-        const val DEFAULT_THEME = "Neon Rush"
+        const val DEFAULT_THEME = "Neon Pink"
     }
 
     val currentTheme: Flow<GameTheme> = context.themeDataStore.data

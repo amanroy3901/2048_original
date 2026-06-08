@@ -72,8 +72,7 @@ import com.avfusionapps.game_2048.ui.NeonCutCornerButton
 import com.avfusionapps.game_2048.ui.NeonRoundedButton
 import com.avfusionapps.game_2048.ui.components.GridSizeBottomSheet
 import com.avfusionapps.game_2048.ui.theme.HighLighter
-import com.avfusionapps.game_2048.ui.theme.Purple80
-import com.avfusionapps.game_2048.ui.theme.PurpleDarkBackground
+import com.avfusionapps.game_2048.ui.theme.LocalGameTheme
 import com.avfusionapps.game_2048.ui.theme._2048OriginalTheme
 import com.avfusionapps.game_2048.ui.components.AnimatedLevelUnlockDialog
 import com.avfusionapps.game_2048.viewmodel.Direction
@@ -93,13 +92,14 @@ import androidx.compose.ui.semantics.semantics
 @Composable
 fun DarkModePreviewGame() {
     rememberNavController()
+    val theme = LocalGameTheme.current
     _2048OriginalTheme {
         Scaffold { padding ->
             Box(
                 modifier = Modifier
                     .padding(padding)
                     .fillMaxSize()
-                    .background(PurpleDarkBackground)
+                    .background(theme.backgroundColor)
             ) {
                 Column(
                     modifier = Modifier
@@ -126,7 +126,7 @@ fun DarkModePreviewGame() {
                         Modifier
                             .aspectRatio(1f)
                             .fillMaxWidth()
-                            .background(Purple80)
+                            .background(theme.primaryColor)
                     ) {
                         Text(
                             "4x4 Grid Preview",
@@ -146,6 +146,7 @@ fun GameScreen(
     viewModel: GameViewModel = viewModel(),
     ) {
 
+    val theme = LocalGameTheme.current
     val gameState = viewModel.gameState
     val persistentHighScore by viewModel.persistentHighScore.collectAsState()
     val persistentPlayerName by viewModel.persistentPlayerName.collectAsState()
@@ -206,7 +207,7 @@ fun GameScreen(
         Dialog(onDismissRequest = { showExitDialog = false }) {
             Surface(
                 shape = RoundedCornerShape(16.dp),
-                color = PurpleDarkBackground.copy(alpha = 0.95f),
+                color = theme.surfaceColor,
                 shadowElevation = 8.dp
             ) {
                 Column(
@@ -247,12 +248,12 @@ fun GameScreen(
             }
         }
     }
-
+    
     Column(
         modifier = Modifier
             .fillMaxSize()
             .testTag("GameScreen_Root")
-            .background(PurpleDarkBackground)
+            .background(theme.backgroundColor)
             .padding(start = 16.dp, end = 16.dp, top = 50.dp)
             .pointerInput(Unit) {
                 var totalX = 0f
@@ -387,13 +388,15 @@ fun GameScreen(
 
 @Composable
 fun GameBoard(viewModel: GameViewModel) {
+    val theme = LocalGameTheme.current
     Box(
         modifier = Modifier
             .aspectRatio(1f)
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(Purple80.copy(alpha = 0.8f))
-            .padding(4.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(theme.surfaceColor)
+            .border(2.dp, theme.primaryColor.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+            .padding(6.dp)
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -440,41 +443,9 @@ fun GameCell(
     isNew: Boolean = false,
     isMerged: Boolean = false
 ) {
-    val backgroundColor = remember(value) {
-        when (value) {
-            0 -> Color(0xFF79002A).copy(0.45f)
-            2 -> Color(0xFF7E002B)
-            4 -> Color(0xFFCC0143)
-            8 -> Color(0xFFE8004E)
-            16 -> Color(0xFFFF0E62)
-            32 -> Color(0xFFFF3378)
-            64 -> Color(0xFFFF5B93)
-            128 -> Color(0xFFFF74A4)
-            256 -> Color(0xFFFF8BAF)
-            512 -> Color(0xFFFF9CBE)
-            1024 -> Color(0xFFFFADC7)
-            2048 -> Color(0xFFE8B7C7)
-            else -> Color(0xFFFFFFFF)
-        }
-    }
-
-    val textColor = remember(value) {
-        when (value) {
-            0 -> Color(0xFFFFFFFF)
-            2 -> Color(0xFFFFDDE5)
-            4 -> Color(0xFFFFC4D9)
-            8 -> Color(0xFFFFC2D5)
-            16 -> Color(0xFFFFA0C2)
-            32 -> Color(0xFFFFD3E3)
-            64 -> Color(0xFFFFD3E3)
-            128 -> Color(0xFFFFD3E3)
-            256 -> Color(0xFFED0053)
-            512 -> Color(0xFFED0053)
-            1024 -> Color(0xFFED0053)
-            2048 -> Color(0xFFED0053)
-            else -> Color(0xFFED0053)
-        }
-    }
+    val theme = LocalGameTheme.current
+    val backgroundColor = theme.tileColors[value] ?: theme.tileColors[0]!!
+    val textColor = if (value <= 4) theme.textColor else Color.White
 
     val textSize = remember(value) {
         when {
@@ -588,13 +559,14 @@ fun GameCell(
 
 @Composable
 fun GameOverDialog(score: Int, onNewGame: () -> Unit, onExit: () -> Unit) {
+    val theme = LocalGameTheme.current
     Dialog(onDismissRequest = {}) {
         Surface(
             modifier = Modifier
                 .testTag("GameScreen_Dialog_GameOver")
                 .padding(horizontal = 16.dp, vertical = 24.dp),
             shape = RoundedCornerShape(16.dp),
-            color = PurpleDarkBackground.copy(alpha = 0.95f),
+            color = theme.surfaceColor,
             shadowElevation = 8.dp
         ) {
             Column(
@@ -635,18 +607,20 @@ fun GameOverDialog(score: Int, onNewGame: () -> Unit, onExit: () -> Unit) {
 fun GameCellPreview() {
     val values = listOf(0, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048)
 
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(4),
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        contentPadding = PaddingValues(16.dp)
-    ) {
-        items(values) { value ->
-            Box(
-                modifier = Modifier.padding(4.dp)
-            ) {
-                GameCell(value, Modifier.size(75.dp))
+    _2048OriginalTheme {
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(4),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            contentPadding = PaddingValues(16.dp)
+        ) {
+            items(values) { value ->
+                Box(
+                    modifier = Modifier.padding(4.dp)
+                ) {
+                    GameCell(value, Modifier.size(75.dp))
+                }
             }
         }
     }

@@ -257,41 +257,9 @@ private fun TimeAttackGameCell(
     value: Int,
     modifier: Modifier = Modifier
 ) {
-    val backgroundColor = remember(value) {
-        when (value) {
-            0 -> Color(0xFF79002A).copy(0.45f)
-            2 -> Color(0xFF7E002B)
-            4 -> Color(0xFFCC0143)
-            8 -> Color(0xFFE8004E)
-            16 -> Color(0xFFFF0E62)
-            32 -> Color(0xFFFF3378)
-            64 -> Color(0xFFFF5B93)
-            128 -> Color(0xFFFF74A4)
-            256 -> Color(0xFFFF8BAF)
-            512 -> Color(0xFFFF9CBE)
-            1024 -> Color(0xFFFFADC7)
-            2048 -> Color(0xFFE8B7C7)
-            else -> Color(0xFFFFFFFF)
-        }
-    }
-
-    val textColor = remember(value) {
-        when (value) {
-            0 -> Color(0xFFFFFFFF)
-            2 -> Color(0xFFFFDDE5)
-            4 -> Color(0xFFFFC4D9)
-            8 -> Color(0xFFFFC2D5)
-            16 -> Color(0xFFFFA0C2)
-            32 -> Color(0xFFFFD3E3)
-            64 -> Color(0xFFFFD3E3)
-            128 -> Color(0xFFFFD3E3)
-            256 -> Color(0xFFED0053)
-            512 -> Color(0xFFED0053)
-            1024 -> Color(0xFFED0053)
-            2048 -> Color(0xFFED0053)
-            else -> Color(0xFFED0053)
-        }
-    }
+    val theme = LocalGameTheme.current
+    val backgroundColor = theme.tileColors[value] ?: theme.tileColors[0]!!
+    val textColor = if (value <= 4) theme.textColor else Color.White
 
     val textSize = remember(value) {
         when {

@@ -20,7 +20,7 @@ private val DarkColorScheme = darkColorScheme(
 
 @Composable
 fun _2048OriginalTheme(
-    theme: GameTheme = GameTheme.NeonRush,
+    theme: GameTheme = GameTheme.NeonPink,
     darkTheme: Boolean = theme.isDark,
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit
@@ -76,4 +76,4 @@ fun _2048OriginalTheme(
 }
 
 // Add a CompositionLocal to provide GameTheme
-val LocalGameTheme = androidx.compose.runtime.staticCompositionLocalOf<GameTheme> { GameTheme.NeonRush }
+val LocalGameTheme = androidx.compose.runtime.staticCompositionLocalOf<GameTheme> { GameTheme.NeonPink }

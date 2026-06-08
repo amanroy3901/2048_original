@@ -2,40 +2,38 @@ package com.avfusionapps.game_2048.ui.screens
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.GridView
+import androidx.compose.material.icons.rounded.RemoveRedEye
+import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.avfusionapps.game_2048.ui.theme.GameTheme
-import com.avfusionapps.game_2048.ui.theme.HighLighter
-import com.avfusionapps.game_2048.ui.theme.PurpleDarkBackground
 import com.avfusionapps.game_2048.viewmodel.ThemeViewModel
 
 @Composable
@@ -44,157 +42,400 @@ fun ThemeSettingsScreen(
     viewModel: ThemeViewModel = viewModel()
 ) {
     val currentTheme by viewModel.currentTheme.collectAsState()
+    var selectedTheme by remember(currentTheme) { mutableStateOf(currentTheme) }
 
-    Box(
+    // Use selectedTheme to style the preview UI
+    val bgColor = selectedTheme.backgroundColor
+    val surfaceColor = selectedTheme.surfaceColor
+    val primaryColor = selectedTheme.primaryColor
+    val secondaryColor = selectedTheme.secondaryColor
+    val textColor = selectedTheme.textColor
+
+    Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(PurpleDarkBackground)
+            .background(bgColor)
+            .padding(horizontal = 16.dp, vertical = 16.dp)
+            .safeDrawingPadding()
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp)
+        // Header
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Header with back button
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(surfaceColor)
+                    .border(1.dp, textColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
+                    .clickable { navController.popBackStack() },
+                contentAlignment = Alignment.Center
             ) {
-                IconButton(onClick = { navController.popBackStack() }) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
-                        tint = Color.White
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                Text(
-                    text = "Choose Theme",
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = Color.White
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                    contentDescription = "Back",
+                    tint = textColor,
+                    modifier = Modifier.size(24.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.weight(1f))
 
-            // Neon Rush Theme Card
-            ThemeCard(
-                theme = GameTheme.NeonRush,
-                isSelected = currentTheme is GameTheme.NeonRush,
-                onClick = { viewModel.setTheme(GameTheme.NeonRush) }
-            )
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = "THEMES",
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontStyle = FontStyle.Italic,
+                    style = LocalTextStyle.current.copy(
+                        brush = Brush.horizontalGradient(
+                            listOf(primaryColor, secondaryColor)
+                        )
+                    ),
+                    letterSpacing = 2.sp
+                )
+                Text(
+                    text = "Choose a theme to style your game",
+                    color = textColor.copy(alpha = 0.7f),
+                    fontSize = 12.sp
+                )
+            }
+
+            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.width(48.dp)) // Balance the back button
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+        ) {
+            // Current Theme Preview Card
+            ThemePreviewCard(theme = selectedTheme, isCurrent = selectedTheme.name == currentTheme.name)
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Divider
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Box(modifier = Modifier.height(1.dp).width(40.dp).background(textColor.copy(alpha = 0.2f)))
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = "CHOOSE YOUR THEME",
+                    color = textColor.copy(alpha = 0.5f),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Box(modifier = Modifier.height(1.dp).width(40.dp).background(textColor.copy(alpha = 0.2f)))
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Classic 2048 Theme Card
-            ThemeCard(
-                theme = GameTheme.Classic2048,
-                isSelected = currentTheme is GameTheme.Classic2048,
-                onClick = { viewModel.setTheme(GameTheme.Classic2048) }
-            )
+            // Grid of themes
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(3),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.heightIn(max = 600.dp), // Provide bounds for nested scrolling
+                userScrollEnabled = false // Let parent scroll handle it
+            ) {
+                items(GameTheme.allThemes()) { themeOpt ->
+                    ThemeGridItem(
+                        theme = themeOpt,
+                        isSelected = themeOpt.name == selectedTheme.name,
+                        onClick = { selectedTheme = themeOpt }
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(24.dp))
+        }
+
+        // Apply Button
+        Button(
+            onClick = {
+                viewModel.setTheme(selectedTheme)
+                navController.popBackStack()
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .shadow(
+                    elevation = if (selectedTheme.isDark) 16.dp else 4.dp,
+                    spotColor = primaryColor.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(16.dp)
+                ),
+            colors = ButtonDefaults.buttonColors(containerColor = primaryColor),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Rounded.Check,
+                    contentDescription = null,
+                    tint = if (selectedTheme.name == "Minimal White") Color.Black else Color.White,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "APPLY THEME",
+                    color = if (selectedTheme.name == "Minimal White") Color.Black else Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    letterSpacing = 1.sp
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun ThemeCard(
+private fun ThemePreviewCard(theme: GameTheme, isCurrent: Boolean) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(theme.surfaceColor)
+            .border(
+                width = 2.dp,
+                brush = Brush.verticalGradient(listOf(theme.primaryColor, theme.secondaryColor)),
+                shape = RoundedCornerShape(20.dp)
+            )
+            .padding(16.dp)
+    ) {
+        if (isCurrent) {
+            Box(
+                modifier = Modifier
+                    .offset(y = (-8).dp, x = (-8).dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(theme.primaryColor)
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "CURRENT",
+                        color = if (theme.name == "Minimal White") Color.Black else Color.White,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(
+                        imageVector = Icons.Rounded.Check,
+                        contentDescription = null,
+                        tint = if (theme.name == "Minimal White") Color.Black else Color.White,
+                        modifier = Modifier.size(12.dp)
+                    )
+                }
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = if (isCurrent) 12.dp else 0.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Preview Grid
+            Box(
+                modifier = Modifier
+                    .weight(1.2f)
+                    .aspectRatio(1f)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(theme.backgroundColor.copy(alpha = 0.5f))
+                    .padding(6.dp)
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    val sampleValues = listOf(
+                        listOf(2, 4, 16, 2),
+                        listOf(8, 16, 32, 8),
+                        listOf(64, 128, 256, 64),
+                        listOf(2, 4, 0, 0)
+                    )
+                    sampleValues.forEach { row ->
+                        Row(
+                            modifier = Modifier.weight(1f).fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            row.forEach { value ->
+                                TilePreview(theme, value, Modifier.weight(1f))
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            // Details
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Column {
+                    Text(
+                        text = theme.name.uppercase(),
+                        color = theme.primaryColor,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        fontStyle = FontStyle.Italic
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = getThemeDescription(theme.name),
+                        color = theme.textColor.copy(alpha = 0.8f),
+                        fontSize = 12.sp,
+                        lineHeight = 16.sp
+                    )
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FeatureRow(Icons.Rounded.GridView, "Bold Colors", theme.primaryColor, theme.textColor)
+                    FeatureRow(Icons.Rounded.Star, "Neon Glow", theme.primaryColor, theme.textColor)
+                    FeatureRow(Icons.Rounded.RemoveRedEye, "Easy on the eyes", theme.primaryColor, theme.textColor)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FeatureRow(icon: androidx.compose.ui.graphics.vector.ImageVector, text: String, tint: Color, textColor: Color) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = tint,
+            modifier = Modifier.size(16.dp)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = text,
+            color = textColor.copy(alpha = 0.9f),
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+@Composable
+private fun ThemeGridItem(
     theme: GameTheme,
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
-    Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) theme.accentColor else theme.surfaceColor
-        ),
-        border = if (isSelected) {
-            BorderStroke(3.dp, HighLighter)
-        } else null,
-        shape = RoundedCornerShape(16.dp)
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.clickable { onClick() }
     ) {
-        Row(
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Theme preview with sample tiles
-            ThemePreview(theme)
-
-            Spacer(modifier = Modifier.width(20.dp))
-
-            Column {
-                Text(
-                    text = theme.name,
-                    style = MaterialTheme.typography.titleLarge,
-                    color = theme.textColor,
-                    fontWeight = FontWeight.Bold
+                .aspectRatio(0.9f)
+                .clip(RoundedCornerShape(12.dp))
+                .background(theme.surfaceColor)
+                .border(
+                    width = if (isSelected) 2.dp else 1.dp,
+                    color = if (isSelected) theme.primaryColor else theme.textColor.copy(alpha = 0.1f),
+                    shape = RoundedCornerShape(12.dp)
                 )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                if (isSelected) {
-                    Text(
-                        text = "Active Theme",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (theme.isDark) HighLighter else theme.accentColor
+                .padding(6.dp)
+        ) {
+            if (isSelected) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .offset(x = 10.dp, y = (-10).dp)
+                        .size(20.dp)
+                        .clip(CircleShape)
+                        .background(theme.primaryColor),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Check,
+                        contentDescription = null,
+                        tint = if (theme.name == "Minimal White") Color.Black else Color.White,
+                        modifier = Modifier.size(12.dp)
                     )
                 }
             }
+
+            Column(
+                modifier = Modifier.fillMaxSize().padding(top = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                val sampleValues = listOf(
+                    listOf(2, 4, 16, 2),
+                    listOf(8, 16, 32, 8),
+                    listOf(64, 128, 256, 64),
+                    listOf(2, 4, 0, 0)
+                )
+                sampleValues.forEach { row ->
+                    Row(
+                        modifier = Modifier.weight(1f).fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        row.forEach { value ->
+                            TilePreview(theme, value, Modifier.weight(1f), 8.sp)
+                        }
+                    }
+                }
+            }
         }
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        Text(
+            text = theme.name.uppercase(),
+            color = if (isSelected) theme.primaryColor else theme.textColor,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
     }
 }
 
 @Composable
-private fun ThemePreview(theme: GameTheme) {
-    Box(
-        modifier = Modifier
-            .size(80.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(theme.surfaceColor)
-            .padding(8.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                TilePreview(theme, 2)
-                TilePreview(theme, 4)
-            }
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                TilePreview(theme, 8)
-                TilePreview(theme, 16)
-            }
-        }
-    }
-}
-
-@Composable
-private fun TilePreview(theme: GameTheme, value: Int) {
+private fun TilePreview(theme: GameTheme, value: Int, modifier: Modifier = Modifier, fontSize: androidx.compose.ui.unit.TextUnit = 14.sp) {
     val color = theme.tileColors[value] ?: theme.tileColors[0]!!
     val textColor = if (value <= 4) theme.textColor else Color.White
 
     Box(
-        modifier = Modifier
-            .size(28.dp)
+        modifier = modifier
+            .fillMaxHeight()
             .clip(RoundedCornerShape(4.dp))
             .background(color),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = value.toString(),
-            style = MaterialTheme.typography.bodySmall,
-            color = textColor,
-            fontWeight = FontWeight.Bold
-        )
+        if (value != 0) {
+            Text(
+                text = value.toString(),
+                color = textColor,
+                fontSize = fontSize,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+private fun getThemeDescription(name: String): String {
+    return when (name) {
+        "Neon Pink" -> "Vibrant, energetic and made to pop!"
+        "Cyber Blue" -> "Sleek, futuristic, and cool to the touch."
+        "Emerald" -> "Crisp, natural, and matrix-inspired."
+        "Sunset" -> "Warm, inviting, and relaxing."
+        "Royal Purple" -> "Luxurious, deep, and majestic."
+        "Minimal White" -> "Clean, bright, and distraction-free."
+        "Amoled Black" -> "Pure black. Perfect for OLED screens."
+        "Ocean Teal" -> "Deep, aquatic, and refreshing."
+        "Golden Hour" -> "Rich, glowing, and elegant."
+        else -> "A beautiful theme for your game."
     }
 }

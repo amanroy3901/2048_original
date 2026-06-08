@@ -154,7 +154,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val themeViewModel: ThemeViewModel = viewModel()
-            val currentTheme by themeViewModel.currentTheme.collectAsState(initial = GameTheme.NeonRush)
+            val currentTheme by themeViewModel.currentTheme.collectAsState(initial = GameTheme.NeonPink)
 
             _2048OriginalTheme(theme = currentTheme) {
                 val navController = rememberNavController()
