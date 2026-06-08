@@ -11,6 +11,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -65,6 +66,11 @@ import com.avfusionapps.game_2048.ui.theme.HighLighter
 import com.avfusionapps.game_2048.ui.theme.Purple80
 import com.avfusionapps.game_2048.ui.theme.PurpleDarkBackground
 import com.avfusionapps.game_2048.viewmodel.Direction
+import com.avfusionapps.game_2048.ui.components.TimeAttackTopBar
+import com.avfusionapps.game_2048.ui.components.TimeAttackScoreBoard
+import com.avfusionapps.game_2048.ui.components.TimeAttackSwipeIndicator
+import com.avfusionapps.game_2048.ui.components.TimeAttackBottomBar
+import com.avfusionapps.game_2048.ui.theme.LocalGameTheme
 import com.avfusionapps.game_2048.viewmodel.TimeAttackViewModel
 import com.avfusionapps.game_2048.model.TimeAttackState
 import kotlin.math.abs
@@ -78,6 +84,8 @@ fun TimeAttackScreen(
     val highScore by viewModel.highScore.collectAsState(initial = 0)
     val context = LocalContext.current
 
+    val theme = LocalGameTheme.current
+
     LaunchedEffect(true) {
         // No-op for now
     }
@@ -85,14 +93,7 @@ fun TimeAttackScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        PurpleDarkBackground,
-                        PurpleDarkBackground.copy(alpha = 0.8f)
-                    )
-                )
-            )
+            .background(theme.backgroundColor)
             .padding(start = 16.dp, end = 16.dp, top = 50.dp)
             .pointerInput(Unit) {
                 var totalX = 0f
@@ -123,14 +124,16 @@ fun TimeAttackScreen(
         verticalArrangement = Arrangement.Top
     ) {
         // Header
-        TimeAttackHeader(
+        TimeAttackTopBar(
             timeRemainingMillis = gameState.timeRemainingMillis,
-            score = gameState.score,
-            highScore = highScore,
-            multiplier = gameState.multiplier,
             isPaused = gameState.isPaused,
             onPauseToggle = { viewModel.togglePause() },
             onBack = { navController.popBackStack() }
+        )
+
+        TimeAttackScoreBoard(
+            score = gameState.score,
+            highScore = highScore
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -150,6 +153,18 @@ fun TimeAttackScreen(
 
         // Game grid
         TimeAttackGameBoard(gameState.grid)
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        TimeAttackSwipeIndicator()
+
+        TimeAttackBottomBar(
+            onUndoClick = { /* TODO: Implement Undo in ViewModel if needed */ },
+            onNewGameClick = { viewModel.startNewGame() },
+            onHintClick = { /* TODO: Implement Hint in ViewModel if needed */ }
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
     }
 
     // Pause overlay
@@ -168,93 +183,6 @@ fun TimeAttackScreen(
             timeSurvived = 60_000L - gameState.timeRemainingMillis,
             onPlayAgain = { viewModel.startNewGame() },
             onBackToMenu = { navController.popBackStack() }
-        )
-    }
-}
-
-@Composable
-private fun TimeAttackHeader(
-    timeRemainingMillis: Long,
-    score: Int,
-    highScore: Int,
-    multiplier: Float,
-    isPaused: Boolean,
-    onPauseToggle: () -> Unit,
-    onBack: () -> Unit
-) {
-    val minutes = (timeRemainingMillis / 60000).toInt()
-    val seconds = ((timeRemainingMillis % 60000) / 1000).toInt()
-    val millis = ((timeRemainingMillis % 1000) / 10).toInt()
-
-    // Animate timer color based on urgency
-    val timerColor by animateColorAsState(
-        targetValue = when {
-            timeRemainingMillis < 10_000L -> Color.Red
-            timeRemainingMillis < 30_000L -> Color.Yellow
-            else -> Color.Green
-        },
-        label = "timerColor"
-    )
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Back button
-        IconButton(onClick = onBack) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Back",
-                tint = Color.White
-            )
-        }
-
-        // Timer display
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = String.format("%02d:%02d.%02d", minutes, seconds, millis),
-                style = MaterialTheme.typography.headlineMedium,
-                color = timerColor,
-                fontWeight = FontWeight.Bold
-            )
-
-            if (multiplier > 1.0f) {
-                Text(
-                    text = "${String.format("%.1f", multiplier)}x Multiplier!",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.Yellow
-                )
-            }
-        }
-
-        // Pause button
-        IconButton(onClick = onPauseToggle) {
-            Icon(
-                imageVector = if (isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
-                contentDescription = if (isPaused) "Resume" else "Pause",
-                tint = Color.White
-            )
-        }
-    }
-
-    // Score display
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceAround
-    ) {
-        Text(
-            text = "Score: $score",
-            style = MaterialTheme.typography.titleLarge,
-            color = Color.White,
-            fontWeight = FontWeight.Bold
-        )
-        Text(
-            text = "High: $highScore",
-            style = MaterialTheme.typography.titleLarge,
-            color = Color.White.copy(alpha = 0.7f)
         )
     }
 }
@@ -291,13 +219,15 @@ private fun BonusNotification(bonus: com.avfusionapps.game_2048.model.BonusType)
 
 @Composable
 private fun TimeAttackGameBoard(grid: List<List<Int>>) {
+    val theme = LocalGameTheme.current
     Box(
         modifier = Modifier
             .aspectRatio(1f)
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(Purple80.copy(alpha = 0.8f))
-            .padding(4.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(theme.surfaceColor)
+            .border(2.dp, theme.primaryColor.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+            .padding(6.dp)
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
