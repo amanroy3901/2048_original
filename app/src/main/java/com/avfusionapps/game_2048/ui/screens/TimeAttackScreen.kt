@@ -67,8 +67,8 @@ import com.avfusionapps.game_2048.ui.theme.Purple80
 import com.avfusionapps.game_2048.ui.theme.PurpleDarkBackground
 import com.avfusionapps.game_2048.viewmodel.Direction
 import com.avfusionapps.game_2048.ui.components.TimeAttackTopBar
-import com.avfusionapps.game_2048.ui.components.TimeAttackScoreBoard
-import com.avfusionapps.game_2048.ui.components.TimeAttackSwipeIndicator
+import com.avfusionapps.game_2048.ui.components.GameScoreBoard
+import com.avfusionapps.game_2048.ui.components.GameSwipeIndicator
 import com.avfusionapps.game_2048.ui.components.TimeAttackBottomBar
 import com.avfusionapps.game_2048.ui.theme.LocalGameTheme
 import com.avfusionapps.game_2048.viewmodel.TimeAttackViewModel
@@ -131,7 +131,7 @@ fun TimeAttackScreen(
             onBack = { navController.popBackStack() }
         )
 
-        TimeAttackScoreBoard(
+        GameScoreBoard(
             score = gameState.score,
             highScore = highScore
         )
@@ -156,7 +156,7 @@ fun TimeAttackScreen(
 
         Spacer(modifier = Modifier.weight(1f))
 
-        TimeAttackSwipeIndicator()
+        GameSwipeIndicator()
 
         TimeAttackBottomBar(
             onUndoClick = { /* TODO: Implement Undo in ViewModel if needed */ },

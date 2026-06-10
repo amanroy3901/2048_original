@@ -51,6 +51,7 @@ import com.avfusionapps.game_2048.ui.components.GameModeCard
 import com.avfusionapps.game_2048.ui.components.GoogleSignInCard
 import com.avfusionapps.game_2048.ui.components.GridSizeBottomSheet
 import com.avfusionapps.game_2048.ui.components.LastGameCard
+import com.avfusionapps.game_2048.ui.components.StartJourneyCard
 import com.avfusionapps.game_2048.ui.theme.LocalGameTheme
 import com.avfusionapps.game_2048.ui.theme.HighLighter
 import com.avfusionapps.game_2048.ui.theme.PurpleDarkBackground
@@ -153,6 +154,12 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
                         onResumeClick = {
                             viewModel.resumeSavedGame()
                             navController.navigate("game?resume=true&newGame=false")
+                        }
+                    )
+                } else {
+                    StartJourneyCard(
+                        onNewGameClick = {
+                            showGridSizeDialogMain = true
                         }
                     )
                 }

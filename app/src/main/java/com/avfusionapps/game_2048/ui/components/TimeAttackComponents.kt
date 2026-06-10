@@ -24,6 +24,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -122,11 +123,18 @@ fun TimeAttackTopBar(
 }
 
 @Composable
-fun TimeAttackScoreBoard(
+fun GameScoreBoard(
     score: Int,
-    highScore: Int
+    highScore: Int,
+    scoreIcon: ImageVector = Icons.Rounded.Star,
+    scoreTint: Color? = null,
+    highScoreIcon: ImageVector = Icons.Rounded.EmojiEvents,
+    highScoreTint: Color? = null
 ) {
     val theme = LocalGameTheme.current
+    val actualScoreTint = scoreTint ?: theme.primaryColor
+    val actualHighScoreTint = highScoreTint ?: theme.secondaryColor
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -138,8 +146,26 @@ fun TimeAttackScoreBoard(
             modifier = Modifier
                 .weight(1f)
                 .clip(RoundedCornerShape(12.dp))
-                .background(theme.surfaceColor)
-                .border(1.dp, theme.textColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
+                .background(
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            actualScoreTint.copy(alpha = 0.15f),
+                            theme.surfaceColor,
+                            actualScoreTint.copy(alpha = 0.05f)
+                        )
+                    )
+                )
+                .border(
+                    width = 1.dp,
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            actualScoreTint.copy(alpha = 0.8f),
+                            theme.textColor.copy(alpha = 0.1f),
+                            actualScoreTint.copy(alpha = 0.3f)
+                        )
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                )
                 .padding(horizontal = 12.dp, vertical = 12.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -147,13 +173,13 @@ fun TimeAttackScoreBoard(
                     modifier = Modifier
                         .size(36.dp)
                         .clip(CircleShape)
-                        .background(theme.primaryColor.copy(alpha = 0.2f)),
+                        .background(actualScoreTint.copy(alpha = 0.2f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.Star,
+                        imageVector = scoreIcon,
                         contentDescription = null,
-                        tint = theme.primaryColor,
+                        tint = actualScoreTint,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -180,8 +206,26 @@ fun TimeAttackScoreBoard(
             modifier = Modifier
                 .weight(1f)
                 .clip(RoundedCornerShape(12.dp))
-                .background(theme.surfaceColor)
-                .border(1.dp, theme.textColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
+                .background(
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            actualHighScoreTint.copy(alpha = 0.15f),
+                            theme.surfaceColor,
+                            actualHighScoreTint.copy(alpha = 0.05f)
+                        )
+                    )
+                )
+                .border(
+                    width = 1.dp,
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            actualHighScoreTint.copy(alpha = 0.8f),
+                            theme.textColor.copy(alpha = 0.1f),
+                            actualHighScoreTint.copy(alpha = 0.3f)
+                        )
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                )
                 .padding(horizontal = 12.dp, vertical = 12.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -189,13 +233,13 @@ fun TimeAttackScoreBoard(
                     modifier = Modifier
                         .size(36.dp)
                         .clip(CircleShape)
-                        .background(theme.secondaryColor.copy(alpha = 0.2f)),
+                        .background(actualHighScoreTint.copy(alpha = 0.2f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.EmojiEvents,
+                        imageVector = highScoreIcon,
                         contentDescription = null,
-                        tint = theme.secondaryColor,
+                        tint = actualHighScoreTint,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -220,7 +264,7 @@ fun TimeAttackScoreBoard(
 }
 
 @Composable
-fun TimeAttackSwipeIndicator() {
+fun GameSwipeIndicator() {
     val theme = LocalGameTheme.current
     Row(
         modifier = Modifier

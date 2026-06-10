@@ -27,6 +27,9 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.EmojiEvents
+import androidx.compose.material.icons.rounded.WorkspacePremium
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -70,6 +73,10 @@ import androidx.navigation.compose.rememberNavController
 import com.avfusionapps.game_2048.R
 import com.avfusionapps.game_2048.ui.NeonCutCornerButton
 import com.avfusionapps.game_2048.ui.NeonRoundedButton
+import com.avfusionapps.game_2048.ui.components.ClassicTopBar
+import com.avfusionapps.game_2048.ui.components.ClassicBottomBar
+import com.avfusionapps.game_2048.ui.components.GameScoreBoard
+import com.avfusionapps.game_2048.ui.components.GameSwipeIndicator
 import com.avfusionapps.game_2048.ui.components.GridSizeBottomSheet
 import com.avfusionapps.game_2048.ui.theme.HighLighter
 import com.avfusionapps.game_2048.ui.theme.LocalGameTheme
@@ -283,70 +290,39 @@ fun GameScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Top
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(horizontalAlignment = Alignment.Start) {
-                Text(
-                    text = persistentPlayerName,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Level: ${gameState.currentLevel}",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color(0xFFFFD700), // Gold color for level
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Score: ${gameState.score}",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color.White
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "High Score: $persistentHighScore",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color.White
-                )
+        ClassicTopBar(
+            currentLevel = gameState.currentLevel,
+            onSettingsClick = { showExitDialog = true },
+            onBack = {
+                if (hasProgress) {
+                    showExitDialog = true
+                } else {
+                    navController.navigateUp()
+                }
             }
-            NeonRoundedButton(
-                modifier = Modifier.testTag("GameScreen_Button_NewGame"),
-                onClick = { showGridSizeDialog = true },
-                text = "New Game"
-            )
-        }
-        Spacer(modifier = Modifier.height(24.dp))
+        )
+
+        GameScoreBoard(
+            score = gameState.score,
+            highScore = persistentHighScore,
+            scoreIcon = Icons.Rounded.EmojiEvents, // Trophy
+            highScoreIcon = Icons.Rounded.WorkspacePremium, // Ribbon/Crown
+            highScoreTint = Color(0xFFFFD700) // Gold color for Best Score
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         GameBoard(viewModel = viewModel)
-        Spacer(modifier = Modifier.height(24.dp))
 
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            NeonRoundedButton(
-                modifier = Modifier.testTag("GameScreen_Button_Undo"),
-                onClick = { viewModel.undoMove(context) },
-                enabled = canUndo,
-                icon = R.drawable.ic_undo,
-                contentDescription = "Undo Button"
-            )
-            NeonRoundedButton(
-                modifier = Modifier.testTag("GameScreen_Button_CloseGame"),
-                onClick = {
-                    if (hasProgress) {
-                    showExitDialog = true
-                    } else {
-                    navController.navigateUp()
-                    }
-                          },
-                icon = R.drawable.ic_close,
-                contentDescription = "Close Button"
-            )
-        }
+        Spacer(modifier = Modifier.weight(1f))
+
+        GameSwipeIndicator()
+
+        ClassicBottomBar(
+            onUndoClick = { viewModel.undoMove(context) },
+            onRestartClick = { showGridSizeDialog = true },
+            onHintClick = { /* TODO: Implement hint logic */ }
+        )
     }
 
     if (showGridSizeDialog) {
