@@ -48,6 +48,12 @@ import com.avfusionapps.game_2048.ui.components.SettingsCard
 import com.avfusionapps.game_2048.ui.components.SupportItem
 import com.avfusionapps.game_2048.ui.theme.GameTheme
 import com.avfusionapps.game_2048.ui.theme.LocalGameTheme
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 import com.avfusionapps.game_2048.viewmodel.GameViewModel
 import com.avfusionapps.game_2048.viewmodel.ThemeViewModel
 import com.google.firebase.Firebase
@@ -67,6 +73,24 @@ fun ProfileScreen(
     val firebaseAuth = remember { Firebase.auth }
     var currentUser by remember { mutableStateOf(firebaseAuth.currentUser) }
     var showNameDialog by remember { mutableStateOf(false) }
+
+    val context = LocalContext.current
+    val soundEnabled by gameViewModel.soundEnabled.collectAsState()
+    val vibrationEnabled by gameViewModel.vibrationEnabled.collectAsState()
+
+    val packageInfo = remember {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                context.packageManager.getPackageInfo(context.packageName, android.content.pm.PackageManager.PackageInfoFlags.of(0))
+            } else {
+                @Suppress("DEPRECATION")
+                context.packageManager.getPackageInfo(context.packageName, 0)
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+    val versionName = packageInfo?.versionName ?: "1.0.0"
 
     val playerName = if (gameViewModel.gameState.playerName != GameSettingsRepository.DEFAULT_PLAYER_NAME) {
         gameViewModel.gameState.playerName
@@ -330,8 +354,8 @@ fun ProfileScreen(
                             }
                         }
                         Switch(
-                            checked = true, 
-                            onCheckedChange = { },
+                            checked = soundEnabled, 
+                            onCheckedChange = { gameViewModel.updateSoundEnabled(it) },
                             colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = theme.primaryColor)
                         )
                     }
@@ -350,8 +374,8 @@ fun ProfileScreen(
                             }
                         }
                         Switch(
-                            checked = true, 
-                            onCheckedChange = { },
+                            checked = vibrationEnabled, 
+                            onCheckedChange = { gameViewModel.updateVibrationEnabled(it) },
                             colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = theme.primaryColor)
                         )
                     }
@@ -365,11 +389,54 @@ fun ProfileScreen(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    SupportItem(icon = Icons.Rounded.Star, label = "Rate App", sub = "Show your support")
+                    SupportItem(
+                        icon = Icons.Rounded.Star, 
+                        label = "Rate App", 
+                        sub = "Show your support",
+                        onClick = {
+                            val packageName = context.packageName
+                            val intent = Intent(Intent.ACTION_VIEW).apply {
+                                data = Uri.parse("market://details?id=$packageName")
+                                setPackage("com.android.vending")
+                            }
+                            try {
+                                context.startActivity(intent)
+                            } catch (e: Exception) {
+                                val webIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=$packageName"))
+                                context.startActivity(webIntent)
+                            }
+                        }
+                    )
                     Box(modifier = Modifier.width(1.dp).height(40.dp).background(theme.textColor.copy(alpha = 0.1f)))
-                    SupportItem(icon = Icons.Rounded.Share, label = "Share App", sub = "Tell your friends")
+                    SupportItem(
+                        icon = Icons.Rounded.Share, 
+                        label = "Share App", 
+                        sub = "Tell your friends",
+                        onClick = {
+                            val packageName = context.packageName
+                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_SUBJECT, "2048 Neon Rush")
+                                putExtra(Intent.EXTRA_TEXT, "Hey, check out this awesome, glowing 2048 game: https://play.google.com/store/apps/details?id=$packageName")
+                            }
+                            context.startActivity(Intent.createChooser(shareIntent, "Share via"))
+                        }
+                    )
                     Box(modifier = Modifier.width(1.dp).height(40.dp).background(theme.textColor.copy(alpha = 0.1f)))
-                    SupportItem(icon = Icons.Rounded.PrivacyTip, label = "Privacy Policy", sub = "Read our policy")
+                    SupportItem(
+                        icon = Icons.Rounded.PrivacyTip, 
+                        label = "Privacy Policy", 
+                        sub = "Read our policy",
+                        onClick = {
+                            val privacyUrl = "https://github.com/saynedesign/2048-neon-rush/blob/main/PRIVACY_POLICY.md"
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(privacyUrl))
+                            try {
+                                context.startActivity(intent)
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "Unable to open link", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    )
                 }
             }
 
@@ -404,9 +471,9 @@ fun ProfileScreen(
                     Spacer(modifier = Modifier.width(16.dp))
                     Column {
                         Text("2048 Neon Rush", color = theme.textColor, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                        Text("Version 2.0.0", color = theme.textColor.copy(alpha = 0.5f), fontSize = 12.sp)
+                        Text("Version $versionName", color = theme.textColor.copy(alpha = 0.5f), fontSize = 12.sp)
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text("Made with ❤️ in India", color = theme.textColor.copy(alpha = 0.8f), fontSize = 12.sp)
+                        Text("Made with ❤️ by Sayne Design", color = theme.textColor.copy(alpha = 0.8f), fontSize = 12.sp)
                     }
                 }
             }

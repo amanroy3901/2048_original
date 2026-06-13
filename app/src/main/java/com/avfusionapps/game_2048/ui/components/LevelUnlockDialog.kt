@@ -51,6 +51,7 @@ import androidx.compose.ui.res.painterResource
 @Composable
 fun LevelUnlockDialog(
     unlockedTileValue: Int,
+    soundEnabled: Boolean = true,
     onDismiss: () -> Unit
 ) {
     val scale = remember { Animatable(0.8f) }
@@ -60,14 +61,16 @@ fun LevelUnlockDialog(
     val assetFileName = "next_level_sound.mp3"
 
     LaunchedEffect(Unit) {
-        try {
-            val afd = context.assets.openFd(assetFileName)
-            mediaPlayer.reset()
-            mediaPlayer.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
-            mediaPlayer.prepare()
-            mediaPlayer.start()
-        } catch (e: Exception) {
-            // handle error if needed
+        if (soundEnabled) {
+            try {
+                val afd = context.assets.openFd(assetFileName)
+                mediaPlayer.reset()
+                mediaPlayer.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
+                mediaPlayer.prepare()
+                mediaPlayer.start()
+            } catch (e: Exception) {
+                // handle error if needed
+            }
         }
         alpha.animateTo(
             targetValue = 1f,
@@ -199,6 +202,7 @@ private fun getTileTargetForLevel(level: Int): String {
 @Composable
 fun AnimatedLevelUnlockDialog(
     unlockedTileValue: Int?,
+    soundEnabled: Boolean = true,
     onDismiss: () -> Unit
 ) {
     AnimatedVisibility(
@@ -209,6 +213,7 @@ fun AnimatedLevelUnlockDialog(
         if (unlockedTileValue != null) {
             LevelUnlockDialog(
                 unlockedTileValue = unlockedTileValue,
+                soundEnabled = soundEnabled,
                 onDismiss = onDismiss
             )
         }

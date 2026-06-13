@@ -64,9 +64,9 @@ fun SettingsCard(onClick: (() -> Unit)?, content: @Composable () -> Unit) {
 }
 
 @Composable
-fun SupportItem(icon: ImageVector, label: String, sub: String) {
+fun SupportItem(icon: ImageVector, label: String, sub: String, onClick: () -> Unit) {
     val theme = LocalGameTheme.current
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { }) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable(onClick = onClick)) {
         Icon(icon, contentDescription = null, tint = theme.primaryColor, modifier = Modifier.size(24.dp))
         Spacer(modifier = Modifier.height(8.dp))
         Text(label, color = theme.textColor, fontWeight = FontWeight.Bold, fontSize = 12.sp)

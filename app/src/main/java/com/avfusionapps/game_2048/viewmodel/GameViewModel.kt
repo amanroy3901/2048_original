@@ -221,6 +221,24 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         .map { it.unlockedLevels }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), setOf(1))
 
+    val soundEnabled: StateFlow<Boolean> = settingsRepository.soundEnabledFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    val vibrationEnabled: StateFlow<Boolean> = settingsRepository.vibrationEnabledFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    fun updateSoundEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.updateSoundEnabled(enabled)
+        }
+    }
+
+    fun updateVibrationEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.updateVibrationEnabled(enabled)
+        }
+    }
+
     /**
      * Calculates the current level based on the highest tile value in the grid.
      * Level progression: 2048 -> Level 2, 4096 -> Level 4, 8192 -> Level 8, etc.

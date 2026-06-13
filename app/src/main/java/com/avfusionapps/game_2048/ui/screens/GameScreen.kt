@@ -105,36 +105,40 @@ fun GameScreen(
     val persistentHighScore by viewModel.persistentHighScore.collectAsState()
     val persistentPlayerName by viewModel.persistentPlayerName.collectAsState()
     val newlyUnlockedTileValue by viewModel.newlyUnlockedTileValue.collectAsState()
+    val soundEnabled by viewModel.soundEnabled.collectAsState()
+    val vibrationEnabled by viewModel.vibrationEnabled.collectAsState()
 
     var showGridSizeDialog by remember { mutableStateOf(false) }
     val canUndo by viewModel.canUndo.collectAsState()
     val context = LocalContext.current
     var showExitDialog by remember { mutableStateOf(false) }
 
-    LaunchedEffect(key1 = viewModel) {
+    LaunchedEffect(key1 = viewModel, key2 = vibrationEnabled) {
         viewModel.mergeEvent.collectLatest {
-            println("Merge event received. Attempting direct vibration.")
+            if (vibrationEnabled) {
+                println("Merge event received. Attempting direct vibration.")
 
-            val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
-            if (vibrator?.hasVibrator() == true) { // Check if vibrator exists
-                try {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        val vibrationEffect = VibrationEffect.createOneShot(
-                            50,
-                            VibrationEffect.DEFAULT_AMPLITUDE
-                        )
-                        vibrator.vibrate(vibrationEffect)
-                        println("Direct vibration (Oreo+) attempted.")
-                    } else {
-                        @Suppress("DEPRECATION")
-                        vibrator.vibrate(50) // 50ms vibration
-                        println("Direct vibration (Legacy) attempted.")
+                val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+                if (vibrator?.hasVibrator() == true) { // Check if vibrator exists
+                    try {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            val vibrationEffect = VibrationEffect.createOneShot(
+                                50,
+                                VibrationEffect.DEFAULT_AMPLITUDE
+                            )
+                            vibrator.vibrate(vibrationEffect)
+                            println("Direct vibration (Oreo+) attempted.")
+                        } else {
+                            @Suppress("DEPRECATION")
+                            vibrator.vibrate(50) // 50ms vibration
+                            println("Direct vibration (Legacy) attempted.")
+                        }
+                    } catch (e: Exception) {
+                        println("Error during direct vibration: ${e.message}")
                     }
-                } catch (e: Exception) {
-                    println("Error during direct vibration: ${e.message}")
+                } else {
+                    println("Device does not have a vibrator or service not found.")
                 }
-            } else {
-                println("Device does not have a vibrator or service not found.")
             }
         }
     }
@@ -277,6 +281,7 @@ fun GameScreen(
     newlyUnlockedTileValue?.let { unlockedTileValue ->
         AnimatedLevelUnlockDialog(
             unlockedTileValue = unlockedTileValue,
+            soundEnabled = soundEnabled,
             onDismiss = {
                 viewModel.consumeNewlyUnlockedLevel()
             }
