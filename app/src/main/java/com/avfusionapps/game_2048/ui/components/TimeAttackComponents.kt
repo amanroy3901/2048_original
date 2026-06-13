@@ -50,7 +50,7 @@ fun TimeAttackTopBar(
         targetValue = when {
             timeRemainingMillis < 10_000L -> Color(0xFFFF3378) // Red/Pink from theme
             timeRemainingMillis < 30_000L -> Color(0xFFFFD700) // Yellow
-            else -> Color(0xFF4CAF50) // Green
+            else -> Color(0xFF00FF66) // Green
         },
         label = "timerColor"
     )
@@ -144,33 +144,20 @@ fun GameScoreBoard(
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         // Score Card
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .clip(RoundedCornerShape(12.dp))
-                .background(
-                    brush = Brush.linearGradient(
-                        colors = listOf(
-                            actualScoreTint.copy(alpha = 0.15f),
-                            theme.surfaceColor,
-                            actualScoreTint.copy(alpha = 0.05f)
-                        )
-                    )
-                )
-                .border(
-                    width = 1.dp,
-                    brush = Brush.linearGradient(
-                        colors = listOf(
-                            actualScoreTint.copy(alpha = 0.8f),
-                            theme.textColor.copy(alpha = 0.1f),
-                            actualScoreTint.copy(alpha = 0.3f)
-                        )
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                )
-                .padding(horizontal = 12.dp, vertical = 12.dp)
+        NeonCard(
+            accentColor = actualScoreTint,
+            isSelected = true,
+            onClick = null,
+            cornerRadius = 12.dp,
+            borderWidth = 1.dp,
+            modifier = Modifier.weight(1f)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Box(
                     modifier = Modifier
                         .size(36.dp)
@@ -204,33 +191,20 @@ fun GameScoreBoard(
         }
 
         // Best Score Card
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .clip(RoundedCornerShape(12.dp))
-                .background(
-                    brush = Brush.linearGradient(
-                        colors = listOf(
-                            actualHighScoreTint.copy(alpha = 0.15f),
-                            theme.surfaceColor,
-                            actualHighScoreTint.copy(alpha = 0.05f)
-                        )
-                    )
-                )
-                .border(
-                    width = 1.dp,
-                    brush = Brush.linearGradient(
-                        colors = listOf(
-                            actualHighScoreTint.copy(alpha = 0.8f),
-                            theme.textColor.copy(alpha = 0.1f),
-                            actualHighScoreTint.copy(alpha = 0.3f)
-                        )
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                )
-                .padding(horizontal = 12.dp, vertical = 12.dp)
+        NeonCard(
+            accentColor = actualHighScoreTint,
+            isSelected = true,
+            onClick = null,
+            cornerRadius = 12.dp,
+            borderWidth = 1.dp,
+            modifier = Modifier.weight(1f)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Box(
                     modifier = Modifier
                         .size(36.dp)
@@ -308,44 +282,51 @@ fun TimeAttackBottomBar(
     onHintClick: () -> Unit
 ) {
     val theme = LocalGameTheme.current
-    Row(
+    NeonCard(
+        accentColor = theme.primaryColor,
+        isSelected = true,
+        onClick = null,
+        cornerRadius = 16.dp,
+        borderWidth = 1.dp,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 8.dp, vertical = 8.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(theme.surfaceColor)
-            .border(1.dp, theme.primaryColor.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
-            .padding(vertical = 16.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.CenterVertically
     ) {
-        BottomBarAction(
-            icon = Icons.AutoMirrored.Rounded.Undo,
-            label = stringResource(id = R.string.undo),
-            badge = "3",
-            tint = theme.primaryColor,
-            onClick = onUndoClick
-        )
-        
-        Box(modifier = Modifier.width(1.dp).height(40.dp).background(theme.textColor.copy(alpha = 0.1f)))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 16.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            BottomBarAction(
+                icon = Icons.AutoMirrored.Rounded.Undo,
+                label = stringResource(id = R.string.undo),
+                badge = "3",
+                tint = theme.primaryColor,
+                onClick = onUndoClick
+            )
+            
+            Box(modifier = Modifier.width(1.dp).height(40.dp).background(theme.textColor.copy(alpha = 0.1f)))
 
-        BottomBarAction(
-            icon = Icons.Rounded.Refresh,
-            label = stringResource(id = R.string.new_game),
-            badge = null,
-            tint = theme.primaryColor, // Pinkish like the image
-            onClick = onNewGameClick
-        )
+            BottomBarAction(
+                icon = Icons.Rounded.Refresh,
+                label = stringResource(id = R.string.new_game),
+                badge = null,
+                tint = theme.primaryColor, // Pinkish like the image
+                onClick = onNewGameClick
+            )
 
-        Box(modifier = Modifier.width(1.dp).height(40.dp).background(theme.textColor.copy(alpha = 0.1f)))
+            Box(modifier = Modifier.width(1.dp).height(40.dp).background(theme.textColor.copy(alpha = 0.1f)))
 
-        BottomBarAction(
-            icon = Icons.Rounded.Lightbulb,
-            label = stringResource(id = R.string.hint),
-            badge = "5",
-            tint = theme.secondaryColor, // Purpleish like the image
-            onClick = onHintClick
-        )
+            BottomBarAction(
+                icon = Icons.Rounded.Lightbulb,
+                label = stringResource(id = R.string.hint),
+                badge = "5",
+                tint = theme.secondaryColor, // Purpleish like the image
+                onClick = onHintClick
+            )
+        }
     }
 }
 

@@ -93,62 +93,6 @@ import kotlin.math.log2
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 
-@Preview(
-    showSystemUi = true,
-    uiMode = Configuration.UI_MODE_NIGHT_YES,
-    name = "Game Screen Dark Preview"
-)
-@Composable
-fun DarkModePreviewGame() {
-    rememberNavController()
-    val theme = LocalGameTheme.current
-    _2048OriginalTheme {
-        Scaffold { padding ->
-            Box(
-                modifier = Modifier
-                    .padding(padding)
-                    .fillMaxSize()
-                    .background(theme.backgroundColor)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Top
-                ) {
-                    Spacer(Modifier.height(16.dp))
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Column {
-                            Text(
-                                "Preview Player",
-                                color = Color.White,
-                                style = MaterialTheme.typography.titleLarge
-                            )
-                            Text("Score: 128", color = Color.White)
-                            Text("High Score: 1024", color = Color.White)
-                        }
-                        Button(onClick = {}) { Text("New Game") }
-                    }
-                    Spacer(Modifier.height(16.dp))
-                    Box(
-                        Modifier
-                            .aspectRatio(1f)
-                            .fillMaxWidth()
-                            .background(theme.primaryColor)
-                    ) {
-                        Text(
-                            "4x4 Grid Preview",
-                            Modifier.align(Alignment.Center),
-                            color = Color.Black
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
 @Composable
 fun GameScreen(
     navController: NavController,

@@ -37,91 +37,92 @@ fun LastGameCard(
     val cardBorder = primary.copy(alpha = 0.5f)
     val textSecondary = theme.textColor.copy(alpha = 0.6f)
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(
-                Brush.radialGradient(
-                    colors = listOf(primary.copy(alpha = 0.2f), cardBg),
-                    radius = 600f
-                )
-            )
-            .border(1.dp, cardBorder, RoundedCornerShape(20.dp))
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
+    NeonCard(
+        accentColor = primary,
+        isSelected = true,
+        onClick = null,
+        cornerRadius = 20.dp,
+        borderWidth = 1.dp,
+        modifier = Modifier.fillMaxWidth()
     ) {
-        // Mini Grid
-        MiniGrid(
-            grid = grid,
-            modifier = Modifier.weight(1.2f)
-        )
-
-        Spacer(modifier = Modifier.width(16.dp))
-
-        // Details and Button
-        Column(
-            modifier = Modifier.weight(1f),
-            horizontalAlignment = Alignment.Start
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = stringResource(R.string.last_game),
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                color = primary
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Text(
-                text = stringResource(R.string.score),
-                fontSize = 12.sp,
-                color = textSecondary
-            )
-            Text(
-                text = score.toString(),
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = theme.textColor
+            // Mini Grid
+            MiniGrid(
+                grid = grid,
+                modifier = Modifier.weight(1.2f)
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.width(16.dp))
 
-            Text(
-                text = stringResource(R.string.best_tile),
-                fontSize = 12.sp,
-                color = textSecondary
-            )
-            Text(
-                text = bestTile.toString(),
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = primary
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Button(
-                onClick = onResumeClick,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(46.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = primary,
-                    contentColor = theme.textColor
-                )
+            // Details and Button
+            Column(
+                modifier = Modifier.weight(1f),
+                horizontalAlignment = Alignment.Start
             ) {
-                Icon(
-                    imageVector = Icons.Rounded.PlayArrow,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
                 Text(
-                    text = stringResource(R.string.continue_label),
+                    text = stringResource(R.string.last_game),
+                    fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp
+                    color = primary
                 )
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    text = stringResource(R.string.score),
+                    fontSize = 12.sp,
+                    color = textSecondary
+                )
+                Text(
+                    text = score.toString(),
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = theme.textColor
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = stringResource(R.string.best_tile),
+                    fontSize = 12.sp,
+                    color = textSecondary
+                )
+                Text(
+                    text = bestTile.toString(),
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = primary
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Button(
+                    onClick = onResumeClick,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(46.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = primary,
+                        contentColor = theme.textColor
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.PlayArrow,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = stringResource(R.string.continue_label),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
+                }
             }
         }
     }

@@ -40,90 +40,91 @@ fun StartJourneyCard(
         listOf(16, 32, 64, 128)
     )
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(
-                Brush.radialGradient(
-                    colors = listOf(primary.copy(alpha = 0.2f), cardBg),
-                    radius = 600f
-                )
-            )
-            .border(1.dp, cardBorder, RoundedCornerShape(20.dp))
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
+    NeonCard(
+        accentColor = primary,
+        isSelected = true,
+        onClick = null,
+        cornerRadius = 20.dp,
+        borderWidth = 1.dp,
+        modifier = Modifier.fillMaxWidth()
     ) {
-        // Mini Grid
-        MiniGrid(
-            grid = previewGrid,
-            modifier = Modifier.weight(1.2f)
-        )
-
-        Spacer(modifier = Modifier.width(16.dp))
-
-        // Details and Button
-        Column(
-            modifier = Modifier.weight(1f),
-            horizontalAlignment = Alignment.CenterHorizontally
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = Icons.Rounded.EmojiEvents,
-                contentDescription = null,
-                tint = primary,
-                modifier = Modifier.size(48.dp)
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = "START YOUR",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                color = theme.textColor
-            )
-            Text(
-                text = "JOURNEY",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = primary
+            // Mini Grid
+            MiniGrid(
+                grid = previewGrid,
+                modifier = Modifier.weight(1.2f)
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.width(16.dp))
 
-            Text(
-                text = "Merge tiles, reach 2048 and beat your high score!",
-                fontSize = 10.sp,
-                color = textSecondary,
-                lineHeight = 14.sp,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Button(
-                onClick = onNewGameClick,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(40.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = primary,
-                    contentColor = Color.White
-                ),
-                contentPadding = PaddingValues(0.dp)
+            // Details and Button
+            Column(
+                modifier = Modifier.weight(1f),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Rounded.PlayArrow,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "NEW GAME",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp
-                    )
+                Icon(
+                    imageVector = Icons.Rounded.EmojiEvents,
+                    contentDescription = null,
+                    tint = primary,
+                    modifier = Modifier.size(48.dp)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "START YOUR",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = theme.textColor
+                )
+                Text(
+                    text = "JOURNEY",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = primary
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "Merge tiles, reach 2048 and beat your high score!",
+                    fontSize = 10.sp,
+                    color = textSecondary,
+                    lineHeight = 14.sp,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Button(
+                    onClick = onNewGameClick,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(40.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = primary,
+                        contentColor = Color.White
+                    ),
+                    contentPadding = PaddingValues(0.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Rounded.PlayArrow,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "NEW GAME",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp
+                        )
+                    }
                 }
             }
         }

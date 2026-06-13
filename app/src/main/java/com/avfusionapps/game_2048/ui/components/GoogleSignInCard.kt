@@ -75,150 +75,150 @@ fun GoogleSignInCard(
             .build()
     }
 
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
-            .background(theme.surfaceColor)
-            .border(
-                width = 1.5.dp,
-                brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
-                    colors = listOf(theme.primaryColor, theme.secondaryColor.copy(alpha = 0.5f))
-                ),
-                shape = RoundedCornerShape(24.dp)
-            )
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+    NeonCard(
+        accentColor = theme.primaryColor,
+        isSelected = true,
+        onClick = null,
+        cornerRadius = 24.dp,
+        borderWidth = 1.5.dp,
+        modifier = modifier.fillMaxWidth()
     ) {
-        if (currentUser == null) {
-            Text(
-                text = stringResource(R.string.sign_in_sync_progress),
-                color = theme.textColor.copy(alpha = 0.75f),
-                style = MaterialTheme.typography.bodyMedium
-            )
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            if (currentUser == null) {
+                Text(
+                    text = stringResource(R.string.sign_in_sync_progress),
+                    color = theme.textColor.copy(alpha = 0.75f),
+                    style = MaterialTheme.typography.bodyMedium
+                )
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Button(
-                    onClick = {
-                        isLoading = true
-                        errorMessage = ""
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Button(
+                        onClick = {
+                            isLoading = true
+                            errorMessage = ""
 
-                        coroutineScope.launch {
-                            try {
-                                val result = credentialManager.getCredential(
-                                    context = context,
-                                    request = request
-                                )
-                                handleSignInResult(
-                                    result = result,
-                                    firebaseAuth = firebaseAuth,
-                                    onSuccess = {
-                                        isLoading = false
-                                        onAuthSuccess()
-                                    },
-                                    onError = { error ->
-                                        isLoading = false
-                                        errorMessage = error
-                                    }
-                                )
-                            } catch (_: GetCredentialCancellationException) {
-                                isLoading = false
-                            } catch (e: GetCredentialException) {
-                                isLoading = false
-                                errorMessage = context.getString(
-                                    R.string.google_sign_in_failed,
-                                    e.message ?: context.getString(R.string.google_sign_in_config_hint)
-                                )
-                                Log.e("GoogleAuth", "GetCredentialException: ${e.message}", e)
-                            } catch (e: Exception) {
-                                isLoading = false
-                                errorMessage = context.getString(
-                                    R.string.unexpected_error,
-                                    e.message ?: ""
-                                )
-                                Log.e("GoogleAuth", "Unexpected error: ${e.message}", e)
+                            coroutineScope.launch {
+                                try {
+                                    val result = credentialManager.getCredential(
+                                        context = context,
+                                        request = request
+                                    )
+                                    handleSignInResult(
+                                        result = result,
+                                        firebaseAuth = firebaseAuth,
+                                        onSuccess = {
+                                            isLoading = false
+                                            onAuthSuccess()
+                                        },
+                                        onError = { error ->
+                                            isLoading = false
+                                            errorMessage = error
+                                        }
+                                    )
+                                } catch (_: GetCredentialCancellationException) {
+                                    isLoading = false
+                                } catch (e: GetCredentialException) {
+                                    isLoading = false
+                                    errorMessage = context.getString(
+                                        R.string.google_sign_in_failed,
+                                        e.message ?: context.getString(R.string.google_sign_in_config_hint)
+                                    )
+                                    Log.e("GoogleAuth", "GetCredentialException: ${e.message}", e)
+                                } catch (e: Exception) {
+                                    isLoading = false
+                                    errorMessage = context.getString(
+                                        R.string.unexpected_error,
+                                        e.message ?: ""
+                                    )
+                                    Log.e("GoogleAuth", "Unexpected error: ${e.message}", e)
+                                }
                             }
-                        }
-                    },
-                    modifier = Modifier.weight(1.2f).height(48.dp),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.White,
-                        contentColor = Color(0xFF1F1F1F)
-                    ),
-                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
+                        },
+                        modifier = Modifier.weight(1.2f).height(48.dp),
+                        shape = RoundedCornerShape(24.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.White,
+                            contentColor = Color(0xFF1F1F1F)
+                        ),
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_google),
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp),
+                            tint = Color.Unspecified
+                        )
+                        Spacer(modifier = Modifier.size(8.dp))
+                        Text(
+                            text = if (isLoading) "Signing in..." else "Sign In",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Button(
+                        onClick = onAuthSuccess,
+                        modifier = Modifier.weight(1f).height(48.dp),
+                        shape = RoundedCornerShape(24.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.Transparent,
+                            contentColor = theme.textColor.copy(alpha = 0.8f)
+                        ),
+                        border = BorderStroke(1.dp, theme.textColor.copy(alpha = 0.25f))
+                    ) {
+                        Text(
+                            text = stringResource(R.string.continue_as_guest),
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 13.sp
+                        )
+                    }
+                }
+            } else {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Icon(
-                        painter = painterResource(id = R.drawable.ic_google),
+                        imageVector = Icons.Rounded.AccountCircle,
                         contentDescription = null,
-                        modifier = Modifier.size(20.dp),
-                        tint = Color.Unspecified
+                        tint = theme.primaryColor,
+                        modifier = Modifier.size(28.dp)
                     )
-                    Spacer(modifier = Modifier.size(8.dp))
-                    Text(
-                        text = if (isLoading) "Signing in..." else "Sign In",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp
-                    )
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Button(
-                    onClick = onAuthSuccess,
-                    modifier = Modifier.weight(1f).height(48.dp),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Transparent,
-                        contentColor = theme.textColor.copy(alpha = 0.8f)
-                    ),
-                    border = BorderStroke(1.dp, theme.textColor.copy(alpha = 0.25f))
-                ) {
-                    Text(
-                        text = stringResource(R.string.continue_as_guest),
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 13.sp
-                    )
+                    Column {
+                        Text(
+                            text = stringResource(
+                                R.string.signed_in_as,
+                                currentUser.displayName ?: currentUser.email ?: currentUser.uid
+                            ),
+                            color = theme.textColor,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = stringResource(R.string.sync_enabled),
+                            color = theme.textColor.copy(alpha = 0.55f),
+                            fontSize = 12.sp
+                        )
+                    }
                 }
             }
-        } else {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.AccountCircle,
-                    contentDescription = null,
-                    tint = theme.primaryColor,
-                    modifier = Modifier.size(28.dp)
+
+            if (errorMessage.isNotBlank()) {
+                Text(
+                    text = errorMessage,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall
                 )
-                Column {
-                    Text(
-                        text = stringResource(
-                            R.string.signed_in_as,
-                            currentUser.displayName ?: currentUser.email ?: currentUser.uid
-                        ),
-                        color = theme.textColor,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Text(
-                        text = stringResource(R.string.sync_enabled),
-                        color = theme.textColor.copy(alpha = 0.55f),
-                        fontSize = 12.sp
-                    )
-                }
             }
-        }
-
-        if (errorMessage.isNotBlank()) {
-            Text(
-                text = errorMessage,
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall
-            )
         }
     }
 }

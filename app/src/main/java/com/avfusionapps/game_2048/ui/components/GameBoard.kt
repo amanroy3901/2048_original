@@ -1,5 +1,6 @@
 package com.avfusionapps.game_2048.ui.components
 
+import android.R.color.white
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -22,6 +23,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativeCanvas
@@ -92,6 +94,44 @@ fun GameBoard(viewModel: GameViewModel) {
 }
 
 @Composable
+fun GameBoard(
+    grid: List<List<Int>>,
+    modifier: Modifier = Modifier
+) {
+    val theme = LocalGameTheme.current
+    Box(
+        modifier = modifier
+            .aspectRatio(1f)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(theme.surfaceColor)
+            .border(2.dp, theme.primaryColor.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+            .padding(6.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            grid.forEachIndexed { i, row ->
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    row.forEachIndexed { j, cellValue ->
+                        GameCell(
+                            value = cellValue,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun GameCell(
     value: Int,
     modifier: Modifier = Modifier,
@@ -144,12 +184,13 @@ fun GameCell(
 
     // Glassmorphism border: highlights at the top, blends with background at the bottom
     val borderModifier = if (value > 0) {
+        val borderGlowColor = if (value == 2) theme.primaryColor else backgroundColor
         Modifier.border(
             width = 1.2.dp,
             brush = Brush.verticalGradient(
                 colors = listOf(
                     Color.White.copy(alpha = 0.5f),
-                    backgroundColor.copy(alpha = 0.15f)
+                    backgroundColor.copy(alpha = 0.2f)
                 )
             ),
             shape = RoundedCornerShape(8.dp)
@@ -157,7 +198,7 @@ fun GameCell(
     } else {
         Modifier.border(
             width = 1.dp,
-            color = Color.White.copy(alpha = 0.08f),
+            color = theme.textColor.copy(alpha = 0.1f),
             shape = RoundedCornerShape(8.dp)
         )
     }
@@ -167,11 +208,11 @@ fun GameCell(
         if (value > 0) {
             Brush.verticalGradient(
                 colors = listOf(
-                    backgroundColor.copy(alpha = 0.8f),
-                    backgroundColor.copy(alpha = 0.35f),
+                    backgroundColor.copy(alpha = 0.95f),
                     backgroundColor.copy(alpha = 0.6f),
-                    backgroundColor.copy(alpha = 0.35f),
-                    backgroundColor.copy(alpha = 0.85f)
+                    backgroundColor.copy(alpha = 0.6f),
+                    backgroundColor.copy(alpha = 0.45f),
+                    backgroundColor.copy(alpha = 1f)
                 )
             )
         } else {
@@ -221,7 +262,7 @@ fun GameCell(
                         .asFrameworkPaint().apply {
                             this.style = android.graphics.Paint.Style.STROKE
                             this.strokeWidth = 2f  // Increased stroke width
-                            this.color = Color.White.copy(alpha = 0.7f).hashCode()
+                            this.color = Color.White.copy(alpha = 0.7f).toArgb()
                             this.textSize = textSize.toPx()
                             this.isAntiAlias = true  // Enable anti-aliasing
                             this.flags = this.flags or android.graphics.Paint.SUBPIXEL_TEXT_FLAG
@@ -253,7 +294,7 @@ fun GameCell(
 fun GameCellBoardPreview() {
     val values = listOf(0, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048)
 
-    _2048OriginalTheme(theme = GameTheme.Emerald) {
+    _2048OriginalTheme(theme = GameTheme.NeonPink) {
         LazyVerticalGrid(
             columns = GridCells.Fixed(4),
             modifier = Modifier

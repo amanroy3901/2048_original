@@ -97,46 +97,53 @@ fun ClassicBottomBar(
     onHintClick: () -> Unit
 ) {
     val theme = LocalGameTheme.current
-    Row(
+    NeonCard(
+        accentColor = theme.primaryColor,
+        isSelected = true,
+        onClick = null,
+        cornerRadius = 16.dp,
+        borderWidth = 1.dp,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 8.dp, vertical = 8.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(theme.surfaceColor)
-            .border(1.dp, theme.primaryColor.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
-            .padding(vertical = 16.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.CenterVertically
     ) {
-        BottomBarAction(
-            icon = Icons.AutoMirrored.Rounded.Undo,
-            label = stringResource(id = R.string.undo),
-            badge = "3",
-            tint = theme.primaryColor,
-            onClick = onUndoClick
-        )
-        
-        Box(modifier = Modifier.width(1.dp).height(40.dp).background(theme.textColor.copy(alpha = 0.1f)))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 16.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            BottomBarAction(
+                icon = Icons.AutoMirrored.Rounded.Undo,
+                label = stringResource(id = R.string.undo),
+                badge = "3",
+                tint = theme.primaryColor,
+                onClick = onUndoClick
+            )
+            
+            Box(modifier = Modifier.width(1.dp).height(40.dp).background(theme.textColor.copy(alpha = 0.1f)))
 
-        // Center Hint (Bigger icon)
-        BottomBarAction(
-            icon = Icons.Rounded.Lightbulb,
-            label = stringResource(id = R.string.hint),
-            badge = "5",
-            tint = theme.secondaryColor, // Yellow/Orange
-            onClick = onHintClick,
-            iconSize = 40.dp // Make it stand out
-        )
+            // Center Hint (Bigger icon)
+            BottomBarAction(
+                icon = Icons.Rounded.Lightbulb,
+                label = stringResource(id = R.string.hint),
+                badge = "5",
+                tint = theme.secondaryColor, // Yellow/Orange
+                onClick = onHintClick,
+                iconSize = 40.dp // Make it stand out
+            )
 
-        Box(modifier = Modifier.width(1.dp).height(40.dp).background(theme.textColor.copy(alpha = 0.1f)))
+            Box(modifier = Modifier.width(1.dp).height(40.dp).background(theme.textColor.copy(alpha = 0.1f)))
 
-        BottomBarAction(
-            icon = Icons.Rounded.Refresh,
-            label = stringResource(id = R.string.restart),
-            badge = null,
-            tint = theme.primaryColor,
-            onClick = onRestartClick
-        )
+            BottomBarAction(
+                icon = Icons.Rounded.Refresh,
+                label = stringResource(id = R.string.restart),
+                badge = null,
+                tint = theme.primaryColor,
+                onClick = onRestartClick
+            )
+        }
     }
 }
 

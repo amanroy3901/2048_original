@@ -15,25 +15,25 @@ sealed class GameTheme(val name: String) {
     object NeonPink : GameTheme("Neon Pink") {
         override val primaryColor = Color(0xFFFF006E)
         override val secondaryColor = Color(0xFF8338EC)
-        override val backgroundColor = Color(0xFF0C0714)
-        override val surfaceColor = Color(0xFF181124)
+        override val backgroundColor = Color(0xFF03020A)
+        override val surfaceColor = Color(0xFF0C081A)
         override val textColor = Color.White
         override val accentColor = Color(0xFFFF4DA6)
         override val isDark = true
 
         override val tileColors = mapOf(
-            0 to Color(0xFF1B112C),
-            2 to Color(0xFF5A164B),
-            4 to Color(0xFF8D185A),
-            8 to Color(0xFFB11A65),
-            16 to Color(0xFFE52565),
-            32 to Color(0xFFF13D5F),
-            64 to Color(0xFFF75D56),
-            128 to Color(0xFFF88E23),
-            256 to Color(0xFFF6A41E),
-            512 to Color(0xFFF5B819),
-            1024 to Color(0xFFF4CC14),
-            2048 to Color(0xFFF3E00F)
+            0 to Color(0xFF0F0B20),
+            2 to Color(0xFF5B1C27),
+            4 to Color(0xFFD81B60),
+            8 to Color(0xFF7B1FA2),
+            16 to Color(0xFFE52F5B),
+            32 to Color(0xFFE64A19),
+            64 to Color(0xFFC62828),
+            128 to Color(0xFFFFA000),
+            256 to Color(0xFFFFD54F),
+            512 to Color(0xFF00E676),
+            1024 to Color(0xFF00E5FF),
+            2048 to Color(0xFF3F00FF)
         )
     }
 

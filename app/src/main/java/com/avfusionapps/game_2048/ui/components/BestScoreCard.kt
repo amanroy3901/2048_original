@@ -31,52 +31,58 @@ fun BestScoreCard(
     val textSecondary = theme.textColor.copy(alpha = 0.6f)
     val iconColor = accentColor ?: theme.primaryColor
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(cardBg)
-            .border(1.dp, cardBorder, RoundedCornerShape(16.dp))
-            .padding(horizontal = 20.dp, vertical = 16.dp),
-        verticalAlignment = Alignment.CenterVertically
+    NeonCard(
+        accentColor = iconColor,
+        isSelected = false,
+        onClick = null,
+        cornerRadius = 16.dp,
+        borderWidth = 1.dp,
+        modifier = Modifier.fillMaxWidth()
     ) {
-        // star badge
-        Box(
+        Row(
             modifier = Modifier
-                .size(56.dp)
-                .clip(RoundedCornerShape(28.dp))
-                .background(theme.backgroundColor)
-                .border(
-                    width = 1.dp,
-                    color = iconColor.copy(alpha = 0.5f),
-                    shape = RoundedCornerShape(28.dp)
-                ),
-            contentAlignment = Alignment.Center
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = Icons.Rounded.EmojiEvents,
-                contentDescription = null,
-                tint = iconColor,
-                modifier = Modifier.size(28.dp)
-            )
-        }
+            // star badge
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(RoundedCornerShape(28.dp))
+                    .background(theme.backgroundColor)
+                    .border(
+                        width = 1.dp,
+                        color = iconColor.copy(alpha = 0.5f),
+                        shape = RoundedCornerShape(28.dp)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.EmojiEvents,
+                    contentDescription = null,
+                    tint = iconColor,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
 
-        Spacer(Modifier.width(16.dp))
+            Spacer(Modifier.width(16.dp))
 
-        Column {
-            Text(
-                text = stringResource(R.string.best_score),
-                fontSize = 12.sp,
-                letterSpacing = 1.5.sp,
-                color = textSecondary,
-                fontWeight = FontWeight.Medium
-            )
-            Text(
-                text = score.toString(),
-                fontSize   = 32.sp,
-                fontWeight = FontWeight.Bold,
-                color      = theme.textColor
-            )
+            Column {
+                Text(
+                    text = stringResource(R.string.best_score),
+                    fontSize = 12.sp,
+                    letterSpacing = 1.5.sp,
+                    color = textSecondary,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = score.toString(),
+                    fontSize   = 32.sp,
+                    fontWeight = FontWeight.Bold,
+                    color      = theme.textColor
+                )
+            }
         }
     }
 }

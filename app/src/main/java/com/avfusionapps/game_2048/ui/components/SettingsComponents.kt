@@ -45,16 +45,21 @@ fun SectionHeader(icon: ImageVector, title: String) {
 @Composable
 fun SettingsCard(onClick: (() -> Unit)?, content: @Composable () -> Unit) {
     val theme = LocalGameTheme.current
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(theme.surfaceColor)
-            .border(1.dp, theme.textColor.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
-            .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier)
-            .padding(16.dp)
+    NeonCard(
+        accentColor = theme.primaryColor,
+        isSelected = false,
+        onClick = onClick,
+        cornerRadius = 16.dp,
+        borderWidth = 1.dp,
+        modifier = Modifier.fillMaxWidth()
     ) {
-        content()
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            content()
+        }
     }
 }
 

@@ -70,6 +70,8 @@ import com.avfusionapps.game_2048.ui.components.TimeAttackTopBar
 import com.avfusionapps.game_2048.ui.components.GameScoreBoard
 import com.avfusionapps.game_2048.ui.components.GameSwipeIndicator
 import com.avfusionapps.game_2048.ui.components.TimeAttackBottomBar
+import com.avfusionapps.game_2048.ui.components.GameBoard
+import com.avfusionapps.game_2048.ui.components.TimeAttackGameOverDialog
 import com.avfusionapps.game_2048.ui.theme.LocalGameTheme
 import com.avfusionapps.game_2048.viewmodel.TimeAttackViewModel
 import com.avfusionapps.game_2048.model.TimeAttackState
@@ -152,7 +154,7 @@ fun TimeAttackScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         // Game grid
-        TimeAttackGameBoard(gameState.grid)
+        GameBoard(grid = gameState.grid)
 
         Spacer(modifier = Modifier.weight(1f))
 
@@ -180,11 +182,11 @@ fun TimeAttackScreen(
 
     // Game Over overlay
     if (gameState.isGameOver) {
-        TimeAttackGameOverOverlay(
+        TimeAttackGameOverDialog(
             finalScore = gameState.score,
             timeSurvived = gameState.totalTimeConfiguredMillis - gameState.timeRemainingMillis,
             onPlayAgain = { viewModel.startNewGame() },
-            onBackToMenu = { navController.popBackStack() }
+            onExit = { navController.popBackStack() }
         )
     }
 }
@@ -220,139 +222,8 @@ private fun BonusNotification(bonus: com.avfusionapps.game_2048.model.BonusType)
     }
 }
 
-@Composable
-private fun TimeAttackGameBoard(grid: List<List<Int>>) {
-    val theme = LocalGameTheme.current
-    Box(
-        modifier = Modifier
-            .aspectRatio(1f)
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(theme.surfaceColor)
-            .border(2.dp, theme.primaryColor.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
-            .padding(6.dp)
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            grid.forEachIndexed { i, row ->
-                Row(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    row.forEachIndexed { j, cellValue ->
-                        TimeAttackGameCell(
-                            value = cellValue,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun TimeAttackGameCell(
-    value: Int,
-    modifier: Modifier = Modifier
-) {
-    val theme = LocalGameTheme.current
-    val backgroundColor = theme.tileColors[value] ?: theme.tileColors[0]!!
-    val textColor = if (value <= 4) theme.textColor else Color.White
-
-    val textSize = remember(value) {
-        when {
-            value >= 10000 -> 14.sp
-            value >= 1000 -> 20.sp
-            value >= 100 -> 24.sp
-            else -> 28.sp
-        }
-    }
-
-    Box(
-        modifier = modifier
-            .aspectRatio(1f)
-            .clip(RoundedCornerShape(6.dp))
-            .background(backgroundColor),
-        contentAlignment = Alignment.Center
-    ) {
-        if (value != 0) {
-            Text(
-                text = value.toString(),
-                color = textColor,
-                fontSize = textSize,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center
-            )
-        }
-    }
-}
 
 
 
-@Composable
-private fun TimeAttackGameOverOverlay(
-    finalScore: Int,
-    timeSurvived: Long,
-    onPlayAgain: () -> Unit,
-    onBackToMenu: () -> Unit
-) {
-    val minutes = (timeSurvived / 60000).toInt()
-    val seconds = ((timeSurvived % 60000) / 1000).toInt()
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.9f)),
-        contentAlignment = Alignment.Center
-    ) {
-        Card(
-            modifier = Modifier.padding(32.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = PurpleDarkBackground
-            ),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Text(
-                    text = "TIME'S UP!",
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = HighLighter,
-                    fontWeight = FontWeight.Bold
-                )
 
-                Text(
-                    text = "Final Score: $finalScore",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = Color.White
-                )
-
-                Text(
-                    text = "Time Survived: ${String.format("%02d:%02d", minutes, seconds)}",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = Color.White.copy(alpha = 0.8f)
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                NeonRoundedButton(
-                    text = "Play Again",
-                    onClick = onPlayAgain
-                )
-
-                NeonRoundedButton(
-                    text = "Back to Menu",
-                    onClick = onBackToMenu
-                )
-            }
-        }
-    }
-}
