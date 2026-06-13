@@ -865,4 +865,147 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         }
         return true // No empty cells and no possible merges
     }
+
+    fun showHint(context: Context) {
+        // Find the best move using a simple heuristic (highest score yield)
+        val bestMove = findBestMove(gameState.grid)
+        if (bestMove != null) {
+            Toast.makeText(context, "Try swiping ${bestMove.name}", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(context, "No obvious good moves!", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun findBestMove(grid: List<List<Int>>): Direction? {
+        var bestScore = -1
+        var bestDirection: Direction? = null
+
+        for (direction in Direction.values()) {
+            // Simulate move
+            val tempGrid = grid.map { it.toMutableList() }
+            var scoreGained = 0
+            var moved = false
+
+            // Simplified simulation logic just to gauge immediate score gain
+            when (direction) {
+                Direction.UP -> {
+                    for (c in 0 until gameState.gridSize) {
+                        val col = mutableListOf<Int>()
+                        for (r in 0 until gameState.gridSize) if (tempGrid[r][c] != 0) col.add(tempGrid[r][c])
+                        
+                        var i = 0
+                        while (i < col.size - 1) {
+                            if (col[i] == col[i + 1]) {
+                                scoreGained += col[i] * 2
+                                col[i] *= 2
+                                col.removeAt(i + 1)
+                            }
+                            i++
+                        }
+                        if (col.size != tempGrid.count { it[c] != 0 }) moved = true
+                    }
+                }
+                Direction.DOWN -> {
+                    for (c in 0 until gameState.gridSize) {
+                        val col = mutableListOf<Int>()
+                        for (r in gameState.gridSize - 1 downTo 0) if (tempGrid[r][c] != 0) col.add(tempGrid[r][c])
+                        
+                        var i = 0
+                        while (i < col.size - 1) {
+                            if (col[i] == col[i + 1]) {
+                                scoreGained += col[i] * 2
+                                col[i] *= 2
+                                col.removeAt(i + 1)
+                            }
+                            i++
+                        }
+                        if (col.size != tempGrid.count { it[c] != 0 }) moved = true
+                    }
+                }
+                Direction.LEFT -> {
+                    for (r in 0 until gameState.gridSize) {
+                        val row = mutableListOf<Int>()
+                        for (c in 0 until gameState.gridSize) if (tempGrid[r][c] != 0) row.add(tempGrid[r][c])
+                        
+                        var i = 0
+                        while (i < row.size - 1) {
+                            if (row[i] == row[i + 1]) {
+                                scoreGained += row[i] * 2
+                                row[i] *= 2
+                                row.removeAt(i + 1)
+                            }
+                            i++
+                        }
+                        if (row.size != tempGrid[r].count { it != 0 }) moved = true
+                    }
+                }
+                Direction.RIGHT -> {
+                    for (r in 0 until gameState.gridSize) {
+                        val row = mutableListOf<Int>()
+                        for (c in gameState.gridSize - 1 downTo 0) if (tempGrid[r][c] != 0) row.add(tempGrid[r][c])
+                        
+                        var i = 0
+                        while (i < row.size - 1) {
+                            if (row[i] == row[i + 1]) {
+                                scoreGained += row[i] * 2
+                                row[i] *= 2
+                                row.removeAt(i + 1)
+                            }
+                            i++
+                        }
+                        if (row.size != tempGrid[r].count { it != 0 }) moved = true
+                    }
+                }
+            }
+
+            if (moved && scoreGained > bestScore) {
+                bestScore = scoreGained
+                bestDirection = direction
+            }
+        }
+
+        // If no immediate merge, just return the first valid move
+        if (bestDirection == null) {
+            for (direction in Direction.values()) {
+                if (canMoveInDirection(grid, direction)) return direction
+            }
+        }
+        
+        return bestDirection
+    }
+
+    private fun canMoveInDirection(grid: List<List<Int>>, direction: Direction): Boolean {
+        // Basic check if a move is possible in the given direction
+        when (direction) {
+            Direction.UP -> {
+                for (c in 0 until gameState.gridSize) {
+                    for (r in 1 until gameState.gridSize) {
+                        if (grid[r][c] != 0 && (grid[r - 1][c] == 0 || grid[r - 1][c] == grid[r][c])) return true
+                    }
+                }
+            }
+            Direction.DOWN -> {
+                for (c in 0 until gameState.gridSize) {
+                    for (r in 0 until gameState.gridSize - 1) {
+                        if (grid[r][c] != 0 && (grid[r + 1][c] == 0 || grid[r + 1][c] == grid[r][c])) return true
+                    }
+                }
+            }
+            Direction.LEFT -> {
+                for (r in 0 until gameState.gridSize) {
+                    for (c in 1 until gameState.gridSize) {
+                        if (grid[r][c] != 0 && (grid[r][c - 1] == 0 || grid[r][c - 1] == grid[r][c])) return true
+                    }
+                }
+            }
+            Direction.RIGHT -> {
+                for (r in 0 until gameState.gridSize) {
+                    for (c in 0 until gameState.gridSize - 1) {
+                        if (grid[r][c] != 0 && (grid[r][c + 1] == 0 || grid[r][c + 1] == grid[r][c])) return true
+                    }
+                }
+            }
+        }
+        return false
+    }
 }

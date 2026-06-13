@@ -159,9 +159,9 @@ fun TimeAttackScreen(
         GameSwipeIndicator()
 
         TimeAttackBottomBar(
-            onUndoClick = { /* TODO: Implement Undo in ViewModel if needed */ },
+            onUndoClick = { viewModel.undoMove() },
             onNewGameClick = { viewModel.startNewGame() },
-            onHintClick = { /* TODO: Implement Hint in ViewModel if needed */ }
+            onHintClick = { viewModel.showHint(context) }
         )
         
         Spacer(modifier = Modifier.height(16.dp))
@@ -169,10 +169,12 @@ fun TimeAttackScreen(
 
     // Pause overlay
     if (gameState.isPaused) {
-        PauseOverlay(
+        com.avfusionapps.game_2048.ui.components.GamePauseDialog(
+            currentScore = gameState.score,
             onResume = { viewModel.togglePause() },
             onRestart = { viewModel.startNewGame() },
-            onQuit = { navController.popBackStack() }
+            onQuit = { navController.popBackStack() },
+            onDismiss = { viewModel.togglePause() }
         )
     }
 
@@ -180,7 +182,7 @@ fun TimeAttackScreen(
     if (gameState.isGameOver) {
         TimeAttackGameOverOverlay(
             finalScore = gameState.score,
-            timeSurvived = 60_000L - gameState.timeRemainingMillis,
+            timeSurvived = gameState.totalTimeConfiguredMillis - gameState.timeRemainingMillis,
             onPlayAgain = { viewModel.startNewGame() },
             onBackToMenu = { navController.popBackStack() }
         )
@@ -189,9 +191,10 @@ fun TimeAttackScreen(
 
 @Composable
 private fun BonusNotification(bonus: com.avfusionapps.game_2048.model.BonusType) {
+    val theme = LocalGameTheme.current
     Card(
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF4CAF50).copy(alpha = 0.9f)
+            containerColor = theme.primaryColor.copy(alpha = 0.9f)
         ),
         shape = RoundedCornerShape(8.dp)
     ) {
@@ -289,65 +292,7 @@ private fun TimeAttackGameCell(
     }
 }
 
-@Composable
-private fun PauseOverlay(
-    onResume: () -> Unit,
-    onRestart: () -> Unit,
-    onQuit: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.8f)),
-        contentAlignment = Alignment.Center
-    ) {
-        Card(
-            modifier = Modifier.padding(32.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = PurpleDarkBackground
-            ),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "PAUSED",
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
-                )
 
-                Spacer(modifier = Modifier.height(24.dp))
-
-                NeonRoundedButton(
-                    text = "Resume",
-                    onClick = onResume
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                NeonRoundedButton(
-                    text = "Restart",
-                    onClick = onRestart
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Button(
-                    onClick = onQuit,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Red.copy(alpha = 0.7f)
-                    ),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text("Quit", color = Color.White)
-                }
-            }
-        }
-    }
-}
 
 @Composable
 private fun TimeAttackGameOverOverlay(

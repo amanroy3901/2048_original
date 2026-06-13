@@ -20,6 +20,9 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -30,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -74,15 +78,17 @@ fun GoogleSignInCard(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
+            .clip(RoundedCornerShape(24.dp))
             .background(theme.surfaceColor)
             .border(
-                width = 1.dp,
-                color = theme.primaryColor.copy(alpha = 0.35f),
-                shape = RoundedCornerShape(18.dp)
+                width = 1.5.dp,
+                brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
+                    colors = listOf(theme.primaryColor, theme.secondaryColor.copy(alpha = 0.5f))
+                ),
+                shape = RoundedCornerShape(24.dp)
             )
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         if (currentUser == null) {
             Text(
@@ -93,7 +99,8 @@ fun GoogleSignInCard(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Button(
                     onClick = {
@@ -137,41 +144,43 @@ fun GoogleSignInCard(
                             }
                         }
                     },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.weight(1.2f).height(48.dp),
+                    shape = RoundedCornerShape(24.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = theme.primaryColor,
-                        contentColor = theme.textColor
-                    )
+                        containerColor = Color.White,
+                        contentColor = Color(0xFF1F1F1F)
+                    ),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.Login,
+                        painter = painterResource(id = R.drawable.ic_google),
                         contentDescription = null,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(20.dp),
+                        tint = Color.Unspecified
                     )
                     Spacer(modifier = Modifier.size(8.dp))
                     Text(
-                        text = if (isLoading) {
-                            stringResource(R.string.signing_in)
-                        } else {
-                            stringResource(R.string.sign_in_google)
-                        },
-                        fontWeight = FontWeight.SemiBold
+                        text = if (isLoading) "Signing in..." else "Sign In",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
                     )
                 }
+                Spacer(modifier = Modifier.width(12.dp))
 
                 Button(
                     onClick = onAuthSuccess,
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.weight(1f).height(48.dp),
+                    shape = RoundedCornerShape(24.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = theme.surfaceColor,
-                        contentColor = theme.textColor
-                    )
+                        containerColor = Color.Transparent,
+                        contentColor = theme.textColor.copy(alpha = 0.8f)
+                    ),
+                    border = BorderStroke(1.dp, theme.textColor.copy(alpha = 0.25f))
                 ) {
                     Text(
                         text = stringResource(R.string.continue_as_guest),
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 13.sp
                     )
                 }
             }

@@ -211,49 +211,20 @@ fun GameScreen(
     }
 
     if (showExitDialog) {
-        Dialog(onDismissRequest = { showExitDialog = false }) {
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = theme.surfaceColor,
-                shadowElevation = 8.dp
-            ) {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Text(
-                        text = "Exit current game?",
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = Color.White
-                    )
-                    Text(
-                        text = "Progress will be cleared.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.8f)
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        NeonRoundedButton(
-                            modifier = Modifier.testTag("GameScreen_Button_CancelExit"),
-                            text = "Cancel",
-                            onClick = { showExitDialog = false },
-                        )
-                        NeonRoundedButton(
-                            modifier = Modifier.testTag("GameScreen_Button_SaveAndExit"),
-                            text = "Save & Exit",
-                            onClick = {
-                                viewModel.markResumableWithoutMove()
-                                showExitDialog = false
-                                navController.navigateUp()
-                            },
-                        )
-                    }
-                }
-            }
-        }
+        com.avfusionapps.game_2048.ui.components.GamePauseDialog(
+            currentScore = gameState.score,
+            onResume = { showExitDialog = false },
+            onRestart = {
+                showExitDialog = false
+                showGridSizeDialog = true
+            },
+            onQuit = {
+                viewModel.markResumableWithoutMove()
+                showExitDialog = false
+                navController.navigateUp()
+            },
+            onDismiss = { showExitDialog = false }
+        )
     }
     
     Column(
@@ -307,7 +278,7 @@ fun GameScreen(
             highScore = persistentHighScore,
             scoreIcon = Icons.Rounded.EmojiEvents, // Trophy
             highScoreIcon = Icons.Rounded.WorkspacePremium, // Ribbon/Crown
-            highScoreTint = Color(0xFFFFD700) // Gold color for Best Score
+            highScoreTint = theme.secondaryColor // Replaced hardcoded Gold color with theme.secondaryColor
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -321,7 +292,7 @@ fun GameScreen(
         ClassicBottomBar(
             onUndoClick = { viewModel.undoMove(context) },
             onRestartClick = { showGridSizeDialog = true },
-            onHintClick = { /* TODO: Implement hint logic */ }
+            onHintClick = { viewModel.showHint(context) }
         )
     }
 
@@ -580,7 +551,7 @@ fun GameOverDialog(score: Int, onNewGame: () -> Unit, onExit: () -> Unit) {
 
 @Preview
 @Composable
-fun GameCellPreview() {
+fun GameCellBoardPreview() {
     val values = listOf(0, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048)
 
     _2048OriginalTheme {
@@ -598,6 +569,20 @@ fun GameCellPreview() {
                     GameCell(value, Modifier.size(75.dp))
                 }
             }
+        }
+    }
+}
+
+@Preview
+@Composable
+fun GameCellPreview() {
+    val values = listOf(0, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048)
+
+    _2048OriginalTheme {
+        Box(
+            modifier = Modifier.padding(4.dp)
+        ) {
+            GameCell(values[0], Modifier.size(75.dp))
         }
     }
 }

@@ -2,7 +2,10 @@ package com.avfusionapps.game_2048.model
 
 data class TimeAttackState(
     val grid: List<List<Int>> = createEmptyGrid(),
+    val previousGrid: List<List<Int>>? = null,
+    val previousScore: Int = 0,
     val score: Int = 0,
+    val totalTimeConfiguredMillis: Long = 60_000L,
     val timeRemainingMillis: Long = 60_000L, // 60 seconds default
     val isGameOver: Boolean = false,
     val isPaused: Boolean = false,

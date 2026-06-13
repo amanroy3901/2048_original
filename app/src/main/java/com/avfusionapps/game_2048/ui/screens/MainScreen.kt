@@ -16,6 +16,7 @@ import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -103,6 +104,7 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
     val unlockedLevels by viewModel.unlockedLevels.collectAsState()
 
     var showGridSizeDialogMain by remember { mutableStateOf(false) }
+    var showAuthDialog by rememberSaveable { mutableStateOf(firebaseAuth.currentUser == null) }
     val resumePrompt by viewModel.resumePrompt.collectAsState()
 
     LaunchedEffect(resumePrompt) {
@@ -127,6 +129,21 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
                 showGridSizeDialogMain = false
             }
         )
+    }
+
+    if (showAuthDialog && firebaseAuth.currentUser == null) {
+        Dialog(
+
+            onDismissRequest = { showAuthDialog = false },
+        ) {
+            GoogleSignInCard(
+                firebaseAuth = firebaseAuth,
+                onAuthSuccess = {
+                    showAuthDialog = false
+                    viewModel.loadUserDataFromFirebase()
+                }
+            )
+        }
     }
 
     MainScreenContent(

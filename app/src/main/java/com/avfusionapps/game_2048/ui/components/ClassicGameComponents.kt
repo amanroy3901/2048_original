@@ -22,6 +22,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import com.avfusionapps.game_2048.R
 import com.avfusionapps.game_2048.ui.theme.LocalGameTheme
 
 @Composable
@@ -51,7 +53,7 @@ fun ClassicTopBar(
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                contentDescription = "Back",
+                contentDescription = stringResource(id = R.string.desc_back_button),
                 tint = theme.textColor,
                 modifier = Modifier.size(24.dp)
             )
@@ -67,7 +69,7 @@ fun ClassicTopBar(
                 )
                 Spacer(modifier = Modifier.width(16.dp))
                 Text(
-                    text = "LEVEL $currentLevel",
+                    text = stringResource(id = R.string.level_label, currentLevel),
                     color = theme.textColor.copy(alpha = 0.6f),
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
@@ -100,7 +102,7 @@ fun ClassicTopBar(
         ) {
             Icon(
                 imageVector = Icons.Rounded.Settings,
-                contentDescription = "Settings",
+                contentDescription = stringResource(id = R.string.desc_settings_button),
                 tint = theme.textColor,
                 modifier = Modifier.size(24.dp)
             )
@@ -128,7 +130,7 @@ fun ClassicBottomBar(
     ) {
         BottomBarAction(
             icon = Icons.AutoMirrored.Rounded.Undo,
-            label = "UNDO",
+            label = stringResource(id = R.string.undo),
             badge = "3",
             tint = theme.primaryColor,
             onClick = onUndoClick
@@ -139,7 +141,7 @@ fun ClassicBottomBar(
         // Center Hint (Bigger icon)
         BottomBarAction(
             icon = Icons.Rounded.Lightbulb,
-            label = "HINT",
+            label = stringResource(id = R.string.hint),
             badge = "5",
             tint = theme.secondaryColor, // Yellow/Orange
             onClick = onHintClick,
@@ -150,7 +152,7 @@ fun ClassicBottomBar(
 
         BottomBarAction(
             icon = Icons.Rounded.Refresh,
-            label = "RESTART",
+            label = stringResource(id = R.string.restart),
             badge = null,
             tint = theme.primaryColor,
             onClick = onRestartClick

@@ -30,6 +30,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import com.avfusionapps.game_2048.R
 import com.avfusionapps.game_2048.ui.theme.LocalGameTheme
 
 @Composable
@@ -72,7 +74,7 @@ fun TimeAttackTopBar(
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                contentDescription = "Back",
+                contentDescription = stringResource(id = R.string.desc_back_button),
                 tint = theme.textColor,
                 modifier = Modifier.size(24.dp)
             )
@@ -94,7 +96,7 @@ fun TimeAttackTopBar(
                 letterSpacing = 1.sp
             )
             Text(
-                text = "TIME LEFT",
+                text = stringResource(id = R.string.time_left),
                 color = theme.textColor.copy(alpha = 0.5f),
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
@@ -114,7 +116,7 @@ fun TimeAttackTopBar(
         ) {
             Icon(
                 imageVector = if (isPaused) Icons.Rounded.PlayArrow else Icons.Rounded.Pause,
-                contentDescription = "Pause/Resume",
+                contentDescription = stringResource(id = R.string.desc_pause_button),
                 tint = theme.primaryColor,
                 modifier = Modifier.size(24.dp)
             )
@@ -178,7 +180,7 @@ fun GameScoreBoard(
                 ) {
                     Icon(
                         imageVector = scoreIcon,
-                        contentDescription = null,
+                        contentDescription = stringResource(id = R.string.desc_score_icon),
                         tint = actualScoreTint,
                         modifier = Modifier.size(20.dp)
                     )
@@ -186,7 +188,7 @@ fun GameScoreBoard(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(
-                        text = "SCORE",
+                        text = stringResource(id = R.string.score),
                         color = theme.textColor.copy(alpha = 0.6f),
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold
@@ -238,7 +240,7 @@ fun GameScoreBoard(
                 ) {
                     Icon(
                         imageVector = highScoreIcon,
-                        contentDescription = null,
+                        contentDescription = stringResource(id = R.string.desc_high_score_icon),
                         tint = actualHighScoreTint,
                         modifier = Modifier.size(20.dp)
                     )
@@ -246,7 +248,7 @@ fun GameScoreBoard(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(
-                        text = "BEST SCORE",
+                        text = stringResource(id = R.string.best_score),
                         color = theme.textColor.copy(alpha = 0.6f),
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold
@@ -282,7 +284,7 @@ fun GameSwipeIndicator() {
         )
         Spacer(modifier = Modifier.width(16.dp))
         Text(
-            text = "SWIPE TO MOVE TILES",
+            text = stringResource(id = R.string.swipe_to_move),
             color = theme.textColor.copy(alpha = 0.6f),
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
@@ -319,7 +321,7 @@ fun TimeAttackBottomBar(
     ) {
         BottomBarAction(
             icon = Icons.AutoMirrored.Rounded.Undo,
-            label = "UNDO",
+            label = stringResource(id = R.string.undo),
             badge = "3",
             tint = theme.primaryColor,
             onClick = onUndoClick
@@ -329,7 +331,7 @@ fun TimeAttackBottomBar(
 
         BottomBarAction(
             icon = Icons.Rounded.Refresh,
-            label = "NEW GAME",
+            label = stringResource(id = R.string.new_game),
             badge = null,
             tint = theme.primaryColor, // Pinkish like the image
             onClick = onNewGameClick
@@ -339,7 +341,7 @@ fun TimeAttackBottomBar(
 
         BottomBarAction(
             icon = Icons.Rounded.Lightbulb,
-            label = "HINT",
+            label = stringResource(id = R.string.hint),
             badge = "5",
             tint = theme.secondaryColor, // Purpleish like the image
             onClick = onHintClick

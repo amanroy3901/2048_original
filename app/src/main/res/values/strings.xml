@@ -53,4 +53,29 @@
     <string name="grid_size_4_description">The classic experience.</string>
     <string name="grid_size_5_description">More space, more strategy.</string>
     <string name="grid_size_6_description">For true number masters.</string>
+
+    <!-- Game Pause Dialog -->
+    <string name="paused">PAUSED</string>
+    <string name="current_score">Current Score</string>
+    <string name="resume">RESUME</string>
+    <string name="restart">RESTART</string>
+    <string name="restart_subtitle">Start this game over</string>
+    <string name="home">HOME</string>
+    <string name="home_subtitle">Back to main menu</string>
+
+    <!-- Game Screen / Components -->
+    <string name="undo">UNDO</string>
+    <string name="new_game">NEW GAME</string>
+    <string name="hint">HINT</string>
+    <string name="time_left">TIME LEFT</string>
+    <string name="swipe_to_move">SWIPE TO MOVE TILES</string>
+    <string name="level_label">LEVEL %1$d</string>
+
+    <!-- Accessibility Descriptions -->
+    <string name="desc_pause_button">Pause game</string>
+    <string name="desc_resume_button">Resume game</string>
+    <string name="desc_back_button">Navigate back</string>
+    <string name="desc_settings_button">Game settings</string>
+    <string name="desc_score_icon">Score icon</string>
+    <string name="desc_high_score_icon">High score icon</string>
 </resources>

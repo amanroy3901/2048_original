@@ -1,6 +1,8 @@
 package com.avfusionapps.game_2048.viewmodel
 
 import android.app.Application
+import android.content.Context
+import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.avfusionapps.game_2048.data.repository.TimeAttackRepository
@@ -116,6 +118,8 @@ class TimeAttackViewModel(application: Application) : AndroidViewModel(applicati
 
             _gameState.value = currentState.copy(
                 grid = gridWithNewTile,
+                previousGrid = currentGrid,
+                previousScore = currentState.score,
                 score = currentState.score + finalScoreGained,
                 timeRemainingMillis = newTime,
                 multiplier = min(5.0f, multiplier), // Cap at 5x
@@ -238,5 +242,65 @@ class TimeAttackViewModel(application: Application) : AndroidViewModel(applicati
         }
 
         return Triple(result, score, merged)
+    }
+
+    fun undoMove() {
+        // Time Attack is fast-paced, undo might not be heavily used, but we should implement basic undo if needed.
+        // For simplicity and performance in Time Attack, we can restrict undo to just 1 previous state or disable it.
+        // Let's implement a single-step undo.
+        _gameState.value.previousGrid?.let { prevGrid ->
+            _gameState.value = _gameState.value.copy(
+                grid = prevGrid,
+                score = _gameState.value.previousScore,
+                previousGrid = null // Can only undo once
+            )
+        }
+    }
+
+    fun showHint(context: Context) {
+        val bestMove = findBestMove(_gameState.value.grid)
+        if (bestMove != null) {
+            Toast.makeText(context, "Try swiping ${bestMove.name}", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(context, "No obvious good moves!", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun findBestMove(grid: List<List<Int>>): Direction? {
+        var bestScore = -1
+        var bestDirection: Direction? = null
+
+        for (direction in Direction.values()) {
+            val size = grid.size
+            val tempGrid = MutableList(size) { MutableList(size) { 0 } }
+            var scoreGained = 0
+            var moved = false
+
+            for (i in 0 until size) {
+                val currentLine = getLine(grid, i, direction)
+                val (newLine, lineScore, _) = processLine(currentLine)
+                if (currentLine != newLine) moved = true
+                scoreGained += lineScore
+                applyLine(tempGrid, newLine, i, direction)
+            }
+
+            if (moved && scoreGained > bestScore) {
+                bestScore = scoreGained
+                bestDirection = direction
+            }
+        }
+
+        if (bestDirection == null) {
+            for (direction in Direction.values()) {
+                val size = grid.size
+                for (i in 0 until size) {
+                    val currentLine = getLine(grid, i, direction)
+                    val (newLine, _, _) = processLine(currentLine)
+                    if (currentLine != newLine) return direction
+                }
+            }
+        }
+        
+        return bestDirection
     }
 }

@@ -37,7 +37,6 @@ import com.avfusionapps.game_2048.notification.ReminderManager
 import com.avfusionapps.game_2048.ui.screens.GameScreen
 import com.avfusionapps.game_2048.ui.screens.GoogleAuthScreen
 import com.avfusionapps.game_2048.ui.screens.MainScreen
-import com.avfusionapps.game_2048.ui.screens.SplashScreen
 import com.avfusionapps.game_2048.ui.screens.ThemeSettingsScreen
 import com.avfusionapps.game_2048.ui.screens.TimeAttackScreen
 import com.avfusionapps.game_2048.ui.screens.ProfileScreen
@@ -59,13 +58,15 @@ import com.google.firebase.auth.auth
 import kotlinx.coroutines.launch
 
 
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+
 class MainActivity : ComponentActivity() {
 
     private lateinit var appUpdateManager: AppUpdateManager
     private lateinit var snackbarHostState: SnackbarHostState
     private lateinit var reminderManager: ReminderManager
     private lateinit var firebaseAuth: FirebaseAuth
-
+    private var keepSplashScreen = true
 
     private val updateResultLauncher =
         registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
@@ -74,13 +75,13 @@ class MainActivity : ComponentActivity() {
                 RESULT_CANCELED -> {
                     Log.d("AppUpdate", "User canceled the update")
                     lifecycleScope.launch {
-                        showSnackbar("Update canceled. Please update later for the best experience.")
+                        showSnackbar("Update canceled. You can update later from Settings.")
                     }
                 }
                 else -> {
                     Log.d("AppUpdate", "Update flow failed with result code: ${result.resultCode}")
                     lifecycleScope.launch {
-                        showSnackbar("Update failed. Please try again later.")
+                        showSnackbar("Update failed. We'll try again later.")
                     }
                 }
             }
@@ -141,7 +142,12 @@ class MainActivity : ComponentActivity() {
 
     @OptIn(ExperimentalComposeUiApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
+        val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
+        
+        // Keep splash screen on until we figure out auth state
+        splashScreen.setKeepOnScreenCondition { keepSplashScreen }
+        
         enableEdgeToEdge()
         
         appUpdateManager = AppUpdateManagerFactory.create(this)
@@ -164,6 +170,19 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(key1 = Unit) {
                     requestNotificationPermission()
                     checkForUpdates()
+                    
+                    // Default to main screen and determine auth state without auto-redirecting
+                    val currentUser = firebaseAuth.currentUser
+                    if (currentUser == null) {
+                        keepSplashScreen = false
+                    } else {
+                        currentUser.getIdToken(false).addOnSuccessListener {
+                            keepSplashScreen = false
+                        }.addOnFailureListener {
+                            keepSplashScreen = false
+                            firebaseAuth.signOut()
+                        }
+                    }
                 }
 
                 Scaffold(
@@ -174,25 +193,10 @@ class MainActivity : ComponentActivity() {
                 ) {
                     NavHost(
                         navController = navController,
-                        startDestination = "main",
+                        startDestination = "main", // Default to main, effect will redirect if needed
                         route = "root",
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        composable("splash") { backStackEntry ->
-                            val parentEntry = remember(backStackEntry) { navController.getBackStackEntry("root") }
-                            val vm: GameViewModel = viewModel(parentEntry)
-                            SplashScreen(navController = navController, onSplashComplete = {
-                                if (firebaseAuth.currentUser == null) {
-                                    navController.navigate("googleAuth") {
-                                        popUpTo("splash") { inclusive = true }
-                                    }
-                                } else {
-                                    navController.navigate("main") {
-                                        popUpTo("splash") { inclusive = true }
-                                    }
-                                }
-                            })
-                        }
                         composable("googleAuth") { backStackEntry ->
                             val parentEntry = remember(backStackEntry) { navController.getBackStackEntry("root") }
                             val vm: GameViewModel = viewModel(parentEntry)

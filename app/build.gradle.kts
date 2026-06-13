@@ -99,4 +99,7 @@ dependencies {
     
     // Google Identity Services
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
+    
+    // AndroidX Core Splashscreen API
+    implementation("androidx.core:core-splashscreen:1.0.1")
 }
