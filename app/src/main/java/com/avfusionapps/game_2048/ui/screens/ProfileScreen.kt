@@ -42,6 +42,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.avfusionapps.game_2048.data.GameSettingsRepository
 import com.avfusionapps.game_2048.ui.components.GoogleSignInCard
+import com.avfusionapps.game_2048.ui.components.SquareIconButton
+import com.avfusionapps.game_2048.ui.components.SectionHeader
+import com.avfusionapps.game_2048.ui.components.SettingsCard
+import com.avfusionapps.game_2048.ui.components.SupportItem
 import com.avfusionapps.game_2048.ui.theme.GameTheme
 import com.avfusionapps.game_2048.ui.theme.LocalGameTheme
 import com.avfusionapps.game_2048.viewmodel.GameViewModel
@@ -82,22 +86,11 @@ fun ProfileScreen(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(theme.surfaceColor)
-                    .border(1.dp, theme.textColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
-                    .clickable { navController.popBackStack() },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                    contentDescription = "Back",
-                    tint = theme.textColor,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
+            SquareIconButton(
+                icon = Icons.AutoMirrored.Rounded.ArrowBack,
+                contentDescription = "Back",
+                onClick = { navController.popBackStack() }
+            )
             
             Spacer(modifier = Modifier.weight(1f))
             
@@ -433,53 +426,4 @@ fun ProfileScreen(
     }
 }
 
-@Composable
-private fun SectionHeader(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String) {
-    val theme = LocalGameTheme.current
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)) {
-        Box(
-            modifier = Modifier
-                .size(24.dp)
-                .clip(CircleShape)
-                .background(theme.primaryColor.copy(alpha = 0.2f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(icon, contentDescription = null, tint = theme.primaryColor, modifier = Modifier.size(14.dp))
-        }
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = title,
-            color = theme.textColor.copy(alpha = 0.8f),
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 1.sp
-        )
-    }
-}
 
-@Composable
-private fun SettingsCard(onClick: (() -> Unit)?, content: @Composable () -> Unit) {
-    val theme = LocalGameTheme.current
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(theme.surfaceColor)
-            .border(1.dp, theme.textColor.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
-            .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier)
-            .padding(16.dp)
-    ) {
-        content()
-    }
-}
-
-@Composable
-private fun SupportItem(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, sub: String) {
-    val theme = LocalGameTheme.current
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { }) {
-        Icon(icon, contentDescription = null, tint = theme.primaryColor, modifier = Modifier.size(24.dp))
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(label, color = theme.textColor, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-        Text(sub, color = theme.textColor.copy(alpha = 0.5f), fontSize = 10.sp)
-    }
-}

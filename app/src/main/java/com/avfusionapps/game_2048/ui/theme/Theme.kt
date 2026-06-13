@@ -1,6 +1,8 @@
 package com.avfusionapps.game_2048.ui.theme
 
 import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import android.os.Build
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
@@ -17,6 +19,19 @@ import androidx.core.view.WindowCompat
 private val DarkColorScheme = darkColorScheme(
     primary = Purple80, secondary = PurpleGrey80, tertiary = Pink80
 )
+
+/**
+ * Extension function to find the Activity from a Context.
+ * This is useful in Compose Previews where the context might be a BridgeContext.
+ */
+fun Context.findActivity(): Activity? {
+    var context = this
+    while (context is ContextWrapper) {
+        if (context is Activity) return context
+        context = context.baseContext
+    }
+    return null
+}
 
 @Composable
 fun _2048OriginalTheme(
@@ -62,11 +77,13 @@ fun _2048OriginalTheme(
 
         // Set status bar color and enable edge-to-edge
         SideEffect {
-            val window = (context as Activity).window
-            WindowCompat.setDecorFitsSystemWindows(window, false)
-            window.statusBarColor = theme.backgroundColor.toArgb()
-            val insetsController = WindowCompat.getInsetsController(window, view)
-            insetsController.isAppearanceLightStatusBars = useDarkIcons
+            // Using findActivity() safely to avoid ClassCastException in Compose Previews
+            context.findActivity()?.window?.let { window ->
+                WindowCompat.setDecorFitsSystemWindows(window, false)
+                window.statusBarColor = theme.backgroundColor.toArgb()
+                val insetsController = WindowCompat.getInsetsController(window, view)
+                insetsController.isAppearanceLightStatusBars = useDarkIcons
+            }
         }
 
         MaterialTheme(

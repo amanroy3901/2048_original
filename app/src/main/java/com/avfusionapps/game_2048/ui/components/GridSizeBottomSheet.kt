@@ -199,29 +199,19 @@ private fun GridSizeOptionCard(
     modifier: Modifier = Modifier,
 ) {
     val theme = LocalGameTheme.current
-    val cardShape = RoundedCornerShape(18.dp)
-    val borderColor = if (isSelected) option.accentColor else option.accentColor.copy(alpha = 0.35f)
-    val glowColor = option.accentColor.copy(alpha = if (isSelected) 0.22f else 0.08f)
 
-    Box(
+    NeonCard(
+        accentColor = option.accentColor,
+        isSelected = isSelected,
+        onClick = onClick,
         modifier = modifier
             .aspectRatio(1.18f)
-            .clip(cardShape)
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        glowColor,
-                        theme.backgroundColor.copy(alpha = 0.92f)
-                    )
-                )
-            )
-            .border(1.4.dp, borderColor, cardShape)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 14.dp)
             .testTag("GameScreen_Button_GridSize${option.size}x${option.size}")
     ) {
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 12.dp, vertical = 14.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {

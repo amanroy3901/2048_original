@@ -35,6 +35,7 @@ import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.credentials.exceptions.GetCredentialException
 import com.avfusionapps.game_2048.R
 import com.avfusionapps.game_2048.ui.theme.PurpleDarkBackground
+import com.avfusionapps.game_2048.ui.components.CylinderActionButton
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.auth.FirebaseAuth

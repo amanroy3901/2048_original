@@ -162,25 +162,13 @@ fun MiniGrid(
                 ) {
                     for (col in 0 until 4) {
                         val value = displayGrid[row][col]
-                        val bgColor = if (value == 0) theme.backgroundColor else (theme.tileColors[value] ?: theme.surfaceColor)
-                        
-                        Box(
+                        GameCell(
+                            value = value,
                             modifier = Modifier
                                 .weight(1f)
-                                .fillMaxHeight()
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(bgColor),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (value > 0) {
-                                Text(
-                                    text = value.toString(),
-                                    color = theme.textColor,
-                                    fontSize = if (value >= 100) 12.sp else 14.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
+                                .fillMaxHeight(),
+                            fontSizeMultiplier = 0.5f
+                        )
                     }
                 }
             }

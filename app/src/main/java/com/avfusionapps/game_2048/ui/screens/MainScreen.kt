@@ -53,6 +53,7 @@ import com.avfusionapps.game_2048.ui.components.GoogleSignInCard
 import com.avfusionapps.game_2048.ui.components.GridSizeBottomSheet
 import com.avfusionapps.game_2048.ui.components.LastGameCard
 import com.avfusionapps.game_2048.ui.components.StartJourneyCard
+import com.avfusionapps.game_2048.ui.components.CylinderActionButton
 import com.avfusionapps.game_2048.ui.theme.LocalGameTheme
 import com.avfusionapps.game_2048.ui.theme.HighLighter
 import com.avfusionapps.game_2048.ui.theme.PurpleDarkBackground
@@ -364,40 +365,6 @@ private fun MainModeIcon(
     )
 }
 
-
-@Composable
-fun CylinderActionButton(
-    modifier: Modifier = Modifier
-        .width(220.dp)
-        .height(60.dp),
-    text: String,
-    onClick: () -> Unit,
-    leadingIcon: Int? = null,
-) {
-    val theme = LocalGameTheme.current
-
-    Button(
-        onClick = onClick,
-        modifier = modifier.semantics { this.contentDescription = text },
-        colors = ButtonDefaults.buttonColors(containerColor = theme.primaryColor),
-        shape = RoundedCornerShape(percent = 50),
-        elevation = ButtonDefaults.buttonElevation(
-            defaultElevation = 8.dp,
-            pressedElevation = 4.dp
-        ),
-        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            if (leadingIcon != null) {
-                Icon(painter = painterResource(leadingIcon), contentDescription = null, tint = Color.White)
-            }
-            Text(text, color = Color.White, style = MaterialTheme.typography.titleMedium)
-        }
-    }
-}
 
 
 val lilitaOneFontFamily = FontFamily(Font(R.font.lilitaone_regular))

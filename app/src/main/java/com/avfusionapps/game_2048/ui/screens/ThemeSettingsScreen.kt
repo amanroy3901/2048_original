@@ -34,6 +34,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.avfusionapps.game_2048.ui.theme.GameTheme
+import com.avfusionapps.game_2048.ui.theme.LocalGameTheme
+import com.avfusionapps.game_2048.ui.components.GameCell
 import com.avfusionapps.game_2048.viewmodel.ThemeViewModel
 
 @Composable
@@ -383,7 +385,7 @@ private fun ThemeGridItem(
                         horizontalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
                         row.forEach { value ->
-                            TilePreview(theme, value, Modifier.weight(1f), 8.sp)
+                            TilePreview(theme, value, Modifier.weight(1f), 0.3f)
                         }
                     }
                 }
@@ -403,25 +405,13 @@ private fun ThemeGridItem(
 }
 
 @Composable
-private fun TilePreview(theme: GameTheme, value: Int, modifier: Modifier = Modifier, fontSize: androidx.compose.ui.unit.TextUnit = 14.sp) {
-    val color = theme.tileColors[value] ?: theme.tileColors[0]!!
-    val textColor = if (value <= 4) theme.textColor else Color.White
-
-    Box(
-        modifier = modifier
-            .fillMaxHeight()
-            .clip(RoundedCornerShape(4.dp))
-            .background(color),
-        contentAlignment = Alignment.Center
-    ) {
-        if (value != 0) {
-            Text(
-                text = value.toString(),
-                color = textColor,
-                fontSize = fontSize,
-                fontWeight = FontWeight.Bold
-            )
-        }
+private fun TilePreview(theme: GameTheme, value: Int, modifier: Modifier = Modifier, fontSizeMultiplier: Float = 0.45f) {
+    CompositionLocalProvider(LocalGameTheme provides theme) {
+        GameCell(
+            value = value,
+            modifier = modifier.fillMaxHeight(),
+            fontSizeMultiplier = fontSizeMultiplier
+        )
     }
 }
 

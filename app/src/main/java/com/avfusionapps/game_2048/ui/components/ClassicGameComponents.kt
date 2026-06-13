@@ -25,6 +25,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
 import com.avfusionapps.game_2048.R
 import com.avfusionapps.game_2048.ui.theme.LocalGameTheme
+import com.avfusionapps.game_2048.ui.components.SquareIconButton
+import com.avfusionapps.game_2048.ui.components.NeonBadge
 
 @Composable
 fun ClassicTopBar(
@@ -42,22 +44,11 @@ fun ClassicTopBar(
         verticalAlignment = Alignment.Top
     ) {
         // Back Button
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(theme.surfaceColor)
-                .border(1.dp, theme.textColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
-                .clickable { onBack() },
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                contentDescription = stringResource(id = R.string.desc_back_button),
-                tint = theme.textColor,
-                modifier = Modifier.size(24.dp)
-            )
-        }
+        SquareIconButton(
+            icon = Icons.AutoMirrored.Rounded.ArrowBack,
+            contentDescription = stringResource(id = R.string.desc_back_button),
+            onClick = onBack
+        )
 
         // Level Indicator
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(top = 8.dp)) {
@@ -91,22 +82,11 @@ fun ClassicTopBar(
         }
 
         // Settings Button
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(theme.surfaceColor)
-                .border(1.dp, theme.textColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
-                .clickable { onSettingsClick() },
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.Settings,
-                contentDescription = stringResource(id = R.string.desc_settings_button),
-                tint = theme.textColor,
-                modifier = Modifier.size(24.dp)
-            )
-        }
+        SquareIconButton(
+            icon = Icons.Rounded.Settings,
+            contentDescription = stringResource(id = R.string.desc_settings_button),
+            onClick = onSettingsClick
+        )
     }
 }
 
@@ -191,20 +171,10 @@ private fun BottomBarAction(
         )
         if (badge != null) {
             Spacer(modifier = Modifier.height(4.dp))
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(tint.copy(alpha = 0.2f))
-                    .padding(horizontal = 12.dp, vertical = 2.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = badge,
-                    color = tint,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+            NeonBadge(
+                text = badge,
+                tint = tint
+            )
         }
     }
 }
