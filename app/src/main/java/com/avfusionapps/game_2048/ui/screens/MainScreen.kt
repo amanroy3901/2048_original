@@ -205,9 +205,6 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
                     accentColor = theme.primaryColor,
                     icon = { MainModeIcon(mode = MainModeIconType.Classic, tint = theme.primaryColor) },
                     onClick = {
-                        if (hasSaved) {
-                            viewModel.declineSavedGame()
-                        }
                         showGridSizeDialogMain = true
                     }
                 )

@@ -281,7 +281,9 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                         highScore = initialHighScore,
                         currentLevel = currentLevel,
                         unlockedLevels = unlockedLevels,
-                        grid = List(gameState.gridSize) { List(gameState.gridSize) { 0 } },
+                        grid = lastMove.grid,
+                        score = lastMove.score,
+                        gridSize = lastMove.grid.size,
                         hasSavedGame = true
                     )
                 )

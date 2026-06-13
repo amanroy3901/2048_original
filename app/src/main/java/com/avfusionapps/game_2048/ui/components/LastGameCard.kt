@@ -133,8 +133,8 @@ fun MiniGrid(
     grid: List<List<Int>>,
     modifier: Modifier = Modifier
 ) {
-    // If grid is empty or not 4x4, use a mock grid
-    val displayGrid = if (grid.isNotEmpty() && grid.size == 4 && grid[0].size == 4) {
+    // If grid is empty or doesn't have valid elements, use a mock grid
+    val displayGrid = if (grid.isNotEmpty() && grid[0].isNotEmpty()) {
         grid
     } else {
         listOf(
@@ -145,30 +145,30 @@ fun MiniGrid(
         )
     }
     
+    val rows = displayGrid.size
+    val cols = displayGrid[0].size
     val theme = LocalGameTheme.current
 
     BoxWithConstraints(
         modifier = modifier.aspectRatio(1f)
     ) {
-        // We want 4 tiles and 3 spacers (of say 4.dp or 6.dp each)
-        // Since it's aspect ratio 1f, we can just use columns and rows with weights.
         Column(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            for (row in 0 until 4) {
+            for (row in 0 until rows) {
                 Row(
                     modifier = Modifier.weight(1f),
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    for (col in 0 until 4) {
+                    for (col in 0 until cols) {
                         val value = displayGrid[row][col]
                         GameCell(
                             value = value,
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxHeight(),
-                            fontSizeMultiplier = 0.5f
+                            fontSizeMultiplier = if (rows > 4) 0.4f else 0.5f
                         )
                     }
                 }
