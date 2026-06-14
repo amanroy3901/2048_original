@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.testTag
 import com.avfusionapps.game_2048.R
 import com.avfusionapps.game_2048.ui.theme.LocalGameTheme
 
@@ -42,6 +43,7 @@ fun GamePauseDialog(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
+                .testTag("GamePauseDialog_Root")
                 .clip(RoundedCornerShape(24.dp))
                 .background(theme.surfaceColor)
                 .border(
@@ -149,6 +151,7 @@ fun GamePauseDialog(
                                 )
                             )
                         )
+                        .testTag("GamePauseDialog_Button_Resume")
                         .clickable { onResume() },
                     contentAlignment = Alignment.Center
                 ) {
@@ -179,6 +182,7 @@ fun GamePauseDialog(
                     icon = Icons.Rounded.Refresh,
                     title = stringResource(id = R.string.restart),
                     subtitle = stringResource(id = R.string.restart_subtitle),
+                    modifier = Modifier.testTag("GamePauseDialog_Button_Restart"),
                     onClick = onRestart
                 )
 
@@ -189,6 +193,7 @@ fun GamePauseDialog(
                     icon = Icons.Rounded.Home,
                     title = stringResource(id = R.string.home),
                     subtitle = stringResource(id = R.string.home_subtitle),
+                    modifier = Modifier.testTag("GamePauseDialog_Button_Home"),
                     onClick = onQuit
                 )
             }
@@ -201,11 +206,12 @@ private fun SecondaryActionButton(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     title: String,
     subtitle: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val theme = LocalGameTheme.current
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .background(theme.backgroundColor.copy(alpha = 0.5f))

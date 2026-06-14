@@ -54,6 +54,7 @@ import android.net.Uri
 import android.os.Build
 import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import com.avfusionapps.game_2048.viewmodel.GameViewModel
 import com.avfusionapps.game_2048.viewmodel.ThemeViewModel
 import com.google.firebase.Firebase
@@ -101,6 +102,7 @@ fun ProfileScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .testTag("ProfileScreen_Root")
             .background(theme.backgroundColor)
             .padding(horizontal = 20.dp, vertical = 16.dp)
             .safeDrawingPadding()
@@ -113,7 +115,8 @@ fun ProfileScreen(
             SquareIconButton(
                 icon = Icons.AutoMirrored.Rounded.ArrowBack,
                 contentDescription = "Back",
-                onClick = { navController.popBackStack() }
+                onClick = { navController.popBackStack() },
+                modifier = Modifier.testTag("ProfileScreen_Button_Back")
             )
             
             Spacer(modifier = Modifier.weight(1f))
@@ -204,6 +207,7 @@ fun ProfileScreen(
                                     tint = theme.primaryColor,
                                     modifier = Modifier
                                         .size(16.dp)
+                                        .testTag("ProfileScreen_Button_EditName")
                                         .clickable { showNameDialog = true }
                                 )
                             }
@@ -262,6 +266,7 @@ fun ProfileScreen(
             key(currentUser?.uid) {
                 GoogleSignInCard(
                     firebaseAuth = firebaseAuth,
+                    modifier = Modifier.testTag("ProfileScreen_Card_GoogleSignIn"),
                     onAuthSuccess = {
                         currentUser = firebaseAuth.currentUser
                         if (currentUser != null) {
@@ -274,7 +279,8 @@ fun ProfileScreen(
             // Appearance Section
             SectionHeader(icon = Icons.Rounded.Palette, title = "APPEARANCE")
             SettingsCard(
-                onClick = { navController.navigate("themeSettings") }
+                onClick = { navController.navigate("themeSettings") },
+                modifier = Modifier.testTag("ProfileScreen_Button_ThemeSettings")
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -356,6 +362,7 @@ fun ProfileScreen(
                         Switch(
                             checked = soundEnabled, 
                             onCheckedChange = { gameViewModel.updateSoundEnabled(it) },
+                            modifier = Modifier.testTag("ProfileScreen_Switch_Sound"),
                             colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = theme.primaryColor)
                         )
                     }
@@ -376,6 +383,7 @@ fun ProfileScreen(
                         Switch(
                             checked = vibrationEnabled, 
                             onCheckedChange = { gameViewModel.updateVibrationEnabled(it) },
+                            modifier = Modifier.testTag("ProfileScreen_Switch_Vibration"),
                             colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = theme.primaryColor)
                         )
                     }
@@ -393,6 +401,7 @@ fun ProfileScreen(
                         icon = Icons.Rounded.Star, 
                         label = "Rate App", 
                         sub = "Show your support",
+                        modifier = Modifier.testTag("ProfileScreen_Button_RateApp"),
                         onClick = {
                             val packageName = context.packageName
                             val intent = Intent(Intent.ACTION_VIEW).apply {
@@ -412,6 +421,7 @@ fun ProfileScreen(
                         icon = Icons.Rounded.Share, 
                         label = "Share App", 
                         sub = "Tell your friends",
+                        modifier = Modifier.testTag("ProfileScreen_Button_ShareApp"),
                         onClick = {
                             val packageName = context.packageName
                             val shareIntent = Intent(Intent.ACTION_SEND).apply {
@@ -427,6 +437,7 @@ fun ProfileScreen(
                         icon = Icons.Rounded.PrivacyTip, 
                         label = "Privacy Policy", 
                         sub = "Read our policy",
+                        modifier = Modifier.testTag("ProfileScreen_Button_PrivacyPolicy"),
                         onClick = {
                             val privacyUrl = "https://github.com/saynedesign/2048-neon-rush/blob/main/PRIVACY_POLICY.md"
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(privacyUrl))

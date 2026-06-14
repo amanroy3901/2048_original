@@ -31,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.testTag
 import com.avfusionapps.game_2048.R
 import com.avfusionapps.game_2048.ui.theme.LocalGameTheme
 
@@ -69,6 +70,7 @@ fun TimeAttackTopBar(
                 .clip(RoundedCornerShape(12.dp))
                 .background(theme.surfaceColor)
                 .border(1.dp, theme.textColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
+                .testTag("TimeAttackTopBar_Button_Back")
                 .clickable { onBack() },
             contentAlignment = Alignment.Center
         ) {
@@ -111,6 +113,7 @@ fun TimeAttackTopBar(
                 .clip(RoundedCornerShape(12.dp))
                 .background(theme.surfaceColor)
                 .border(1.dp, theme.textColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
+                .testTag("TimeAttackTopBar_Button_Pause")
                 .clickable { onPauseToggle() },
             contentAlignment = Alignment.Center
         ) {
@@ -131,14 +134,15 @@ fun GameScoreBoard(
     scoreIcon: ImageVector = Icons.Rounded.Star,
     scoreTint: Color? = null,
     highScoreIcon: ImageVector = Icons.Rounded.EmojiEvents,
-    highScoreTint: Color? = null
+    highScoreTint: Color? = null,
+    modifier: Modifier = Modifier
 ) {
     val theme = LocalGameTheme.current
     val actualScoreTint = scoreTint ?: theme.primaryColor
     val actualHighScoreTint = highScoreTint ?: theme.secondaryColor
 
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 8.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -150,7 +154,7 @@ fun GameScoreBoard(
             onClick = null,
             cornerRadius = 12.dp,
             borderWidth = 1.dp,
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.weight(1f).testTag("GameScoreBoard_Card_Score")
         ) {
             Row(
                 modifier = Modifier
@@ -197,7 +201,7 @@ fun GameScoreBoard(
             onClick = null,
             cornerRadius = 12.dp,
             borderWidth = 1.dp,
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.weight(1f).testTag("GameScoreBoard_Card_BestScore")
         ) {
             Row(
                 modifier = Modifier
@@ -304,7 +308,8 @@ fun TimeAttackBottomBar(
                 label = stringResource(id = R.string.undo),
                 badge = "3",
                 tint = theme.primaryColor,
-                onClick = onUndoClick
+                onClick = onUndoClick,
+                modifier = Modifier.testTag("TimeAttackBottomBar_Button_Undo")
             )
             
             Box(modifier = Modifier.width(1.dp).height(40.dp).background(theme.textColor.copy(alpha = 0.1f)))
@@ -314,7 +319,8 @@ fun TimeAttackBottomBar(
                 label = stringResource(id = R.string.new_game),
                 badge = null,
                 tint = theme.primaryColor, // Pinkish like the image
-                onClick = onNewGameClick
+                onClick = onNewGameClick,
+                modifier = Modifier.testTag("TimeAttackBottomBar_Button_NewGame")
             )
 
             Box(modifier = Modifier.width(1.dp).height(40.dp).background(theme.textColor.copy(alpha = 0.1f)))
@@ -324,7 +330,8 @@ fun TimeAttackBottomBar(
                 label = stringResource(id = R.string.hint),
                 badge = "5",
                 tint = theme.secondaryColor, // Purpleish like the image
-                onClick = onHintClick
+                onClick = onHintClick,
+                modifier = Modifier.testTag("TimeAttackBottomBar_Button_Hint")
             )
         }
     }
@@ -336,12 +343,13 @@ private fun BottomBarAction(
     label: String,
     badge: String?,
     tint: Color,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val theme = LocalGameTheme.current
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
+        modifier = modifier
             .clickable { onClick() }
             .padding(horizontal = 16.dp)
     ) {

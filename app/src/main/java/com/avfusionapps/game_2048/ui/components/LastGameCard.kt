@@ -13,6 +13,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -29,6 +30,7 @@ fun LastGameCard(
     bestTile: Int,
     grid: List<List<Int>>,
     onResumeClick: () -> Unit,
+    modifier: Modifier = Modifier,
     accentColor: Color? = null
 ) {
     val theme = LocalGameTheme.current
@@ -43,7 +45,7 @@ fun LastGameCard(
         onClick = null,
         cornerRadius = 20.dp,
         borderWidth = 1.dp,
-        modifier = Modifier.fillMaxWidth()
+        modifier = modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier
@@ -104,7 +106,8 @@ fun LastGameCard(
                     onClick = onResumeClick,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(46.dp),
+                        .height(46.dp)
+                        .testTag("LastGameCard_Button_Resume"),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = primary,

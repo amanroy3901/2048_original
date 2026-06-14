@@ -172,18 +172,21 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
                         onResumeClick = {
                             viewModel.resumeSavedGame()
                             navController.navigate("game?resume=true&newGame=false")
-                        }
+                        },
+                        modifier = Modifier.testTag("MainScreen_Card_LastGame")
                     )
                 } else {
                     StartJourneyCard(
                         onNewGameClick = {
                             showGridSizeDialogMain = true
-                        }
+                        },
+                        modifier = Modifier.testTag("MainScreen_Card_StartJourney")
                     )
                 }
 
                 BestScoreCard(
                     score = persistentHighScore,
+                    modifier = Modifier.testTag("MainScreen_Card_BestScore"),
                     accentColor = theme.primaryColor
                 )
 
@@ -211,7 +214,8 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
                     icon = { MainModeIcon(mode = MainModeIconType.Classic, tint = theme.primaryColor) },
                     onClick = {
                         showGridSizeDialogMain = true
-                    }
+                    },
+                    modifier = Modifier.testTag("MainScreen_Button_ClassicMode")
                 )
 
                 GameModeCard(
@@ -222,7 +226,8 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
                     icon = { MainModeIcon(mode = MainModeIconType.TimeAttack, tint = theme.secondaryColor) },
                     onClick = {
                         navController.navigate("timeAttack")
-                    }
+                    },
+                    modifier = Modifier.testTag("MainScreen_Button_TimeAttackMode")
                 )
             }
         }
@@ -302,7 +307,8 @@ fun MainScreenContent(
                             modifier = Modifier.size(24.dp)
                         )
                     },
-                    onClick = { navController.navigate("profile") }
+                    onClick = { navController.navigate("profile") },
+                    modifier = Modifier.testTag("MainScreen_Button_Profile")
                 )
             }
         }
@@ -320,7 +326,8 @@ private enum class MainModeIconType { Classic, TimeAttack }
 private fun MainTopIconButton(
     label: String,
     icon: @Composable () -> Unit,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val theme = LocalGameTheme.current
     val cardBorder = theme.textColor.copy(alpha = 0.1f)
@@ -328,7 +335,7 @@ private fun MainTopIconButton(
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.clickable(onClick = onClick)
+        modifier = modifier.clickable(onClick = onClick)
     ) {
         Box(
             modifier = Modifier

@@ -26,6 +26,7 @@ fun GameModeCard(
     tagText: String,
     icon: @Composable () -> Unit,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
     accentColor: Color? = null
 ) {
     val theme = LocalGameTheme.current
@@ -36,7 +37,7 @@ fun GameModeCard(
         accentColor = primary,
         isSelected = false,
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth()
+        modifier = modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier

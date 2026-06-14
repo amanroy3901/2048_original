@@ -14,6 +14,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -25,6 +26,7 @@ import com.avfusionapps.game_2048.ui.theme.LocalGameTheme
 @Composable
 fun StartJourneyCard(
     onNewGameClick: () -> Unit,
+    modifier: Modifier = Modifier,
     accentColor: Color? = null
 ) {
     val theme = LocalGameTheme.current
@@ -46,7 +48,7 @@ fun StartJourneyCard(
         onClick = null,
         cornerRadius = 20.dp,
         borderWidth = 1.dp,
-        modifier = Modifier.fillMaxWidth()
+        modifier = modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier
@@ -104,7 +106,8 @@ fun StartJourneyCard(
                     onClick = onNewGameClick,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(40.dp),
+                        .height(40.dp)
+                        .testTag("StartJourneyCard_Button_NewGame"),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = primary,

@@ -24,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.platform.testTag
 import com.avfusionapps.game_2048.ui.theme.LocalGameTheme
 
 @Composable
@@ -38,6 +39,7 @@ fun GameOverDialog(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
+                .testTag("GameOverDialog_Root")
                 .clip(RoundedCornerShape(24.dp))
                 .background(theme.surfaceColor)
                 .border(
@@ -147,6 +149,7 @@ fun GameOverDialog(
                                 )
                             )
                         )
+                        .testTag("GameOverDialog_Button_PlayAgain")
                         .clickable { onNewGame() },
                     contentAlignment = Alignment.Center
                 ) {
@@ -177,6 +180,7 @@ fun GameOverDialog(
                     icon = Icons.Rounded.Home,
                     title = "Exit",
                     subtitle = "Return to menu",
+                    modifier = Modifier.testTag("GameOverDialog_Button_Exit"),
                     onClick = onExit
                 )
             }
@@ -200,6 +204,7 @@ fun TimeAttackGameOverDialog(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
+                .testTag("TimeAttackGameOverDialog_Root")
                 .clip(RoundedCornerShape(24.dp))
                 .background(theme.surfaceColor)
                 .border(
@@ -347,6 +352,7 @@ fun TimeAttackGameOverDialog(
                                 )
                             )
                         )
+                        .testTag("TimeAttackGameOverDialog_Button_PlayAgain")
                         .clickable { onPlayAgain() },
                     contentAlignment = Alignment.Center
                 ) {
@@ -377,6 +383,7 @@ fun TimeAttackGameOverDialog(
                     icon = Icons.Rounded.Home,
                     title = "Exit",
                     subtitle = "Return to menu",
+                    modifier = Modifier.testTag("TimeAttackGameOverDialog_Button_Exit"),
                     onClick = onExit
                 )
             }
@@ -389,11 +396,12 @@ private fun SecondaryActionExitButton(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     title: String,
     subtitle: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val theme = LocalGameTheme.current
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .background(theme.backgroundColor.copy(alpha = 0.5f))

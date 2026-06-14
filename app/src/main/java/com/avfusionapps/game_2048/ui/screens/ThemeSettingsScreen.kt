@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import androidx.compose.ui.platform.testTag
 import com.avfusionapps.game_2048.ui.theme.GameTheme
 import com.avfusionapps.game_2048.ui.theme.LocalGameTheme
 import com.avfusionapps.game_2048.ui.components.GameCell
@@ -56,6 +57,7 @@ fun ThemeSettingsScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .testTag("ThemeSettingsScreen_Root")
             .background(bgColor)
             .padding(horizontal = 16.dp, vertical = 16.dp)
             .safeDrawingPadding()
@@ -71,6 +73,7 @@ fun ThemeSettingsScreen(
                     .clip(RoundedCornerShape(12.dp))
                     .background(surfaceColor)
                     .border(1.dp, textColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
+                    .testTag("ThemeSettingsScreen_Button_Back")
                     .clickable { navController.popBackStack() },
                 contentAlignment = Alignment.Center
             ) {
@@ -153,7 +156,8 @@ fun ThemeSettingsScreen(
                     ThemeGridItem(
                         theme = themeOpt,
                         isSelected = themeOpt.name == selectedTheme.name,
-                        onClick = { selectedTheme = themeOpt }
+                        onClick = { selectedTheme = themeOpt },
+                        modifier = Modifier.testTag("ThemeSettingsScreen_Button_ThemeItem_${themeOpt.name}")
                     )
                 }
             }
@@ -170,6 +174,7 @@ fun ThemeSettingsScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp)
+                .testTag("ThemeSettingsScreen_Button_ApplyTheme")
                 .shadow(
                     elevation = if (selectedTheme.isDark) 16.dp else 4.dp,
                     spotColor = primaryColor.copy(alpha = 0.5f),
@@ -332,11 +337,12 @@ private fun FeatureRow(icon: androidx.compose.ui.graphics.vector.ImageVector, te
 private fun ThemeGridItem(
     theme: GameTheme,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.clickable { onClick() }
+        modifier = modifier.clickable { onClick() }
     ) {
         Box(
             modifier = Modifier

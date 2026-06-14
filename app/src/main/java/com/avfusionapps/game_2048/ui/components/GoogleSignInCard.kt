@@ -33,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -81,7 +82,7 @@ fun GoogleSignInCard(
         onClick = null,
         cornerRadius = 24.dp,
         borderWidth = 1.5.dp,
-        modifier = modifier.fillMaxWidth()
+        modifier = modifier.fillMaxWidth().testTag("GoogleSignInCard_Root")
     ) {
         Column(
             modifier = Modifier
@@ -143,7 +144,7 @@ fun GoogleSignInCard(
                                 }
                             }
                         },
-                        modifier = Modifier.weight(1.2f).height(48.dp),
+                        modifier = Modifier.weight(1.2f).height(48.dp).testTag("GoogleSignInCard_Button_GoogleSignIn"),
                         shape = RoundedCornerShape(24.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color.White,
@@ -168,7 +169,7 @@ fun GoogleSignInCard(
 
                     Button(
                         onClick = onAuthSuccess,
-                        modifier = Modifier.weight(1f).height(48.dp),
+                        modifier = Modifier.weight(1f).height(48.dp).testTag("GoogleSignInCard_Button_ContinueAsGuest"),
                         shape = RoundedCornerShape(24.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color.Transparent,

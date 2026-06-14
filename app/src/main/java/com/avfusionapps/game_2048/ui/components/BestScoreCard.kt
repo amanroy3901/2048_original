@@ -23,6 +23,7 @@ import com.avfusionapps.game_2048.ui.theme.LocalGameTheme
 @Composable
 fun BestScoreCard(
     score: Int,
+    modifier: Modifier = Modifier,
     accentColor: Color? = null
 ) {
     val theme = LocalGameTheme.current
@@ -37,7 +38,7 @@ fun BestScoreCard(
         onClick = null,
         cornerRadius = 16.dp,
         borderWidth = 1.dp,
-        modifier = Modifier.fillMaxWidth()
+        modifier = modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier

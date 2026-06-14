@@ -23,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.testTag
 import com.avfusionapps.game_2048.R
 import com.avfusionapps.game_2048.ui.theme.LocalGameTheme
 import com.avfusionapps.game_2048.ui.components.SquareIconButton
@@ -47,7 +48,8 @@ fun ClassicTopBar(
         SquareIconButton(
             icon = Icons.AutoMirrored.Rounded.ArrowBack,
             contentDescription = stringResource(id = R.string.desc_back_button),
-            onClick = onBack
+            onClick = onBack,
+            modifier = Modifier.testTag("ClassicTopBar_Button_Back")
         )
 
         // Level Indicator
@@ -85,7 +87,8 @@ fun ClassicTopBar(
         SquareIconButton(
             icon = Icons.Rounded.Settings,
             contentDescription = stringResource(id = R.string.desc_settings_button),
-            onClick = onSettingsClick
+            onClick = onSettingsClick,
+            modifier = Modifier.testTag("ClassicTopBar_Button_Settings")
         )
     }
 }
@@ -119,7 +122,8 @@ fun ClassicBottomBar(
                 label = stringResource(id = R.string.undo),
                 badge = "3",
                 tint = theme.primaryColor,
-                onClick = onUndoClick
+                onClick = onUndoClick,
+                modifier = Modifier.testTag("ClassicBottomBar_Button_Undo")
             )
             
             Box(modifier = Modifier.width(1.dp).height(40.dp).background(theme.textColor.copy(alpha = 0.1f)))
@@ -131,7 +135,8 @@ fun ClassicBottomBar(
                 badge = "5",
                 tint = theme.secondaryColor, // Yellow/Orange
                 onClick = onHintClick,
-                iconSize = 40.dp // Make it stand out
+                iconSize = 40.dp, // Make it stand out
+                modifier = Modifier.testTag("ClassicBottomBar_Button_Hint")
             )
 
             Box(modifier = Modifier.width(1.dp).height(40.dp).background(theme.textColor.copy(alpha = 0.1f)))
@@ -141,7 +146,8 @@ fun ClassicBottomBar(
                 label = stringResource(id = R.string.restart),
                 badge = null,
                 tint = theme.primaryColor,
-                onClick = onRestartClick
+                onClick = onRestartClick,
+                modifier = Modifier.testTag("ClassicBottomBar_Button_Restart")
             )
         }
     }
@@ -154,12 +160,13 @@ private fun BottomBarAction(
     badge: String?,
     tint: Color,
     onClick: () -> Unit,
-    iconSize: androidx.compose.ui.unit.Dp = 32.dp
+    iconSize: androidx.compose.ui.unit.Dp = 32.dp,
+    modifier: Modifier = Modifier
 ) {
     val theme = LocalGameTheme.current
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
+        modifier = modifier
             .clickable { onClick() }
             .padding(horizontal = 16.dp)
     ) {

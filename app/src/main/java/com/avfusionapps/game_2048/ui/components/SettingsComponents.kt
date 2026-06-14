@@ -43,7 +43,11 @@ fun SectionHeader(icon: ImageVector, title: String) {
 }
 
 @Composable
-fun SettingsCard(onClick: (() -> Unit)?, content: @Composable () -> Unit) {
+fun SettingsCard(
+    onClick: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
     val theme = LocalGameTheme.current
     NeonCard(
         accentColor = theme.primaryColor,
@@ -51,7 +55,7 @@ fun SettingsCard(onClick: (() -> Unit)?, content: @Composable () -> Unit) {
         onClick = onClick,
         cornerRadius = 16.dp,
         borderWidth = 1.dp,
-        modifier = Modifier.fillMaxWidth()
+        modifier = modifier.fillMaxWidth()
     ) {
         Box(
             modifier = Modifier
@@ -64,9 +68,18 @@ fun SettingsCard(onClick: (() -> Unit)?, content: @Composable () -> Unit) {
 }
 
 @Composable
-fun SupportItem(icon: ImageVector, label: String, sub: String, onClick: () -> Unit) {
+fun SupportItem(
+    icon: ImageVector,
+    label: String,
+    sub: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     val theme = LocalGameTheme.current
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable(onClick = onClick)) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier.clickable(onClick = onClick)
+    ) {
         Icon(icon, contentDescription = null, tint = theme.primaryColor, modifier = Modifier.size(24.dp))
         Spacer(modifier = Modifier.height(8.dp))
         Text(label, color = theme.textColor, fontWeight = FontWeight.Bold, fontSize = 12.sp)
