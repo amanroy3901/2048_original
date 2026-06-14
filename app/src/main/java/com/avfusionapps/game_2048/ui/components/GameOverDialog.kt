@@ -188,6 +188,7 @@ fun GameOverDialog(
 fun TimeAttackGameOverDialog(
     finalScore: Int,
     timeSurvived: Long,
+    isTimeUp: Boolean = true,
     onPlayAgain: () -> Unit,
     onExit: () -> Unit
 ) {
@@ -218,7 +219,7 @@ fun TimeAttackGameOverDialog(
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Timer Icon
+                // Timer / Trophy Icon
                 Box(
                     modifier = Modifier
                         .size(64.dp)
@@ -239,7 +240,7 @@ fun TimeAttackGameOverDialog(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.Timer,
+                        imageVector = if (isTimeUp) Icons.Rounded.Timer else Icons.Rounded.EmojiEvents,
                         contentDescription = null,
                         tint = theme.primaryColor,
                         modifier = Modifier.size(32.dp)
@@ -248,9 +249,9 @@ fun TimeAttackGameOverDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // TIME'S UP text
+                // Title text
                 Text(
-                    text = "TIME'S UP!",
+                    text = if (isTimeUp) "TIME'S UP!" else "NO MOVES LEFT!",
                     fontSize = 32.sp,
                     fontWeight = FontWeight.ExtraBold,
                     fontStyle = FontStyle.Italic,

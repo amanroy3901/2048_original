@@ -24,6 +24,10 @@ data class LevelProgression(
     @set:PropertyName("unlockedLevels")
     var unlockedLevels: List<Int> = listOf(1),
 
+    @get:PropertyName("highScore")
+    @set:PropertyName("highScore")
+    var highScore: Int = 0,
+
     @get:PropertyName("levelUnlockTimes")
     @set:PropertyName("levelUnlockTimes")
     var levelUnlockTimes: Map<String, Timestamp> = emptyMap(),

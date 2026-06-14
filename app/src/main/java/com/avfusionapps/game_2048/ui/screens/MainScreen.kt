@@ -182,6 +182,11 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
                     )
                 }
 
+                BestScoreCard(
+                    score = persistentHighScore,
+                    accentColor = theme.primaryColor
+                )
+
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)

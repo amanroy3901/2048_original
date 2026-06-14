@@ -115,6 +115,7 @@ class TimeAttackViewModel(application: Application) : AndroidViewModel(applicati
 
             // Add new random tile to grid
             val gridWithNewTile = addRandomTile(newGrid)
+            val gameOver = isGameOver(gridWithNewTile)
 
             _gameState.value = currentState.copy(
                 grid = gridWithNewTile,
@@ -123,8 +124,17 @@ class TimeAttackViewModel(application: Application) : AndroidViewModel(applicati
                 score = currentState.score + finalScoreGained,
                 timeRemainingMillis = newTime,
                 multiplier = min(5.0f, multiplier), // Cap at 5x
-                lastBonus = lastBonus
+                lastBonus = lastBonus,
+                isGameOver = gameOver
             )
+
+            if (gameOver) {
+                endGame()
+            }
+        } else {
+            if (isGameOver(currentGrid)) {
+                endGame()
+            }
         }
     }
 
@@ -153,6 +163,21 @@ class TimeAttackViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     // Game logic helper functions - matching GameViewModel's implementation
+    private fun isGameOver(grid: List<List<Int>>): Boolean {
+        val size = grid.size
+        for (r in 0 until size) {
+            for (c in 0 until size) {
+                if (grid[r][c] == 0) return false // Found an empty cell
+                val current = grid[r][c]
+                // Check right neighbor
+                if (c + 1 < size && current == grid[r][c + 1]) return false
+                // Check bottom neighbor
+                if (r + 1 < size && current == grid[r + 1][c]) return false
+            }
+        }
+        return true // No empty cells and no possible merges
+    }
+
     private fun createEmptyGrid(size: Int = 4): List<List<Int>> {
         return List(size) { List(size) { 0 } }
     }

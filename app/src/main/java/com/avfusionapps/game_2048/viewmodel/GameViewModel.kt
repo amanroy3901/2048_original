@@ -169,6 +169,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     playerName = user.displayName ?: state.playerName,
                     currentLevel = state.currentLevel,
                     unlockedLevels = state.unlockedLevels.toList(),
+                    highScore = persistentHighScore.value,
                     lastUpdated = com.google.firebase.Timestamp.now()
                 )
                 levelProgressionRepository.saveLevelProgression(progression)
@@ -675,6 +676,11 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     var nameToUse = levelProgression?.playerName ?: GameSettingsRepository.DEFAULT_PLAYER_NAME
                     var currentLevel = levelProgression?.currentLevel ?: 1
                     var unlockedLevels = levelProgression?.unlockedLevels?.toSet() ?: setOf(1)
+                    val cloudHighScore = levelProgression?.highScore ?: 0
+
+                    if (cloudHighScore > persistentHighScore.value) {
+                        settingsRepository.updateHighScoreIfHigher(cloudHighScore)
+                    }
                     
                     var wasNameGenerated = false
 

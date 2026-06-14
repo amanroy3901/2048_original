@@ -109,6 +109,7 @@ fun GameScreen(
     val vibrationEnabled by viewModel.vibrationEnabled.collectAsState()
 
     var showGridSizeDialog by remember { mutableStateOf(false) }
+    var showGameOverDialog by remember { mutableStateOf(true) }
     val canUndo by viewModel.canUndo.collectAsState()
     val context = LocalContext.current
     var showExitDialog by remember { mutableStateOf(false) }
@@ -268,10 +269,17 @@ fun GameScreen(
         )
     }
 
-    if (gameState.isGameOver) {
+    LaunchedEffect(gameState.isGameOver) {
+        if (!gameState.isGameOver) {
+            showGameOverDialog = true
+        }
+    }
+
+    if (gameState.isGameOver && showGameOverDialog) {
         GameOverDialog(
             score = gameState.score,
             onNewGame = {
+                showGameOverDialog = false
                 showGridSizeDialog = true
             },
             onExit = { navController.navigateUp() }

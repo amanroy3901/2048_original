@@ -185,6 +185,7 @@ fun TimeAttackScreen(
         TimeAttackGameOverDialog(
             finalScore = gameState.score,
             timeSurvived = gameState.totalTimeConfiguredMillis - gameState.timeRemainingMillis,
+            isTimeUp = gameState.timeRemainingMillis <= 0,
             onPlayAgain = { viewModel.startNewGame() },
             onExit = { navController.popBackStack() }
         )
