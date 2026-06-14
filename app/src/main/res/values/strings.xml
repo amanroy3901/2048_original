@@ -76,6 +76,30 @@
     <string name="desc_resume_button">Resume game</string>
     <string name="desc_back_button">Navigate back</string>
     <string name="desc_settings_button">Game settings</string>
+    <!-- Accessibility Descriptions -->
     <string name="desc_score_icon">Score icon</string>
     <string name="desc_high_score_icon">High score icon</string>
+
+    <!-- Game Tutorial Overlay -->
+    <string name="tutorial_skip">Skip</string>
+    <string name="tutorial_next">Next</string>
+    <string name="tutorial_got_it">Got It</string>
+
+    <!-- Classic Tutorial -->
+    <string name="tutorial_classic_title_1">Swipe to Merge</string>
+    <string name="tutorial_classic_desc_1">Swipe in any direction (Up, Down, Left, Right) to slide the tiles. When two tiles with the same number touch, they merge into one!</string>
+    <string name="tutorial_classic_title_2">Reach 2048!</string>
+    <string name="tutorial_classic_desc_2">Keep merging tiles to reach the ultimate 2048 tile! The game continues as long as there are empty spaces or adjacent matching numbers.</string>
+    <string name="tutorial_classic_title_3">Control Tools</string>
+    <string name="tutorial_classic_desc_3">Use Undo to revert a mistaken move, Hint to get recommended directions when you\'re stuck, or Restart to try a new grid size!</string>
+
+    <!-- Time Attack Tutorial -->
+    <string name="tutorial_ta_title_1">Speed &amp; Countdown</string>
+    <string name="tutorial_ta_desc_1">Time is ticking! You start with 60 seconds. Every move counts, and the timer counts down in real-time.</string>
+    <string name="tutorial_ta_title_2">Earn Extra Time</string>
+    <string name="tutorial_ta_desc_2">Merging tiles adds bonus seconds back to your clock (e.g. +5s on basic merge, and up to +60s for higher value tiles)!</string>
+    <string name="tutorial_ta_title_3">Score Multiplier</string>
+    <string name="tutorial_ta_desc_3">Performing merges boosts your score multiplier (up to 5x)! Maintain your speed and keep merging to maximize your score.</string>
+    <string name="tutorial_ta_title_4">Pause &amp; Controls</string>
+    <string name="tutorial_ta_desc_4">Use the Pause button at the top right to temporarily stop the timer, or use the Help button to review these rules at any time.</string>
 </resources>

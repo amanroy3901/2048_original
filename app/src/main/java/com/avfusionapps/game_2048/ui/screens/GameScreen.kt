@@ -75,6 +75,7 @@ import com.avfusionapps.game_2048.R
 import com.avfusionapps.game_2048.ui.NeonCutCornerButton
 import com.avfusionapps.game_2048.ui.NeonRoundedButton
 import com.avfusionapps.game_2048.ui.components.ClassicTopBar
+import com.avfusionapps.game_2048.ui.components.GameTutorialOverlay
 import com.avfusionapps.game_2048.ui.components.ClassicBottomBar
 import com.avfusionapps.game_2048.ui.components.GameScoreBoard
 import com.avfusionapps.game_2048.ui.components.GameSwipeIndicator
@@ -107,6 +108,8 @@ fun GameScreen(
     val newlyUnlockedTileValue by viewModel.newlyUnlockedTileValue.collectAsState()
     val soundEnabled by viewModel.soundEnabled.collectAsState()
     val vibrationEnabled by viewModel.vibrationEnabled.collectAsState()
+    val hasSeenClassicTutorial by viewModel.hasSeenClassicTutorial.collectAsState()
+    var forceShowTutorial by remember { mutableStateOf(false) }
 
     var showGridSizeDialog by remember { mutableStateOf(false) }
     var showGameOverDialog by remember { mutableStateOf(true) }
@@ -220,6 +223,7 @@ fun GameScreen(
         ClassicTopBar(
             currentLevel = gameState.currentLevel,
             onSettingsClick = { showExitDialog = true },
+            onHelpClick = { forceShowTutorial = true },
             onBack = {
                 if (hasProgress) {
                     showExitDialog = true
@@ -292,6 +296,16 @@ fun GameScreen(
             soundEnabled = soundEnabled,
             onDismiss = {
                 viewModel.consumeNewlyUnlockedLevel()
+            }
+        )
+    }
+
+    if (hasSeenClassicTutorial == false || forceShowTutorial) {
+        GameTutorialOverlay(
+            isTimeAttack = false,
+            onDismiss = {
+                viewModel.setHasSeenClassicTutorial(true)
+                forceShowTutorial = false
             }
         )
     }

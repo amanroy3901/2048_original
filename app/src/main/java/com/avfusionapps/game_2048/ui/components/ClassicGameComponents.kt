@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.Undo
+import androidx.compose.material.icons.automirrored.rounded.HelpOutline
 import androidx.compose.material.icons.rounded.Lightbulb
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Settings
@@ -33,6 +34,7 @@ import com.avfusionapps.game_2048.ui.components.NeonBadge
 fun ClassicTopBar(
     currentLevel: Int,
     onSettingsClick: () -> Unit,
+    onHelpClick: () -> Unit,
     onBack: () -> Unit
 ) {
     val theme = LocalGameTheme.current
@@ -83,13 +85,21 @@ fun ClassicTopBar(
             }
         }
 
-        // Settings Button
-        SquareIconButton(
-            icon = Icons.Rounded.Settings,
-            contentDescription = stringResource(id = R.string.desc_settings_button),
-            onClick = onSettingsClick,
-            modifier = Modifier.testTag("ClassicTopBar_Button_Settings")
-        )
+        // Action Buttons Row (Help & Settings)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            SquareIconButton(
+                icon = Icons.AutoMirrored.Rounded.HelpOutline,
+                contentDescription = "Help",
+                onClick = onHelpClick,
+                modifier = Modifier.testTag("ClassicTopBar_Button_Help")
+            )
+            SquareIconButton(
+                icon = Icons.Rounded.Settings,
+                contentDescription = stringResource(id = R.string.desc_settings_button),
+                onClick = onSettingsClick,
+                modifier = Modifier.testTag("ClassicTopBar_Button_Settings")
+            )
+        }
     }
 }
 

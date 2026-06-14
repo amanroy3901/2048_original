@@ -69,6 +69,8 @@ import com.avfusionapps.game_2048.ui.theme.Purple80
 import com.avfusionapps.game_2048.ui.theme.PurpleDarkBackground
 import com.avfusionapps.game_2048.viewmodel.Direction
 import com.avfusionapps.game_2048.ui.components.TimeAttackTopBar
+import com.avfusionapps.game_2048.ui.components.FloatingBonus
+import com.avfusionapps.game_2048.ui.components.GameTutorialOverlay
 import com.avfusionapps.game_2048.ui.components.GameScoreBoard
 import com.avfusionapps.game_2048.ui.components.GameSwipeIndicator
 import com.avfusionapps.game_2048.ui.components.TimeAttackBottomBar
@@ -79,6 +81,7 @@ import com.avfusionapps.game_2048.model.TimeAttackState
 import com.avfusionapps.game_2048.viewmodel.TimeAttackViewModel
 import androidx.activity.compose.BackHandler
 import kotlin.math.abs
+import kotlinx.coroutines.flow.collectLatest
 
 @Composable
 fun TimeAttackScreen(
@@ -87,12 +90,52 @@ fun TimeAttackScreen(
 ) {
     val gameState by viewModel.gameState.collectAsState(initial = TimeAttackState())
     val highScore by viewModel.highScore.collectAsState(initial = 0)
+    val hasSeenTimeAttackTutorial by viewModel.hasSeenTimeAttackTutorial.collectAsState()
+    var forceShowTutorial by remember { mutableStateOf(false) }
+    val vibrationEnabled by viewModel.vibrationEnabled.collectAsState(initial = true)
+    var floatingBonuses by remember { mutableStateOf(listOf<FloatingBonus>()) }
     val context = LocalContext.current
 
     val theme = LocalGameTheme.current
 
-    LaunchedEffect(true) {
-        // No-op for now
+    LaunchedEffect(key1 = viewModel) {
+        viewModel.timeBonusEvent.collectLatest { bonusText ->
+            val newBonus = FloatingBonus(
+                id = System.currentTimeMillis() + (0..1000).random(),
+                text = bonusText
+            )
+            floatingBonuses = floatingBonuses + newBonus
+        }
+    }
+
+    LaunchedEffect(key1 = viewModel, key2 = vibrationEnabled) {
+        viewModel.mergeEvent.collectLatest {
+            if (vibrationEnabled) {
+                println("TimeAttack: Merge event received. Attempting direct vibration.")
+
+                val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+                if (vibrator?.hasVibrator() == true) { // Check if vibrator exists
+                    try {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            val vibrationEffect = VibrationEffect.createOneShot(
+                                50,
+                                VibrationEffect.DEFAULT_AMPLITUDE
+                            )
+                            vibrator.vibrate(vibrationEffect)
+                            println("TimeAttack: Direct vibration (Oreo+) attempted.")
+                        } else {
+                            @Suppress("DEPRECATION")
+                            vibrator.vibrate(50) // 50ms vibration
+                            println("TimeAttack: Direct vibration (Legacy) attempted.")
+                        }
+                    } catch (e: Exception) {
+                        println("TimeAttack: Error during direct vibration: ${e.message}")
+                    }
+                } else {
+                    println("TimeAttack: Device does not have a vibrator or service not found.")
+                }
+            }
+        }
     }
 
     BackHandler(enabled = !gameState.isGameOver) {
@@ -140,26 +183,21 @@ fun TimeAttackScreen(
             timeRemainingMillis = gameState.timeRemainingMillis,
             isPaused = gameState.isPaused,
             onPauseToggle = { viewModel.togglePause() },
-            onBack = { navController.popBackStack() }
+            onHelpClick = {
+                forceShowTutorial = true
+                viewModel.setPaused(true)
+            },
+            onBack = { navController.popBackStack() },
+            floatingBonuses = floatingBonuses,
+            onBonusAnimationFinished = { id ->
+                floatingBonuses = floatingBonuses.filter { it.id != id }
+            }
         )
 
         GameScoreBoard(
             score = gameState.score,
             highScore = highScore
         )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Last bonus notification
-        AnimatedVisibility(
-            visible = gameState.lastBonus != null,
-            enter = fadeIn() + slideInVertically(),
-            exit = fadeOut() + slideOutVertically()
-        ) {
-            gameState.lastBonus?.let { bonus ->
-                BonusNotification(bonus = bonus)
-            }
-        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -185,7 +223,8 @@ fun TimeAttackScreen(
     }
 
     // Pause overlay
-    if (gameState.isPaused) {
+    val isTutorialShowing = (hasSeenTimeAttackTutorial == false || forceShowTutorial)
+    if (gameState.isPaused && !isTutorialShowing) {
         com.avfusionapps.game_2048.ui.components.GamePauseDialog(
             currentScore = gameState.score,
             onResume = { viewModel.togglePause() },
@@ -203,6 +242,17 @@ fun TimeAttackScreen(
             isTimeUp = gameState.timeRemainingMillis <= 0,
             onPlayAgain = { viewModel.startNewGame() },
             onExit = { navController.popBackStack() }
+        )
+    }
+
+    if (hasSeenTimeAttackTutorial == false || forceShowTutorial) {
+        GameTutorialOverlay(
+            isTimeAttack = true,
+            onDismiss = {
+                viewModel.setHasSeenTimeAttackTutorial(true)
+                forceShowTutorial = false
+                viewModel.setPaused(false)
+            }
         )
     }
 }

@@ -25,6 +25,8 @@ class GameSettingsRepository(private val context: Context) {
         val HIGH_SCORE_KEY = intPreferencesKey("high_score")
         val SOUND_ENABLED_KEY = booleanPreferencesKey("sound_enabled")
         val VIBRATION_ENABLED_KEY = booleanPreferencesKey("vibration_enabled")
+        val HAS_SEEN_CLASSIC_TUTORIAL_KEY = booleanPreferencesKey("has_seen_classic_tutorial")
+        val HAS_SEEN_TIME_ATTACK_TUTORIAL_KEY = booleanPreferencesKey("has_seen_time_attack_tutorial")
         const val DEFAULT_PLAYER_NAME = "Player"
         const val DEFAULT_HIGH_SCORE = 0
     }
@@ -126,6 +128,46 @@ class GameSettingsRepository(private val context: Context) {
     suspend fun updateVibrationEnabled(enabled: Boolean) {
         context.gameSettingsDataStore.edit { preferences ->
             preferences[VIBRATION_ENABLED_KEY] = enabled
+        }
+    }
+
+    // Flow to check if classic tutorial has been seen
+    val hasSeenClassicTutorialFlow: Flow<Boolean> = context.gameSettingsDataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(androidx.datastore.preferences.core.emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preferences ->
+            preferences[HAS_SEEN_CLASSIC_TUTORIAL_KEY] ?: false
+        }
+
+    // Flow to check if time attack tutorial has been seen
+    val hasSeenTimeAttackTutorialFlow: Flow<Boolean> = context.gameSettingsDataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(androidx.datastore.preferences.core.emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preferences ->
+            preferences[HAS_SEEN_TIME_ATTACK_TUTORIAL_KEY] ?: false
+        }
+
+    // Suspending function to update the classic tutorial seen status
+    suspend fun updateHasSeenClassicTutorial(hasSeen: Boolean) {
+        context.gameSettingsDataStore.edit { preferences ->
+            preferences[HAS_SEEN_CLASSIC_TUTORIAL_KEY] = hasSeen
+        }
+    }
+
+    // Suspending function to update the time attack tutorial seen status
+    suspend fun updateHasSeenTimeAttackTutorial(hasSeen: Boolean) {
+        context.gameSettingsDataStore.edit { preferences ->
+            preferences[HAS_SEEN_TIME_ATTACK_TUTORIAL_KEY] = hasSeen
         }
     }
 }

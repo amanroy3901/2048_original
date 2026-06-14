@@ -17,30 +17,80 @@ import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material.icons.automirrored.rounded.Undo
 import androidx.compose.material.icons.rounded.Lightbulb
 import androidx.compose.material.icons.rounded.EmojiEvents
+import androidx.compose.material.icons.automirrored.rounded.HelpOutline
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
+import androidx.compose.animation.core.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.testTag
+import kotlinx.coroutines.launch
 import com.avfusionapps.game_2048.R
 import com.avfusionapps.game_2048.ui.theme.LocalGameTheme
+
+data class FloatingBonus(
+    val id: Long,
+    val text: String
+)
+
+@Composable
+fun FloatingBonusText(
+    text: String,
+    onAnimationFinished: () -> Unit
+) {
+    val theme = LocalGameTheme.current
+    val animatableY = remember { Animatable(40f) }
+    val animatableAlpha = remember { Animatable(1f) }
+
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.joinAll(
+            launch {
+                animatableY.animateTo(
+                    targetValue = -50f,
+                    animationSpec = tween(durationMillis = 1200, easing = FastOutLinearInEasing)
+                )
+            },
+            launch {
+                animatableAlpha.animateTo(
+                    targetValue = 0f,
+                    animationSpec = tween(durationMillis = 1200, easing = FastOutLinearInEasing)
+                )
+            }
+        )
+        onAnimationFinished()
+    }
+
+    Text(
+        text = text,
+        color = theme.accentColor,
+        fontSize = 24.sp,
+        fontWeight = FontWeight.ExtraBold,
+        modifier = Modifier
+            .offset(y = animatableY.value.dp)
+            .graphicsLayer(alpha = animatableAlpha.value)
+    )
+}
 
 @Composable
 fun TimeAttackTopBar(
     timeRemainingMillis: Long,
     isPaused: Boolean,
     onPauseToggle: () -> Unit,
-    onBack: () -> Unit
+    onHelpClick: () -> Unit,
+    onBack: () -> Unit,
+    floatingBonuses: List<FloatingBonus> = emptyList(),
+    onBonusAnimationFinished: (Long) -> Unit = {}
 ) {
     val theme = LocalGameTheme.current
     val minutes = (timeRemainingMillis / 60000).toInt()
@@ -83,46 +133,79 @@ fun TimeAttackTopBar(
         }
 
         // Timer
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(
-                imageVector = Icons.Rounded.Timer,
-                contentDescription = null,
-                tint = timerColor,
-                modifier = Modifier.size(20.dp)
-            )
-            Text(
-                text = String.format("%02d:%02d.%02d", minutes, seconds, millis),
-                color = timerColor,
-                fontSize = 36.sp,
-                fontWeight = FontWeight.ExtraBold,
-                letterSpacing = 1.sp
-            )
-            Text(
-                text = stringResource(id = R.string.time_left),
-                color = theme.textColor.copy(alpha = 0.5f),
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.5.sp
-            )
+        Box(contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(
+                    imageVector = Icons.Rounded.Timer,
+                    contentDescription = null,
+                    tint = timerColor,
+                    modifier = Modifier.size(20.dp)
+                )
+                Text(
+                    text = String.format("%02d:%02d.%02d", minutes, seconds, millis),
+                    color = timerColor,
+                    fontSize = 36.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = 1.sp
+                )
+                Text(
+                    text = stringResource(id = R.string.time_left),
+                    color = theme.textColor.copy(alpha = 0.5f),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.5.sp
+                )
+            }
+
+            floatingBonuses.forEach { bonus ->
+                key(bonus.id) {
+                    FloatingBonusText(
+                        text = bonus.text,
+                        onAnimationFinished = { onBonusAnimationFinished(bonus.id) }
+                    )
+                }
+            }
         }
 
-        // Pause Button
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(theme.surfaceColor)
-                .border(1.dp, theme.textColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
-                .testTag("TimeAttackTopBar_Button_Pause")
-                .clickable { onPauseToggle() },
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = if (isPaused) Icons.Rounded.PlayArrow else Icons.Rounded.Pause,
-                contentDescription = stringResource(id = R.string.desc_pause_button),
-                tint = theme.primaryColor,
-                modifier = Modifier.size(24.dp)
-            )
+        // Action Row (Help & Pause)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Help Button
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(theme.surfaceColor)
+                    .border(1.dp, theme.textColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
+                    .testTag("TimeAttackTopBar_Button_Help")
+                    .clickable { onHelpClick() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.HelpOutline,
+                    contentDescription = "Help",
+                    tint = theme.textColor,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+
+            // Pause Button
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(theme.surfaceColor)
+                    .border(1.dp, theme.textColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
+                    .testTag("TimeAttackTopBar_Button_Pause")
+                    .clickable { onPauseToggle() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = if (isPaused) Icons.Rounded.PlayArrow else Icons.Rounded.Pause,
+                    contentDescription = stringResource(id = R.string.desc_pause_button),
+                    tint = theme.primaryColor,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
         }
     }
 }

@@ -10,11 +10,19 @@ import com.avfusionapps.game_2048.model.BonusType
 import com.avfusionapps.game_2048.model.TimeAttackScore
 import com.avfusionapps.game_2048.model.TimeAttackState
 import com.avfusionapps.game_2048.model.TileAnimationInfo
+import com.avfusionapps.game_2048.data.GameSettingsRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlin.math.max
 import kotlin.math.min
@@ -29,6 +37,7 @@ private data class TimeAttackProcessedTile(
 class TimeAttackViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = TimeAttackRepository(application.applicationContext)
+    private val settingsRepository = GameSettingsRepository(application)
 
     private val _gameState = MutableStateFlow(TimeAttackState())
     val gameState: StateFlow<TimeAttackState> = _gameState.asStateFlow()
@@ -41,11 +50,48 @@ class TimeAttackViewModel(application: Application) : AndroidViewModel(applicati
     val bestTimeSurvived = repository.bestTimeSurvived
     val topScores = repository.topScores
 
-    init {
-        startNewGame()
+    val hasSeenTimeAttackTutorial: StateFlow<Boolean?> = settingsRepository.hasSeenTimeAttackTutorialFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
+
+    val vibrationEnabled: StateFlow<Boolean> = settingsRepository.vibrationEnabledFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    private val _mergeEvent = MutableSharedFlow<Unit>(
+        replay = 0,
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
+    val mergeEvent: SharedFlow<Unit> = _mergeEvent.asSharedFlow()
+
+    private val _timeBonusEvent = MutableSharedFlow<String>(
+        replay = 0,
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
+    val timeBonusEvent: SharedFlow<String> = _timeBonusEvent.asSharedFlow()
+
+    fun setHasSeenTimeAttackTutorial(hasSeen: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.updateHasSeenTimeAttackTutorial(hasSeen)
+        }
     }
 
-    fun startNewGame() {
+    init {
+        viewModelScope.launch {
+            val hasSeen = settingsRepository.hasSeenTimeAttackTutorialFlow.first()
+            startNewGame(isTutorialShowing = !hasSeen)
+        }
+    }
+
+    fun setPaused(paused: Boolean) {
+        _gameState.value = _gameState.value.copy(isPaused = paused)
+    }
+
+    fun startNewGame(isTutorialShowing: Boolean = false) {
         timerJob?.cancel()
         val newGrid = createEmptyGrid()
         _gameState.value = TimeAttackState(
@@ -53,7 +99,7 @@ class TimeAttackViewModel(application: Application) : AndroidViewModel(applicati
             score = 0,
             timeRemainingMillis = initialTimeMillis,
             isGameOver = false,
-            isPaused = false,
+            isPaused = isTutorialShowing,
             multiplier = 1.0f,
             lastBonus = null
         )
@@ -132,6 +178,7 @@ class TimeAttackViewModel(application: Application) : AndroidViewModel(applicati
 
             // Calculate bonuses for merged tiles
             mergedTiles.forEach { tileValue ->
+                _mergeEvent.tryEmit(Unit)
                 // Base merge bonus
                 timeBonus += BonusType.MergeBonus.timeBonusMillis
 
@@ -156,6 +203,9 @@ class TimeAttackViewModel(application: Application) : AndroidViewModel(applicati
 
             // Apply time bonus with cap
             val newTime = min(maxTimeMillis, currentState.timeRemainingMillis + timeBonus)
+            if (timeBonus > 0) {
+                _timeBonusEvent.tryEmit("+${timeBonus / 1000}s")
+            }
 
             // Calculate final score with multiplier
             val finalScoreGained = (scoreGained * multiplier).toInt()

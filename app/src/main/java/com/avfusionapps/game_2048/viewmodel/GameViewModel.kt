@@ -218,6 +218,19 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     val vibrationEnabled: StateFlow<Boolean> = settingsRepository.vibrationEnabledFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
+    val hasSeenClassicTutorial: StateFlow<Boolean?> = settingsRepository.hasSeenClassicTutorialFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
+
+    fun setHasSeenClassicTutorial(hasSeen: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.updateHasSeenClassicTutorial(hasSeen)
+        }
+    }
+
     fun updateSoundEnabled(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.updateSoundEnabled(enabled)
