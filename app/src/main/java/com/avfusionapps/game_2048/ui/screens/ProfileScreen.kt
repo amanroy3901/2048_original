@@ -439,7 +439,7 @@ fun ProfileScreen(
                         sub = "Read our policy",
                         modifier = Modifier.testTag("ProfileScreen_Button_PrivacyPolicy"),
                         onClick = {
-                            val privacyUrl = "https://github.com/saynedesign/2048-neon-rush/blob/main/PRIVACY_POLICY.md"
+                            val privacyUrl = "https://amanroy3901.github.io/privacy/privacy_neon_rush_2048.html"
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(privacyUrl))
                             try {
                                 context.startActivity(intent)

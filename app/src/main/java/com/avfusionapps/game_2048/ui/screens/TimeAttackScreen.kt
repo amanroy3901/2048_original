@@ -75,8 +75,9 @@ import com.avfusionapps.game_2048.ui.components.TimeAttackBottomBar
 import com.avfusionapps.game_2048.ui.components.GameBoard
 import com.avfusionapps.game_2048.ui.components.TimeAttackGameOverDialog
 import com.avfusionapps.game_2048.ui.theme.LocalGameTheme
-import com.avfusionapps.game_2048.viewmodel.TimeAttackViewModel
 import com.avfusionapps.game_2048.model.TimeAttackState
+import com.avfusionapps.game_2048.viewmodel.TimeAttackViewModel
+import androidx.activity.compose.BackHandler
 import kotlin.math.abs
 
 @Composable
@@ -94,7 +95,11 @@ fun TimeAttackScreen(
         // No-op for now
     }
 
-
+    BackHandler(enabled = !gameState.isGameOver) {
+        if (!gameState.isPaused) {
+            viewModel.togglePause()
+        }
+    }
 
     Column(
         modifier = Modifier
