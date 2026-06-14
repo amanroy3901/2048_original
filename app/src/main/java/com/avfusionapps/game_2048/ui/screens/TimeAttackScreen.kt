@@ -43,6 +43,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -91,6 +92,8 @@ fun TimeAttackScreen(
     LaunchedEffect(true) {
         // No-op for now
     }
+
+
 
     Column(
         modifier = Modifier
@@ -154,7 +157,12 @@ fun TimeAttackScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         // Game grid
-        GameBoard(grid = gameState.grid)
+        GameBoard(
+            grid = gameState.grid,
+            tileAnimationInfo = gameState.tileAnimationInfo,
+            moveCount = gameState.moveCount,
+            onAnimationsComplete = { viewModel.clearAnimationInfo() }
+        )
 
         Spacer(modifier = Modifier.weight(1f))
 

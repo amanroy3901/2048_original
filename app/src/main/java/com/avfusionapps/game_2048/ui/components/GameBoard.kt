@@ -1,6 +1,6 @@
 package com.avfusionapps.game_2048.ui.components
 
-import android.R.color.white
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -16,7 +16,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -27,6 +26,8 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -34,75 +35,65 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.avfusionapps.game_2048.model.TileAnimationInfo
 import com.avfusionapps.game_2048.ui.theme.GameTheme
 import com.avfusionapps.game_2048.ui.theme.LocalGameTheme
 import com.avfusionapps.game_2048.ui.theme._2048OriginalTheme
 import com.avfusionapps.game_2048.viewmodel.GameViewModel
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.math.log2
 
 @Composable
 fun GameBoard(viewModel: GameViewModel) {
-    val theme = LocalGameTheme.current
-    Box(
-        modifier = Modifier
-            .aspectRatio(1f)
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(theme.surfaceColor)
-            .border(2.dp, theme.primaryColor.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
-            .padding(6.dp)
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            viewModel.gameState.grid.forEachIndexed { i, row ->
-                Row(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    row.forEachIndexed { j, cellValue ->
-                        val tileInfo = viewModel.gameState.tileAnimationInfo[Pair(i, j)]
-                        GameCell(
-                            value = cellValue,
-                            modifier = Modifier
-                                .weight(1f)
-                                .testTag("GameScreen_Item_GameCell_${i}_${j}")
-                                .semantics {
-                                    contentDescription = if (cellValue == 0) "Empty Tile at row $i column $j" else "Tile $cellValue at row $i column $j"
-                                },
-                            isNew = tileInfo?.isNew ?: false,
-                            isMerged = tileInfo?.isMerged ?: false
-                        )
-                    }
-                }
-            }
-        }
-    }
-
-    LaunchedEffect(viewModel.gameState.moveCount) {
-        if (viewModel.gameState.tileAnimationInfo.isNotEmpty()) {
-            delay(300) // Adjust delay based on longest animation
-            viewModel.clearAnimationInfo()
-        }
-    }
+    GameBoard(
+        grid = viewModel.gameState.grid,
+        tileAnimationInfo = viewModel.gameState.tileAnimationInfo,
+        moveCount = viewModel.gameState.moveCount,
+        onAnimationsComplete = { viewModel.clearAnimationInfo() }
+    )
 }
 
 @Composable
 fun GameBoard(
     grid: List<List<Int>>,
+    tileAnimationInfo: Map<Pair<Int, Int>, TileAnimationInfo>,
+    moveCount: Int,
+    onAnimationsComplete: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val theme = LocalGameTheme.current
+    val density = LocalDensity.current
+
+    // Measure cell size once from the board dimensions
+    var boardSize by remember { mutableStateOf(IntSize.Zero) }
+    val gridSize = grid.size
+    val spacingPx = with(density) { 4.dp.toPx() }
+    val paddingPx = with(density) { 6.dp.toPx() }
+
+    // Calculate cell dimensions from measured board size
+    val cellSizePx = remember(boardSize, gridSize) {
+        if (boardSize.width > 0 && gridSize > 0) {
+            val usableWidth = boardSize.width - (2 * paddingPx) - ((gridSize - 1) * spacingPx)
+            usableWidth / gridSize
+        } else 0f
+    }
+
+    // Clear animations after they complete
+    LaunchedEffect(moveCount) {
+        if (tileAnimationInfo.isNotEmpty() && onAnimationsComplete != null) {
+            kotlinx.coroutines.delay(350)
+            onAnimationsComplete()
+        }
+    }
+
     Box(
         modifier = modifier
             .aspectRatio(1f)
             .fillMaxWidth()
+            .onSizeChanged { boardSize = it }
             .clip(RoundedCornerShape(12.dp))
             .background(theme.surfaceColor)
             .border(2.dp, theme.primaryColor.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
@@ -120,9 +111,22 @@ fun GameBoard(
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     row.forEachIndexed { j, cellValue ->
+                        val tileInfo = tileAnimationInfo[Pair(i, j)]
                         GameCell(
                             value = cellValue,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("GameScreen_Item_GameCell_${i}_${j}")
+                                .semantics {
+                                    contentDescription = if (cellValue == 0) "Empty Tile at row $i column $j" else "Tile $cellValue at row $i column $j"
+                                },
+                            isNew = tileInfo?.isNew ?: false,
+                            isMerged = tileInfo?.isMerged ?: false,
+                            startPosition = tileInfo?.startPosition,
+                            currentPosition = Pair(i, j),
+                            moveCount = moveCount,
+                            cellSizePx = cellSizePx,
+                            spacingPx = spacingPx
                         )
                     }
                 }
@@ -137,6 +141,71 @@ fun GameCell(
     modifier: Modifier = Modifier,
     isNew: Boolean = false,
     isMerged: Boolean = false,
+    startPosition: Pair<Int, Int>? = null,
+    currentPosition: Pair<Int, Int>? = null,
+    moveCount: Int = 0,
+    cellSizePx: Float = 0f,
+    spacingPx: Float = 0f,
+    fontSizeMultiplier: Float = 1.0f
+) {
+    // Compute pixel offsets based on grid coordinate difference
+    val hasSlide = startPosition != null && startPosition != currentPosition
+    val rowDiff = if (hasSlide) (startPosition!!.first - currentPosition!!.first) else 0
+    val colDiff = if (hasSlide) (startPosition!!.second - currentPosition!!.second) else 0
+    val cellStride = cellSizePx + spacingPx
+
+    // Synchronously initialize state based on moveCount to avoid a 1-frame flash at target position
+    val slideProgress = remember(moveCount) { Animatable(if (hasSlide) 0f else 1f) }
+    var scale by remember(moveCount) { mutableStateOf(if (isNew) 0f else 1f) }
+
+    LaunchedEffect(moveCount) {
+        if (hasSlide || isMerged || isNew) {
+            if (hasSlide) {
+                // Already initialized to 0f, just animate to 1f
+                slideProgress.animateTo(1f, animationSpec = tween(durationMillis = 150))
+            }
+
+            // After slide completes, run secondary animations
+            if (isMerged) {
+                // Pop effect for merged tile
+                animate(1f, 1.15f, animationSpec = tween(100)) { v, _ -> scale = v }
+                animate(1.15f, 1f, animationSpec = tween(100)) { v, _ -> scale = v }
+            }
+
+            if (isNew) {
+                // Scale-in for new tile (after slide completes for other tiles)
+                animate(0f, 1f, animationSpec = tween(durationMillis = 120)) { v, _ -> scale = v }
+            }
+        }
+    }
+
+    val progress = slideProgress.value
+    val offsetX = colDiff * cellStride * (1f - progress)
+    val offsetY = rowDiff * cellStride * (1f - progress)
+
+    Box(
+        modifier = modifier.aspectRatio(1f),
+        contentAlignment = Alignment.Center
+    ) {
+        TileView(
+            value = value,
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    translationX = offsetX
+                    translationY = offsetY
+                    scaleX = scale
+                    scaleY = scale
+                },
+            fontSizeMultiplier = fontSizeMultiplier
+        )
+    }
+}
+
+@Composable
+fun TileView(
+    value: Int,
+    modifier: Modifier = Modifier,
     fontSizeMultiplier: Float = 1.0f
 ) {
     val theme = LocalGameTheme.current
@@ -153,7 +222,6 @@ fun GameCell(
         (baseSize * fontSizeMultiplier).sp
     }
 
-    // Dynamic colored glow shadow matching the cell color
     val cellShadowModifier = if (value > 0) {
         Modifier.shadow(
             elevation = 10.dp,
@@ -182,9 +250,7 @@ fun GameCell(
         }
     }
 
-    // Glassmorphism border: highlights at the top, blends with background at the bottom
     val borderModifier = if (value > 0) {
-        val borderGlowColor = if (value == 2) theme.primaryColor else backgroundColor
         Modifier.border(
             width = 1.2.dp,
             brush = Brush.verticalGradient(
@@ -203,7 +269,6 @@ fun GameCell(
         )
     }
 
-    // Glassmorphism background brush (transparent gradient)
     val backgroundBrush = remember(value, backgroundColor) {
         if (value > 0) {
             Brush.verticalGradient(
@@ -225,26 +290,12 @@ fun GameCell(
         }
     }
 
-    var scale by remember { mutableStateOf(1f) }
-    LaunchedEffect(key1 = value, key2 = isNew, key3 = isMerged) {
-        scale = 1f // Reset scale
-        if (isNew) {
-            scale = 0.1f
-            animate(0.1f, 1f, animationSpec = tween(150, 50)) { v, _ -> scale = v }
-        } else if (isMerged) {
-            animate(1f, 1.2f, animationSpec = tween(80)) { v, _ -> scale = v }
-            animate(1.2f, 1f, animationSpec = tween(80)) { v, _ -> scale = v }
-        }
-    }
-
     Box(
         modifier = modifier
-            .aspectRatio(1f)
-            .graphicsLayer(scaleX = scale, scaleY = scale)
-            .then(cellShadowModifier) // Apply glow
+            .then(cellShadowModifier)
             .clip(RoundedCornerShape(8.dp))
             .background(brush = backgroundBrush)
-            .then(borderModifier), // Apply border
+            .then(borderModifier),
         contentAlignment = Alignment.Center
     ) {
         if (value != 0) {
@@ -261,10 +312,10 @@ fun GameCell(
                     val paint = Paint()
                         .asFrameworkPaint().apply {
                             this.style = android.graphics.Paint.Style.STROKE
-                            this.strokeWidth = 2f  // Increased stroke width
+                            this.strokeWidth = 2f
                             this.color = Color.White.copy(alpha = 0.7f).toArgb()
                             this.textSize = textSize.toPx()
-                            this.isAntiAlias = true  // Enable anti-aliasing
+                            this.isAntiAlias = true
                             this.flags = this.flags or android.graphics.Paint.SUBPIXEL_TEXT_FLAG
                         }
 
@@ -288,7 +339,6 @@ fun GameCell(
     }
 }
 
-
 @Preview
 @Composable
 fun GameCellBoardPreview() {
@@ -306,10 +356,9 @@ fun GameCellBoardPreview() {
                 Box(
                     modifier = Modifier.padding(4.dp)
                 ) {
-                    GameCell(value, Modifier.size(75.dp))
+                    TileView(value, Modifier.size(75.dp))
                 }
             }
         }
     }
 }
-

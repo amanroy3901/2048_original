@@ -10,7 +10,9 @@ data class TimeAttackState(
     val isGameOver: Boolean = false,
     val isPaused: Boolean = false,
     val multiplier: Float = 1.0f,
-    val lastBonus: BonusType? = null
+    val lastBonus: BonusType? = null,
+    val tileAnimationInfo: Map<Pair<Int, Int>, TileAnimationInfo> = emptyMap(),
+    val moveCount: Int = 0
 ) {
     companion object {
         fun createEmptyGrid(size: Int = 4): List<List<Int>> {

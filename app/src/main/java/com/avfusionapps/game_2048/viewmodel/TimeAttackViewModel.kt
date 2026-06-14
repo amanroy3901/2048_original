@@ -9,6 +9,7 @@ import com.avfusionapps.game_2048.data.repository.TimeAttackRepository
 import com.avfusionapps.game_2048.model.BonusType
 import com.avfusionapps.game_2048.model.TimeAttackScore
 import com.avfusionapps.game_2048.model.TimeAttackState
+import com.avfusionapps.game_2048.model.TileAnimationInfo
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,6 +19,12 @@ import kotlinx.coroutines.launch
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.random.Random
+
+private data class TimeAttackProcessedTile(
+    val value: Int,
+    val originalIndex: Int,
+    val mergedFromIndex: Int? = null
+)
 
 class TimeAttackViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -75,10 +82,50 @@ class TimeAttackViewModel(application: Application) : AndroidViewModel(applicati
 
         val currentState = _gameState.value
         val currentGrid = currentState.grid
-        
-        val (newGrid, scoreGained, mergedTiles) = moveGrid(currentGrid, direction)
+        val size = currentGrid.size
+        val newGrid = MutableList(size) { MutableList(size) { 0 } }
+        var boardMoved = false
+        var scoreGained = 0
+        val mergedTiles = mutableListOf<Int>()
+        val animationInfoMap = mutableMapOf<Pair<Int, Int>, TileAnimationInfo>()
 
-        if (newGrid != currentGrid) {
+        for (i in 0 until size) {
+            val currentLine = getLine(currentGrid, i, direction)
+            val (processedLine, lineScore, lineMoved) = processLine(currentLine)
+
+            if (lineMoved) boardMoved = true
+            scoreGained += lineScore
+
+            processedLine.forEachIndexed { resultIndex, processedTile ->
+                if (processedTile.value > 0) {
+                    val finalPos = getFinalPosition(i, resultIndex, direction, size)
+                    newGrid[finalPos.first][finalPos.second] = processedTile.value
+                    
+                    val originalPos = getFinalPosition(i, processedTile.originalIndex, direction, size)
+                    val positionChanged = finalPos != originalPos
+                    val didMerge = processedTile.mergedFromIndex != null
+
+                    if (didMerge) {
+                        mergedTiles.add(processedTile.value)
+                    }
+
+                    if (positionChanged || didMerge) {
+                        val mergedFromPos = if (didMerge) {
+                            getFinalPosition(i, processedTile.mergedFromIndex!!, direction, size)
+                        } else null
+
+                        animationInfoMap[finalPos] = TileAnimationInfo(
+                            startPosition = originalPos,
+                            mergedFromPosition = mergedFromPos,
+                            isMerged = didMerge,
+                            isNew = false
+                        )
+                    }
+                }
+            }
+        }
+
+        if (boardMoved) {
             var timeBonus = 0L
             var multiplier = currentState.multiplier
             var lastBonus: BonusType? = null
@@ -114,7 +161,26 @@ class TimeAttackViewModel(application: Application) : AndroidViewModel(applicati
             val finalScoreGained = (scoreGained * multiplier).toInt()
 
             // Add new random tile to grid
-            val gridWithNewTile = addRandomTile(newGrid)
+            val gridWithNewTile = addRandomTile(newGrid.map { it.toList() })
+            
+            // Find where the new tile was placed
+            var newTileRow = -1
+            var newTileCol = -1
+            for (r in 0 until size) {
+                for (c in 0 until size) {
+                    if (newGrid[r][c] == 0 && gridWithNewTile[r][c] != 0) {
+                        newTileRow = r
+                        newTileCol = c
+                        break
+                    }
+                }
+                if (newTileRow != -1) break
+            }
+            
+            if (newTileRow != -1) {
+                animationInfoMap[Pair(newTileRow, newTileCol)] = TileAnimationInfo(isNew = true)
+            }
+
             val gameOver = isGameOver(gridWithNewTile)
 
             _gameState.value = currentState.copy(
@@ -125,7 +191,9 @@ class TimeAttackViewModel(application: Application) : AndroidViewModel(applicati
                 timeRemainingMillis = newTime,
                 multiplier = min(5.0f, multiplier), // Cap at 5x
                 lastBonus = lastBonus,
-                isGameOver = gameOver
+                isGameOver = gameOver,
+                tileAnimationInfo = animationInfoMap,
+                moveCount = currentState.moveCount + 1
             )
 
             if (gameOver) {
@@ -135,6 +203,12 @@ class TimeAttackViewModel(application: Application) : AndroidViewModel(applicati
             if (isGameOver(currentGrid)) {
                 endGame()
             }
+        }
+    }
+
+    fun clearAnimationInfo() {
+        if (_gameState.value.tileAnimationInfo.isNotEmpty()) {
+            _gameState.value = _gameState.value.copy(tileAnimationInfo = emptyMap())
         }
     }
 
@@ -208,7 +282,7 @@ class TimeAttackViewModel(application: Application) : AndroidViewModel(applicati
 
         for (i in 0 until size) {
             val currentLine = getLine(grid, i, direction)
-            val (newLine, lineScore, lineMerged) = processLine(currentLine)
+            val (newLine, lineScore, lineMerged) = processLineSimple(currentLine)
             score += lineScore
             mergedTiles.addAll(lineMerged)
             applyLine(mutableGrid, newLine, i, direction)
@@ -242,7 +316,7 @@ class TimeAttackViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
-    private fun processLine(line: List<Int>): Triple<List<Int>, Int, List<Int>> {
+    private fun processLineSimple(line: List<Int>): Triple<List<Int>, Int, List<Int>> {
         val nonZero = line.filter { it != 0 }
         val result = mutableListOf<Int>()
         var score = 0
@@ -267,6 +341,76 @@ class TimeAttackViewModel(application: Application) : AndroidViewModel(applicati
         }
 
         return Triple(result, score, merged)
+    }
+
+    private fun processLine(line: List<Int>): Triple<List<TimeAttackProcessedTile>, Int, Boolean> {
+        val indexedNonZero = line.mapIndexedNotNull { index, value -> if (value != 0) index to value else null }
+
+        if (indexedNonZero.isEmpty()) {
+            val resultList = List(line.size) { TimeAttackProcessedTile(0, -1) }
+            return Triple(resultList, 0, false)
+        }
+
+        val result = mutableListOf<TimeAttackProcessedTile>()
+        var score = 0
+        var i = 0
+        var lineChanged = false
+
+        while (i < indexedNonZero.size) {
+            val (originalIndex1, value1) = indexedNonZero[i]
+
+            if (i + 1 < indexedNonZero.size) {
+                val (originalIndex2, value2) = indexedNonZero[i + 1]
+                if (value1 == value2) {
+                    val mergedValue = value1 * 2
+                    result.add(
+                        TimeAttackProcessedTile(
+                            value = mergedValue,
+                            originalIndex = originalIndex1,
+                            mergedFromIndex = originalIndex2
+                        )
+                    )
+                    score += mergedValue
+                    lineChanged = true
+                    i += 2
+                    continue
+                }
+            }
+
+            result.add(TimeAttackProcessedTile(value = value1, originalIndex = originalIndex1))
+            if (result.size - 1 != i) {
+                lineChanged = true
+            }
+            i++
+        }
+
+        result.forEachIndexed { finalLineIndex, processedTile ->
+            if (processedTile.originalIndex != finalLineIndex) {
+                lineChanged = true
+            }
+        }
+
+        val finalResultList = mutableListOf<TimeAttackProcessedTile>()
+        finalResultList.addAll(result)
+        while (finalResultList.size < line.size) {
+            finalResultList.add(TimeAttackProcessedTile(0, -1))
+        }
+
+        return Triple(finalResultList, score, lineChanged)
+    }
+
+    private fun getFinalPosition(
+        lineIndex: Int,
+        resultIndex: Int,
+        direction: Direction,
+        size: Int
+    ): Pair<Int, Int> {
+        return when (direction) {
+            Direction.UP -> Pair(resultIndex, lineIndex)
+            Direction.DOWN -> Pair(size - 1 - resultIndex, lineIndex)
+            Direction.LEFT -> Pair(lineIndex, resultIndex)
+            Direction.RIGHT -> Pair(lineIndex, size - 1 - resultIndex)
+        }
     }
 
     fun undoMove() {
@@ -303,7 +447,7 @@ class TimeAttackViewModel(application: Application) : AndroidViewModel(applicati
 
             for (i in 0 until size) {
                 val currentLine = getLine(grid, i, direction)
-                val (newLine, lineScore, _) = processLine(currentLine)
+                val (newLine, lineScore, _) = processLineSimple(currentLine)
                 if (currentLine != newLine) moved = true
                 scoreGained += lineScore
                 applyLine(tempGrid, newLine, i, direction)
@@ -320,7 +464,7 @@ class TimeAttackViewModel(application: Application) : AndroidViewModel(applicati
                 val size = grid.size
                 for (i in 0 until size) {
                     val currentLine = getLine(grid, i, direction)
-                    val (newLine, _, _) = processLine(currentLine)
+                    val (newLine, _, _) = processLineSimple(currentLine)
                     if (currentLine != newLine) return direction
                 }
             }

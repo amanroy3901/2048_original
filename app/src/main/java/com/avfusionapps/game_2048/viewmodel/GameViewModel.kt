@@ -1,6 +1,7 @@
 package com.avfusionapps.game_2048.viewmodel
 
 import android.app.Application
+import com.avfusionapps.game_2048.model.TileAnimationInfo
 import android.content.Context
 import android.util.Log
 import android.widget.Toast
@@ -30,17 +31,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-/**
- * Represents the animation state for a tile after a move.
- * @param startPosition The grid coordinates (row, col) where the tile originated *before* this move. Null if it didn't move.
- * @param isNew True if this tile was newly added in this move.
- * @param isMerged True if this tile is the result of a merge in this move.
- */
-data class TileAnimationInfo(
-    val startPosition: Pair<Int, Int>? = null,
-    val isNew: Boolean = false,
-    val isMerged: Boolean = false
-)
 
 /**
  * Represents the overall state of the game, including UI elements and logic state.
@@ -452,8 +442,13 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     val didMerge = processedTile.mergedFromIndex != null
 
                     if (positionChanged || didMerge) {
+                        val mergedFromPos = if (didMerge) {
+                            getFinalPosition(i, processedTile.mergedFromIndex!!, direction, size)
+                        } else null
+
                         animationInfoMap[finalPos] = TileAnimationInfo(
                             startPosition = originalPos,
+                            mergedFromPosition = mergedFromPos,
                             isMerged = didMerge,
                             isNew = false
                         )
