@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -191,7 +192,8 @@ fun GameScreen(
             .fillMaxSize()
             .testTag("GameScreen_Root")
             .background(theme.backgroundColor)
-            .padding(start = 16.dp, end = 16.dp, top = 50.dp)
+            .safeDrawingPadding()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
             .pointerInput(Unit) {
                 var totalX = 0f
                 var totalY = 0f

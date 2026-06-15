@@ -19,12 +19,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.avfusionapps.game_2048.ui.theme.LocalGameTheme
 
+import androidx.compose.ui.unit.Dp
+
 @Composable
 fun GameModeCard(
     title: String,
     subtitle: String,
     tagText: String,
-    icon: @Composable () -> Unit,
+    icon: @Composable (Dp) -> Unit,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     accentColor: Color? = null
@@ -39,55 +41,76 @@ fun GameModeCard(
         onClick = onClick,
         modifier = modifier.fillMaxWidth()
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // icon box
-            Box(
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val cardH = maxHeight
+            val cardW = maxWidth
+
+            val vPad = cardH * 0.14f
+            val hPad = cardW * 0.045f
+            val iconBoxSize = cardH * 0.58f
+            val iconInnerSize = cardH * 0.30f
+            val arrowSize = cardH * 0.28f
+            val spacerW = cardW * 0.04f
+            val titleFontSize = (cardH * 0.18f).value.sp
+            val subtitleFontSize = (cardH * 0.13f).value.sp
+            val tagFontSize = (cardH * 0.12f).value.sp
+
+            Row(
                 modifier = Modifier
-                    .size(56.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(primary.copy(alpha = 0.15f))
-                    .border(1.dp, primary.copy(alpha = 0.3f), RoundedCornerShape(14.dp)),
-                contentAlignment = Alignment.Center
+                    .fillMaxSize()
+                    .padding(horizontal = hPad, vertical = vPad),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                icon()
+                // icon box
+                Box(
+                    modifier = Modifier
+                        .size(iconBoxSize)
+                        .clip(RoundedCornerShape(cardH * 0.14f))
+                        .background(primary.copy(alpha = 0.15f))
+                        .border(1.dp, primary.copy(alpha = 0.3f), RoundedCornerShape(cardH * 0.14f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    icon(iconInnerSize)
+                }
+
+                Spacer(Modifier.width(spacerW))
+
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        title,
+                        fontSize   = titleFontSize,
+                        fontWeight = FontWeight.Bold,
+                        color      = theme.textColor,
+                        letterSpacing = 0.5.sp,
+                        maxLines   = 1
+                    )
+                    Spacer(Modifier.height(cardH * 0.02f))
+                    Text(
+                        subtitle,
+                        fontSize = subtitleFontSize,
+                        color    = textSecondary,
+                        maxLines = 1
+                    )
+                    Spacer(Modifier.height(cardH * 0.04f))
+                    Text(
+                        text = tagText,
+                        fontSize = tagFontSize,
+                        fontWeight = FontWeight.SemiBold,
+                        color = primary,
+                        maxLines = 1
+                    )
+                }
+
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = primary,
+                    modifier = Modifier.size(arrowSize)
+                )
             }
-
-            Spacer(Modifier.width(16.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    title,
-                    fontSize   = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color      = theme.textColor,
-                    letterSpacing = 0.5.sp
-                )
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    subtitle,
-                    fontSize = 13.sp,
-                    color    = textSecondary
-                )
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = tagText,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = primary
-                )
-            }
-
-            Icon(
-                imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                contentDescription = null,
-                tint = primary,
-                modifier = Modifier.size(28.dp)
-            )
         }
     }
 }

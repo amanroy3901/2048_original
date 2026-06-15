@@ -19,6 +19,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.avfusionapps.game_2048.ui.theme.LocalGameTheme
@@ -30,9 +31,7 @@ fun StartJourneyCard(
     accentColor: Color? = null
 ) {
     val theme = LocalGameTheme.current
-    val cardBg = theme.surfaceColor
     val primary = accentColor ?: theme.primaryColor
-    val cardBorder = primary.copy(alpha = 0.5f)
     val textSecondary = theme.textColor.copy(alpha = 0.6f)
 
     val previewGrid = listOf(
@@ -50,83 +49,113 @@ fun StartJourneyCard(
         borderWidth = 1.dp,
         modifier = modifier.fillMaxWidth()
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Mini Grid
-            MiniGrid(
-                grid = previewGrid,
-                modifier = Modifier.weight(1.2f)
-            )
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val cardH = maxHeight
+            val cardW = maxWidth
+            // Derive sizes as fractions of the card height or width
+            val hPad          = cardW * 0.045f   // ~16dp
+            val vPad          = cardH * 0.07f    // ~12dp
+            val iconSizeDp    = cardH * 0.22f
+            val btnHeightDp   = cardH * 0.19f
+            val spacerSmall   = cardH * 0.03f
+            val spacerMedium  = cardH * 0.05f
+            val spacerMediumW = cardW * 0.045f
+            val titleFontSize = (cardH * 0.06f).value.sp
+            val headFontSize  = (cardH * 0.09f).value.sp
+            val bodyFontSize  = (cardH * 0.05f).value.sp
+            val btnFontSize   = (cardH * 0.06f).value.sp
+            val iconBtnSize   = cardH * 0.08f
 
-            Spacer(modifier = Modifier.width(16.dp))
-
-            // Details and Button
-            Column(
-                modifier = Modifier.weight(1f),
-                horizontalAlignment = Alignment.CenterHorizontally
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = hPad, vertical = vPad),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.Rounded.EmojiEvents,
-                    contentDescription = null,
-                    tint = primary,
-                    modifier = Modifier.size(48.dp)
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "START YOUR",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = theme.textColor
-                )
-                Text(
-                    text = "JOURNEY",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = primary
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "Merge tiles, reach 2048 and beat your high score!",
-                    fontSize = 10.sp,
-                    color = textSecondary,
-                    lineHeight = 14.sp,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Button(
-                    onClick = onNewGameClick,
+                // Mini Grid
+                MiniGrid(
+                    grid = previewGrid,
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(40.dp)
-                        .testTag("StartJourneyCard_Button_NewGame"),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = primary,
-                        contentColor = Color.White
-                    ),
-                    contentPadding = PaddingValues(0.dp)
+                        .fillMaxHeight()
+                        .aspectRatio(1f)
+                )
+
+                Spacer(modifier = Modifier.width(spacerMediumW))
+
+                // Details and Button
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
+                    verticalArrangement = Arrangement.SpaceBetween,
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
                         Icon(
-                            imageVector = Icons.Rounded.PlayArrow,
+                            imageVector = Icons.Rounded.EmojiEvents,
                             contentDescription = null,
-                            modifier = Modifier.size(16.dp)
+                            tint = primary,
+                            modifier = Modifier.size(iconSizeDp)
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.height(spacerSmall))
+
                         Text(
-                            text = "NEW GAME",
+                            text = "START YOUR",
+                            fontSize = titleFontSize,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp
+                            color = theme.textColor,
+                            maxLines = 1
                         )
+                        Text(
+                            text = "JOURNEY",
+                            fontSize = headFontSize,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = primary,
+                            maxLines = 1
+                        )
+
+                        Spacer(modifier = Modifier.height(spacerSmall))
+
+                        Text(
+                            text = "Merge tiles, reach 2048 and beat your high score!",
+                            fontSize = bodyFontSize,
+                            color = textSecondary,
+                            lineHeight = (bodyFontSize.value * 1.4f).sp,
+                            textAlign = TextAlign.Center,
+                            maxLines = 2
+                        )
+                    }
+
+                    Button(
+                        onClick = onNewGameClick,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(btnHeightDp)
+                            .testTag("StartJourneyCard_Button_NewGame"),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = primary,
+                            contentColor = Color.White
+                        ),
+                        contentPadding = PaddingValues(0.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Rounded.PlayArrow,
+                                contentDescription = null,
+                                modifier = Modifier.size(iconBtnSize)
+                            )
+                            Spacer(modifier = Modifier.width(cardW * 0.015f))
+                            Text(
+                                text = "NEW GAME",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = btnFontSize,
+                                maxLines = 1
+                            )
+                        }
                     }
                 }
             }

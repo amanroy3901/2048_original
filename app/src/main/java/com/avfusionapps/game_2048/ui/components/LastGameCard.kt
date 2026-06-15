@@ -34,9 +34,7 @@ fun LastGameCard(
     accentColor: Color? = null
 ) {
     val theme = LocalGameTheme.current
-    val cardBg = theme.surfaceColor
     val primary = accentColor ?: theme.primaryColor
-    val cardBorder = primary.copy(alpha = 0.5f)
     val textSecondary = theme.textColor.copy(alpha = 0.6f)
 
     NeonCard(
@@ -47,84 +45,122 @@ fun LastGameCard(
         borderWidth = 1.dp,
         modifier = modifier.fillMaxWidth()
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Mini Grid
-            MiniGrid(
-                grid = grid,
-                modifier = Modifier.weight(1.2f)
-            )
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val cardH = maxHeight
+            val cardW = maxWidth
+            // All sizes as fractions of card height or width
+            val hPad          = cardW * 0.045f   // ~16dp
+            val vPad          = cardH * 0.07f    // ~12dp
+            val spacerSmall   = cardH * 0.04f    // ~7dp
+            val spacerMediumW = cardW * 0.045f   // ~16dp
+            val btnHeight     = cardH * 0.20f    // ~35dp
+            val labelFontSize = (cardH * 0.07f).value.sp
+            val metaFontSize  = (cardH * 0.06f).value.sp
+            val valueFontSize = (cardH * 0.11f).value.sp
+            val btnFontSize   = (cardH * 0.07f).value.sp
+            val iconSize      = cardH * 0.09f
 
-            Spacer(modifier = Modifier.width(16.dp))
-
-            // Details and Button
-            Column(
-                modifier = Modifier.weight(1f),
-                horizontalAlignment = Alignment.Start
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = hPad, vertical = vPad),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = stringResource(R.string.last_game),
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = primary
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Text(
-                    text = stringResource(R.string.score),
-                    fontSize = 12.sp,
-                    color = textSecondary
-                )
-                Text(
-                    text = score.toString(),
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = theme.textColor
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = stringResource(R.string.best_tile),
-                    fontSize = 12.sp,
-                    color = textSecondary
-                )
-                Text(
-                    text = bestTile.toString(),
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = primary
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Button(
-                    onClick = onResumeClick,
+                // Mini Grid
+                MiniGrid(
+                    grid = grid,
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(46.dp)
-                        .testTag("LastGameCard_Button_Resume"),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = primary,
-                        contentColor = theme.textColor
-                    )
+                        .fillMaxHeight()
+                        .aspectRatio(1f)
+                )
+
+                Spacer(modifier = Modifier.width(spacerMediumW))
+
+                // Details and Button
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
+                    verticalArrangement = Arrangement.SpaceBetween,
+                    horizontalAlignment = Alignment.Start
                 ) {
-                    Icon(
-                        imageVector = Icons.Rounded.PlayArrow,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = stringResource(R.string.continue_label),
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp
-                    )
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.Start
+                    ) {
+                        Text(
+                            text = stringResource(R.string.last_game),
+                            fontSize = labelFontSize,
+                            fontWeight = FontWeight.Bold,
+                            color = primary,
+                            maxLines = 1
+                        )
+                        Spacer(modifier = Modifier.height(spacerSmall))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    text = stringResource(R.string.score),
+                                    fontSize = metaFontSize,
+                                    color = textSecondary,
+                                    maxLines = 1
+                                )
+                                Text(
+                                    text = score.toString(),
+                                    fontSize = valueFontSize,
+                                    fontWeight = FontWeight.Bold,
+                                    color = theme.textColor,
+                                    maxLines = 1
+                                )
+                            }
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text(
+                                    text = stringResource(R.string.best_tile),
+                                    fontSize = metaFontSize,
+                                    color = textSecondary,
+                                    maxLines = 1
+                                )
+                                Text(
+                                    text = bestTile.toString(),
+                                    fontSize = valueFontSize,
+                                    fontWeight = FontWeight.Bold,
+                                    color = primary,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                    }
+
+                    Button(
+                        onClick = onResumeClick,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(btnHeight)
+                            .testTag("LastGameCard_Button_Resume"),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = primary,
+                            contentColor = theme.textColor
+                        ),
+                        contentPadding = PaddingValues(0.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.PlayArrow,
+                            contentDescription = null,
+                            modifier = Modifier.size(iconSize)
+                        )
+                        Spacer(modifier = Modifier.width(cardW * 0.015f))
+                        Text(
+                            text = stringResource(R.string.continue_label),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = btnFontSize,
+                            maxLines = 1
+                        )
+                    }
                 }
             }
         }
@@ -153,16 +189,17 @@ fun MiniGrid(
     val theme = LocalGameTheme.current
 
     BoxWithConstraints(
-        modifier = modifier.aspectRatio(1f)
+        modifier = modifier
     ) {
+        val cellSpacing = maxHeight * 0.05f
         Column(
             modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
+            verticalArrangement = Arrangement.spacedBy(cellSpacing)
         ) {
             for (row in 0 until rows) {
                 Row(
                     modifier = Modifier.weight(1f),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.spacedBy(cellSpacing)
                 ) {
                     for (col in 0 until cols) {
                         val value = displayGrid[row][col]

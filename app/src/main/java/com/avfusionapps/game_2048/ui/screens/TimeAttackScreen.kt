@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -149,7 +150,8 @@ fun TimeAttackScreen(
             .fillMaxSize()
             .testTag("TimeAttackScreen_Root")
             .background(theme.backgroundColor)
-            .padding(start = 16.dp, end = 16.dp, top = 50.dp)
+            .safeDrawingPadding()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
             .pointerInput(Unit) {
                 var totalX = 0f
                 var totalY = 0f
@@ -218,8 +220,6 @@ fun TimeAttackScreen(
             onNewGameClick = { viewModel.startNewGame() },
             onHintClick = { viewModel.showHint(context) }
         )
-        
-        Spacer(modifier = Modifier.height(16.dp))
     }
 
     // Pause overlay

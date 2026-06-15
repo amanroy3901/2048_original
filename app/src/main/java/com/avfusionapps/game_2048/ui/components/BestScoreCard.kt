@@ -27,8 +27,6 @@ fun BestScoreCard(
     accentColor: Color? = null
 ) {
     val theme = LocalGameTheme.current
-    val cardBg = theme.surfaceColor
-    val cardBorder = theme.surfaceColor.copy(alpha = 0.5f)
     val textSecondary = theme.textColor.copy(alpha = 0.6f)
     val iconColor = accentColor ?: theme.primaryColor
 
@@ -40,49 +38,63 @@ fun BestScoreCard(
         borderWidth = 1.dp,
         modifier = modifier.fillMaxWidth()
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // star badge
-            Box(
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val cardH = maxHeight
+            val cardW = maxWidth
+            val hPad        = cardW * 0.05f
+            val vPad        = cardH * 0.15f
+            val badgeSizeDp = cardH * 0.62f
+            val iconSizeDp  = cardH * 0.32f
+            val spacerW     = cardW * 0.04f
+            val labelSize   = (cardH * 0.15f).value.sp
+            val scoreSize   = (cardH * 0.38f).value.sp
+
+            Row(
                 modifier = Modifier
-                    .size(56.dp)
-                    .clip(RoundedCornerShape(28.dp))
-                    .background(theme.backgroundColor)
-                    .border(
-                        width = 1.dp,
-                        color = iconColor.copy(alpha = 0.5f),
-                        shape = RoundedCornerShape(28.dp)
-                    ),
-                contentAlignment = Alignment.Center
+                    .fillMaxSize()
+                    .padding(horizontal = hPad, vertical = vPad),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.Rounded.EmojiEvents,
-                    contentDescription = null,
-                    tint = iconColor,
-                    modifier = Modifier.size(28.dp)
-                )
-            }
+                // star badge
+                Box(
+                    modifier = Modifier
+                        .size(badgeSizeDp)
+                        .clip(RoundedCornerShape(badgeSizeDp / 2))
+                        .background(theme.backgroundColor)
+                        .border(
+                            width = 1.dp,
+                            color = iconColor.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(badgeSizeDp / 2)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.EmojiEvents,
+                        contentDescription = null,
+                        tint = iconColor,
+                        modifier = Modifier.size(iconSizeDp)
+                    )
+                }
 
-            Spacer(Modifier.width(16.dp))
+                Spacer(Modifier.width(spacerW))
 
-            Column {
-                Text(
-                    text = stringResource(R.string.best_score),
-                    fontSize = 12.sp,
-                    letterSpacing = 1.5.sp,
-                    color = textSecondary,
-                    fontWeight = FontWeight.Medium
-                )
-                Text(
-                    text = score.toString(),
-                    fontSize   = 32.sp,
-                    fontWeight = FontWeight.Bold,
-                    color      = theme.textColor
-                )
+                Column(verticalArrangement = Arrangement.Center) {
+                    Text(
+                        text = stringResource(R.string.best_score),
+                        fontSize = labelSize,
+                        letterSpacing = 1.5.sp,
+                        color = textSecondary,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1
+                    )
+                    Text(
+                        text = score.toString(),
+                        fontSize = scoreSize,
+                        fontWeight = FontWeight.Bold,
+                        color = theme.textColor,
+                        maxLines = 1
+                    )
+                }
             }
         }
     }

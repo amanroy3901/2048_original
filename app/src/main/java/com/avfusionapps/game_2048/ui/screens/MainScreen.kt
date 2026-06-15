@@ -6,9 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.BarChart
 import androidx.compose.material.icons.rounded.GridView
@@ -38,6 +36,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -77,7 +76,7 @@ fun DarkModePreview() {
                 highScore = 2048,
                 currentLevel = 1,
                 unlockedLevels = setOf(1),
-                actions = {}
+                actions = { _ -> }
             )
         }
     }
@@ -153,17 +152,25 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
         highScore = persistentHighScore,
         currentLevel = currentLevel,
         unlockedLevels = unlockedLevels,
-        actions = {
+        actions = { dims ->
             val theme = LocalGameTheme.current
             val textSecondary = theme.textColor.copy(alpha = 0.6f)
-            
+
+            // All spacing and card heights derived from screen height fractions
+            val cardSpacing   = dims.screenH * 0.018f  // gap between cards
+            val largeCardH    = dims.screenH * 0.220f  // LastGame / StartJourney card
+            val bestScoreH    = dims.screenH * 0.105f  // Best score card
+            val gameModeH     = dims.screenH * 0.110f  // each game mode card
+            val dividerVPad   = dims.screenH * 0.010f  // vertical padding around divider
+            val dividerFontSz = (dims.screenW * 0.032f).value.sp
+            val dividerHPad   = dims.screenW * 0.043f
+
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(24.dp),
+                verticalArrangement = Arrangement.spacedBy(cardSpacing),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 if (hasSaved) {
-                    // Extract best tile from current game state, or use a default
                     val maxTile = gameState.grid.flatten().maxOrNull() ?: 0
                     LastGameCard(
                         score = gameState.score,
@@ -173,37 +180,54 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
                             viewModel.resumeSavedGame()
                             navController.navigate("game?resume=true&newGame=false")
                         },
-                        modifier = Modifier.testTag("MainScreen_Card_LastGame")
+                        modifier = Modifier
+                            .testTag("MainScreen_Card_LastGame")
+                            .height(largeCardH)
                     )
                 } else {
                     StartJourneyCard(
-                        onNewGameClick = {
-                            showGridSizeDialogMain = true
-                        },
-                        modifier = Modifier.testTag("MainScreen_Card_StartJourney")
+                        onNewGameClick = { showGridSizeDialogMain = true },
+                        modifier = Modifier
+                            .testTag("MainScreen_Card_StartJourney")
+                            .height(largeCardH)
                     )
                 }
 
                 BestScoreCard(
                     score = persistentHighScore,
-                    modifier = Modifier.testTag("MainScreen_Card_BestScore"),
+                    modifier = Modifier
+                        .testTag("MainScreen_Card_BestScore")
+                        .height(bestScoreH),
                     accentColor = theme.primaryColor
                 )
 
+                // ── GAME MODES divider ──
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = dividerVPad)
                 ) {
-                    Box(modifier = Modifier.weight(1f).height(1.dp).background(theme.textColor.copy(alpha = 0.2f)))
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(1.dp)
+                            .background(theme.textColor.copy(alpha = 0.2f))
+                    )
                     Text(
                         text = stringResource(R.string.game_modes),
                         color = textSecondary,
-                        fontSize = 12.sp,
+                        fontSize = dividerFontSz,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp,
-                        modifier = Modifier.padding(horizontal = 16.dp)
+                        modifier = Modifier.padding(horizontal = dividerHPad)
                     )
-                    Box(modifier = Modifier.weight(1f).height(1.dp).background(theme.textColor.copy(alpha = 0.2f)))
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(1.dp)
+                            .background(theme.textColor.copy(alpha = 0.2f))
+                    )
                 }
 
                 GameModeCard(
@@ -211,11 +235,11 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
                     subtitle = stringResource(R.string.classic_2048_subtitle),
                     tagText = stringResource(R.string.classic_2048_tag),
                     accentColor = theme.primaryColor,
-                    icon = { MainModeIcon(mode = MainModeIconType.Classic, tint = theme.primaryColor) },
-                    onClick = {
-                        showGridSizeDialogMain = true
-                    },
-                    modifier = Modifier.testTag("MainScreen_Button_ClassicMode")
+                    icon = { size -> MainModeIcon(mode = MainModeIconType.Classic, tint = theme.primaryColor, size = size) },
+                    onClick = { showGridSizeDialogMain = true },
+                    modifier = Modifier
+                        .testTag("MainScreen_Button_ClassicMode")
+                        .height(gameModeH)
                 )
 
                 GameModeCard(
@@ -223,17 +247,20 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
                     subtitle = stringResource(R.string.time_attack_subtitle),
                     tagText = stringResource(R.string.time_attack_tag),
                     accentColor = theme.secondaryColor,
-                    icon = { MainModeIcon(mode = MainModeIconType.TimeAttack, tint = theme.secondaryColor) },
-                    onClick = {
-                        navController.navigate("timeAttack")
-                    },
-                    modifier = Modifier.testTag("MainScreen_Button_TimeAttackMode")
+                    icon = { size -> MainModeIcon(mode = MainModeIconType.TimeAttack, tint = theme.secondaryColor, size = size) },
+                    onClick = { navController.navigate("timeAttack") },
+                    modifier = Modifier
+                        .testTag("MainScreen_Button_TimeAttackMode")
+                        .height(gameModeH)
                 )
             }
         }
     )
 }
 
+
+/** Carries fractional dimension tokens derived from the real screen size. */
+data class ScreenDimensions(val screenW: Dp, val screenH: Dp)
 
 @Composable
 fun MainScreenContent(
@@ -242,81 +269,101 @@ fun MainScreenContent(
     highScore: Int,
     currentLevel: Int,
     unlockedLevels: Set<Int>,
-    actions: @Composable () -> Unit
+    actions: @Composable (ScreenDimensions) -> Unit
 ) {
     val theme = LocalGameTheme.current
-    val textSecondary = theme.textColor.copy(alpha = 0.6f)
-    val cardBorder = theme.textColor.copy(alpha = 0.1f)
 
-    Column(
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
-            .testTag("MainScreen_Root")
             .background(theme.backgroundColor)
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 16.dp)
-            .safeDrawingPadding(),
     ) {
-        // Top Bar
-        Box(
+        val screenW = maxWidth
+        val screenH = maxHeight
+        val dims    = ScreenDimensions(screenW, screenH)
+
+        // All tokens derived from actual screen fractions
+        val hPadding        = screenW * 0.053f   // ~20dp on 375dp width
+        val vPadding        = screenH * 0.018f   // ~14dp on 800dp height
+        val topBarBottomPad = screenH * 0.025f   // ~20dp
+        val iconBtnSize     = screenW * 0.130f   // ~49dp
+        val iconBtnCorner   = screenW * 0.037f   // ~14dp
+        val iconSize        = screenW * 0.060f   // ~22dp
+        val iconLabelSize   = screenW * 0.030f   // ~11sp
+        val titleFontSize   = (screenH * 0.080f).value.sp  // scales with height so it never crowds
+        val subtitleFontSize= (screenH * 0.020f).value.sp
+        val spacerSmall     = screenH * 0.004f
+
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 24.dp)
+                .fillMaxSize()
+                .testTag("MainScreen_Root")
+                // NO verticalScroll — everything fits within screen height
+                .padding(horizontal = hPadding, vertical = vPadding)
+                .safeDrawingPadding()
         ) {
-            // Title Section (Centered)
-            Column(
-                modifier = Modifier.align(Alignment.TopCenter),
-                horizontalAlignment = Alignment.CenterHorizontally
+            // ── Top Bar ──
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = topBarBottomPad)
             ) {
-                Text(
-                    text = "2048",
-                    fontSize = 62.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    fontFamily = lilitaOneFontFamily,
-                    fontStyle = FontStyle.Italic,
-                    color = Color.Transparent,
-                    style = LocalTextStyle.current.copy(
-                        brush = Brush.horizontalGradient(
-                            listOf(theme.primaryColor, theme.secondaryColor)
-                        )
-                    ),
-                    letterSpacing = 4.sp
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "N E O N   R U S H",
-                    color = theme.primaryColor,
-                    fontSize = 16.sp,
-                    letterSpacing = 4.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    fontStyle = FontStyle.Italic
-                )
+                // Title (centered)
+                Column(
+                    modifier = Modifier.align(Alignment.TopCenter),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "2048",
+                        fontSize = titleFontSize,
+                        fontWeight = FontWeight.ExtraBold,
+                        fontFamily = lilitaOneFontFamily,
+                        fontStyle = FontStyle.Italic,
+                        color = Color.Transparent,
+                        style = LocalTextStyle.current.copy(
+                            brush = Brush.horizontalGradient(
+                                listOf(theme.primaryColor, theme.secondaryColor)
+                            )
+                        ),
+                        letterSpacing = 4.sp
+                    )
+                    Spacer(modifier = Modifier.height(spacerSmall))
+                    Text(
+                        text = "N E O N   R U S H",
+                        color = theme.primaryColor,
+                        fontSize = subtitleFontSize,
+                        letterSpacing = 4.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        fontStyle = FontStyle.Italic
+                    )
+                }
+
+                // Profile button (top-right)
+                Box(modifier = Modifier.align(Alignment.TopEnd)) {
+                    MainTopIconButton(
+                        label = "PROFILE",
+                        buttonSize    = iconBtnSize,
+                        cornerRadius  = iconBtnCorner,
+                        labelFontSize = iconLabelSize.value.sp,
+                        icon = {
+                            Icon(
+                                imageVector = Icons.Rounded.AccountCircle,
+                                contentDescription = null,
+                                tint = theme.primaryColor,
+                                modifier = Modifier.size(iconSize)
+                            )
+                        },
+                        onClick  = { navController.navigate("profile") },
+                        modifier = Modifier.testTag("MainScreen_Button_Profile")
+                    )
+                }
             }
 
-            // Profile Button (Top Right)
-            Box(
-                modifier = Modifier.align(Alignment.TopEnd)
-            ) {
-                MainTopIconButton(
-                    label = "PROFILE",
-                    icon = {
-                        Icon(
-                            imageVector = Icons.Rounded.AccountCircle,
-                            contentDescription = null,
-                            tint = theme.primaryColor,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    },
-                    onClick = { navController.navigate("profile") },
-                    modifier = Modifier.testTag("MainScreen_Button_Profile")
-                )
+            // ── Actions / Game Content — fills the remaining space ──
+            Box(modifier = Modifier.fillMaxSize()) {
+                actions(dims)
             }
         }
-
-        // Actions / Game Content
-        actions()
-
-        Spacer(modifier = Modifier.weight(1f))
     }
 }
 
@@ -327,7 +374,10 @@ private fun MainTopIconButton(
     label: String,
     icon: @Composable () -> Unit,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    buttonSize: Dp = 52.dp,
+    cornerRadius: Dp = 14.dp,
+    labelFontSize: androidx.compose.ui.unit.TextUnit = 12.sp
 ) {
     val theme = LocalGameTheme.current
     val cardBorder = theme.textColor.copy(alpha = 0.1f)
@@ -339,10 +389,10 @@ private fun MainTopIconButton(
     ) {
         Box(
             modifier = Modifier
-                .size(52.dp)
-                .clip(RoundedCornerShape(14.dp))
+                .size(buttonSize)
+                .clip(RoundedCornerShape(cornerRadius))
                 .background(theme.surfaceColor)
-                .border(1.dp, cardBorder, RoundedCornerShape(14.dp)),
+                .border(1.dp, cardBorder, RoundedCornerShape(cornerRadius)),
             contentAlignment = Alignment.Center
         ) {
             icon()
@@ -351,7 +401,7 @@ private fun MainTopIconButton(
         Text(
             text = label,
             color = textSecondary,
-            fontSize = 12.sp
+            fontSize = labelFontSize
         )
     }
 }
@@ -360,6 +410,7 @@ private fun MainTopIconButton(
 private fun MainModeIcon(
     mode: MainModeIconType,
     tint: Color,
+    size: Dp
 ) {
     val imageVector = when (mode) {
         MainModeIconType.Classic -> Icons.Rounded.GridView
@@ -370,7 +421,7 @@ private fun MainModeIcon(
         imageVector = imageVector,
         contentDescription = null,
         tint = tint,
-        modifier = Modifier.size(30.dp)
+        modifier = Modifier.size(size)
     )
 }
 
