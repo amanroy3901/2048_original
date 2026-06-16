@@ -52,6 +52,7 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation("androidx.compose.material:material-icons-extended:1.7.5")
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.work.runtime.ktx)
@@ -64,8 +65,6 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
-    implementation("androidx.fragment:fragment-ktx:1.8.9")
-
 
     implementation(libs.ui.graphics)
     implementation(libs.androidx.datastore.preferences)
@@ -105,4 +104,8 @@ dependencies {
     implementation(libs.unity.ads.mediation)
     implementation(libs.play.services.ads.identifier)
     implementation(libs.play.services.appset)
+}
+    
+    // AndroidX Core Splashscreen API
+    implementation("androidx.core:core-splashscreen:1.0.1")
 }

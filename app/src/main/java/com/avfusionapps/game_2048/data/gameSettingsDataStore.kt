@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -22,6 +23,8 @@ class GameSettingsRepository(private val context: Context) {
     companion object {
         val PLAYER_NAME_KEY = stringPreferencesKey("player_name")
         val HIGH_SCORE_KEY = intPreferencesKey("high_score")
+        val SOUND_ENABLED_KEY = booleanPreferencesKey("sound_enabled")
+        val VIBRATION_ENABLED_KEY = booleanPreferencesKey("vibration_enabled")
         const val DEFAULT_PLAYER_NAME = "Player"
         const val DEFAULT_HIGH_SCORE = 0
     }
@@ -84,5 +87,45 @@ class GameSettingsRepository(private val context: Context) {
              preferences[PLAYER_NAME_KEY] = name
              preferences[HIGH_SCORE_KEY] = score
          }
+    }
+
+    // Flow to get the sound enabled setting
+    val soundEnabledFlow: Flow<Boolean> = context.gameSettingsDataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(androidx.datastore.preferences.core.emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preferences ->
+            preferences[SOUND_ENABLED_KEY] ?: true
+        }
+
+    // Flow to get the vibration enabled setting
+    val vibrationEnabledFlow: Flow<Boolean> = context.gameSettingsDataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(androidx.datastore.preferences.core.emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preferences ->
+            preferences[VIBRATION_ENABLED_KEY] ?: true
+        }
+
+    // Suspending function to update the sound setting
+    suspend fun updateSoundEnabled(enabled: Boolean) {
+        context.gameSettingsDataStore.edit { preferences ->
+            preferences[SOUND_ENABLED_KEY] = enabled
+        }
+    }
+
+    // Suspending function to update the vibration setting
+    suspend fun updateVibrationEnabled(enabled: Boolean) {
+        context.gameSettingsDataStore.edit { preferences ->
+            preferences[VIBRATION_ENABLED_KEY] = enabled
+        }
     }
 }

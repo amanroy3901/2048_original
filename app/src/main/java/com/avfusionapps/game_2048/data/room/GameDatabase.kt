@@ -6,6 +6,9 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
+
 /**
  * Room database for the 2048 game.
  * Stores game moves for undo functionality and game resumption.
@@ -34,7 +37,11 @@ abstract class GameDatabase : RoomDatabase() {
                     context.applicationContext,
                     GameDatabase::class.java,
                     "game_database"
-                ).build()
+                )
+                // Add fallbackToDestructiveMigration for pre-production,
+                // but keep the structure ready for real migrations when live.
+                .fallbackToDestructiveMigration()
+                .build()
                 INSTANCE = instance
                 instance
             }

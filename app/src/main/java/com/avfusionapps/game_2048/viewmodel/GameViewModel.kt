@@ -1,6 +1,7 @@
 package com.avfusionapps.game_2048.viewmodel
 
 import android.app.Application
+import com.avfusionapps.game_2048.model.TileAnimationInfo
 import android.content.Context
 import android.util.Log
 import android.widget.Toast
@@ -30,17 +31,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-/**
- * Represents the animation state for a tile after a move.
- * @param startPosition The grid coordinates (row, col) where the tile originated *before* this move. Null if it didn't move.
- * @param isNew True if this tile was newly added in this move.
- * @param isMerged True if this tile is the result of a merge in this move.
- */
-data class TileAnimationInfo(
-    val startPosition: Pair<Int, Int>? = null,
-    val isNew: Boolean = false,
-    val isMerged: Boolean = false
-)
 
 /**
  * Represents the overall state of the game, including UI elements and logic state.
@@ -169,6 +159,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     playerName = user.displayName ?: state.playerName,
                     currentLevel = state.currentLevel,
                     unlockedLevels = state.unlockedLevels.toList(),
+                    highScore = persistentHighScore.value,
                     lastUpdated = com.google.firebase.Timestamp.now()
                 )
                 levelProgressionRepository.saveLevelProgression(progression)
@@ -220,6 +211,24 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     val unlockedLevels: StateFlow<Set<Int>> = gameStateFlow
         .map { it.unlockedLevels }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), setOf(1))
+
+    val soundEnabled: StateFlow<Boolean> = settingsRepository.soundEnabledFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    val vibrationEnabled: StateFlow<Boolean> = settingsRepository.vibrationEnabledFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    fun updateSoundEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.updateSoundEnabled(enabled)
+        }
+    }
+
+    fun updateVibrationEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.updateVibrationEnabled(enabled)
+        }
+    }
 
     /**
      * Calculates the current level based on the highest tile value in the grid.
@@ -281,7 +290,9 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                         highScore = initialHighScore,
                         currentLevel = currentLevel,
                         unlockedLevels = unlockedLevels,
-                        grid = List(gameState.gridSize) { List(gameState.gridSize) { 0 } },
+                        grid = lastMove.grid,
+                        score = lastMove.score,
+                        gridSize = lastMove.grid.size,
                         hasSavedGame = true
                     )
                 )
@@ -431,8 +442,13 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     val didMerge = processedTile.mergedFromIndex != null
 
                     if (positionChanged || didMerge) {
+                        val mergedFromPos = if (didMerge) {
+                            getFinalPosition(i, processedTile.mergedFromIndex!!, direction, size)
+                        } else null
+
                         animationInfoMap[finalPos] = TileAnimationInfo(
                             startPosition = originalPos,
+                            mergedFromPosition = mergedFromPos,
                             isMerged = didMerge,
                             isNew = false
                         )
@@ -655,6 +671,11 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     var nameToUse = levelProgression?.playerName ?: GameSettingsRepository.DEFAULT_PLAYER_NAME
                     var currentLevel = levelProgression?.currentLevel ?: 1
                     var unlockedLevels = levelProgression?.unlockedLevels?.toSet() ?: setOf(1)
+                    val cloudHighScore = levelProgression?.highScore ?: 0
+
+                    if (cloudHighScore > persistentHighScore.value) {
+                        settingsRepository.updateHighScoreIfHigher(cloudHighScore)
+                    }
                     
                     var wasNameGenerated = false
 
@@ -864,5 +885,148 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
         return true // No empty cells and no possible merges
+    }
+
+    fun showHint(context: Context) {
+        // Find the best move using a simple heuristic (highest score yield)
+        val bestMove = findBestMove(gameState.grid)
+        if (bestMove != null) {
+            Toast.makeText(context, "Try swiping ${bestMove.name}", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(context, "No obvious good moves!", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun findBestMove(grid: List<List<Int>>): Direction? {
+        var bestScore = -1
+        var bestDirection: Direction? = null
+
+        for (direction in Direction.values()) {
+            // Simulate move
+            val tempGrid = grid.map { it.toMutableList() }
+            var scoreGained = 0
+            var moved = false
+
+            // Simplified simulation logic just to gauge immediate score gain
+            when (direction) {
+                Direction.UP -> {
+                    for (c in 0 until gameState.gridSize) {
+                        val col = mutableListOf<Int>()
+                        for (r in 0 until gameState.gridSize) if (tempGrid[r][c] != 0) col.add(tempGrid[r][c])
+                        
+                        var i = 0
+                        while (i < col.size - 1) {
+                            if (col[i] == col[i + 1]) {
+                                scoreGained += col[i] * 2
+                                col[i] *= 2
+                                col.removeAt(i + 1)
+                            }
+                            i++
+                        }
+                        if (col.size != tempGrid.count { it[c] != 0 }) moved = true
+                    }
+                }
+                Direction.DOWN -> {
+                    for (c in 0 until gameState.gridSize) {
+                        val col = mutableListOf<Int>()
+                        for (r in gameState.gridSize - 1 downTo 0) if (tempGrid[r][c] != 0) col.add(tempGrid[r][c])
+                        
+                        var i = 0
+                        while (i < col.size - 1) {
+                            if (col[i] == col[i + 1]) {
+                                scoreGained += col[i] * 2
+                                col[i] *= 2
+                                col.removeAt(i + 1)
+                            }
+                            i++
+                        }
+                        if (col.size != tempGrid.count { it[c] != 0 }) moved = true
+                    }
+                }
+                Direction.LEFT -> {
+                    for (r in 0 until gameState.gridSize) {
+                        val row = mutableListOf<Int>()
+                        for (c in 0 until gameState.gridSize) if (tempGrid[r][c] != 0) row.add(tempGrid[r][c])
+                        
+                        var i = 0
+                        while (i < row.size - 1) {
+                            if (row[i] == row[i + 1]) {
+                                scoreGained += row[i] * 2
+                                row[i] *= 2
+                                row.removeAt(i + 1)
+                            }
+                            i++
+                        }
+                        if (row.size != tempGrid[r].count { it != 0 }) moved = true
+                    }
+                }
+                Direction.RIGHT -> {
+                    for (r in 0 until gameState.gridSize) {
+                        val row = mutableListOf<Int>()
+                        for (c in gameState.gridSize - 1 downTo 0) if (tempGrid[r][c] != 0) row.add(tempGrid[r][c])
+                        
+                        var i = 0
+                        while (i < row.size - 1) {
+                            if (row[i] == row[i + 1]) {
+                                scoreGained += row[i] * 2
+                                row[i] *= 2
+                                row.removeAt(i + 1)
+                            }
+                            i++
+                        }
+                        if (row.size != tempGrid[r].count { it != 0 }) moved = true
+                    }
+                }
+            }
+
+            if (moved && scoreGained > bestScore) {
+                bestScore = scoreGained
+                bestDirection = direction
+            }
+        }
+
+        // If no immediate merge, just return the first valid move
+        if (bestDirection == null) {
+            for (direction in Direction.values()) {
+                if (canMoveInDirection(grid, direction)) return direction
+            }
+        }
+        
+        return bestDirection
+    }
+
+    private fun canMoveInDirection(grid: List<List<Int>>, direction: Direction): Boolean {
+        // Basic check if a move is possible in the given direction
+        when (direction) {
+            Direction.UP -> {
+                for (c in 0 until gameState.gridSize) {
+                    for (r in 1 until gameState.gridSize) {
+                        if (grid[r][c] != 0 && (grid[r - 1][c] == 0 || grid[r - 1][c] == grid[r][c])) return true
+                    }
+                }
+            }
+            Direction.DOWN -> {
+                for (c in 0 until gameState.gridSize) {
+                    for (r in 0 until gameState.gridSize - 1) {
+                        if (grid[r][c] != 0 && (grid[r + 1][c] == 0 || grid[r + 1][c] == grid[r][c])) return true
+                    }
+                }
+            }
+            Direction.LEFT -> {
+                for (r in 0 until gameState.gridSize) {
+                    for (c in 1 until gameState.gridSize) {
+                        if (grid[r][c] != 0 && (grid[r][c - 1] == 0 || grid[r][c - 1] == grid[r][c])) return true
+                    }
+                }
+            }
+            Direction.RIGHT -> {
+                for (r in 0 until gameState.gridSize) {
+                    for (c in 0 until gameState.gridSize - 1) {
+                        if (grid[r][c] != 0 && (grid[r][c + 1] == 0 || grid[r][c + 1] == grid[r][c])) return true
+                    }
+                }
+            }
+        }
+        return false
     }
 }

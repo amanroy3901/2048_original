@@ -3,56 +3,43 @@ package com.avfusionapps.game_2048.ui.screens
 import android.content.res.Configuration
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.rounded.BarChart
+import androidx.compose.material.icons.rounded.GridView
+import androidx.compose.material.icons.rounded.AccountCircle
+import androidx.compose.material.icons.rounded.Timer
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
@@ -60,10 +47,20 @@ import androidx.navigation.compose.rememberNavController
 import com.avfusionapps.game_2048.R
 import com.avfusionapps.game_2048.data.GameSettingsRepository
 import com.avfusionapps.game_2048.ui.NeonRoundedButton
+import com.avfusionapps.game_2048.ui.components.BestScoreCard
+import com.avfusionapps.game_2048.ui.components.GameModeCard
+import com.avfusionapps.game_2048.ui.components.GoogleSignInCard
+import com.avfusionapps.game_2048.ui.components.GridSizeBottomSheet
+import com.avfusionapps.game_2048.ui.components.LastGameCard
+import com.avfusionapps.game_2048.ui.components.StartJourneyCard
+import com.avfusionapps.game_2048.ui.components.CylinderActionButton
+import com.avfusionapps.game_2048.ui.theme.LocalGameTheme
 import com.avfusionapps.game_2048.ui.theme.HighLighter
 import com.avfusionapps.game_2048.ui.theme.PurpleDarkBackground
 import com.avfusionapps.game_2048.ui.theme._2048OriginalTheme
 import com.avfusionapps.game_2048.viewmodel.GameViewModel
+import com.google.firebase.Firebase
+import com.google.firebase.auth.auth
 
 @Preview(showSystemUi = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
@@ -78,12 +75,8 @@ fun DarkModePreview() {
                 navController = previewNavController,
                 playerName = "Preview Player",
                 highScore = 2048,
-                currentLevel = 3,
-                unlockedLevels = setOf(1, 2, 3),
-                onEditNameClick = {},
-                showNameDialog = false,
-                onDismissDialog = {},
-                onNameChange = {},
+                currentLevel = 1,
+                unlockedLevels = setOf(1),
                 actions = {}
             )
         }
@@ -95,25 +88,25 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
 
     // Use gameState.playerName for immediate updates, falling back to persistent for initialization if needed
     val gameState = viewModel.gameState
+    val firebaseAuth = remember { Firebase.auth }
+    var currentUser by remember { mutableStateOf(firebaseAuth.currentUser) }
     val persistentPlayerName by viewModel.persistentPlayerName.collectAsState()
-    
+
     // Prefer the name from gameState if it's not default, otherwise fallback to persistent or default
     val playerName = if (gameState.playerName != GameSettingsRepository.DEFAULT_PLAYER_NAME) {
         gameState.playerName
     } else {
         persistentPlayerName
     }
-    
+
     val persistentHighScore by viewModel.persistentHighScore.collectAsState()
     val hasSaved by viewModel.hasSavedGameFlow.collectAsState()
     val currentLevel by viewModel.currentLevel.collectAsState()
     val unlockedLevels by viewModel.unlockedLevels.collectAsState()
 
-    var showNameDialog by remember { mutableStateOf(false) }
     var showGridSizeDialogMain by remember { mutableStateOf(false) }
-    var initialNameCheckDone by remember { mutableStateOf(false) }
+    var showAuthDialog by rememberSaveable { mutableStateOf(firebaseAuth.currentUser == null) }
     val resumePrompt by viewModel.resumePrompt.collectAsState()
-    val shouldShowNameEditDialog by viewModel.shouldShowNameEditDialog.collectAsState()
 
     LaunchedEffect(resumePrompt) {
         if (resumePrompt) {
@@ -121,25 +114,13 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
         }
     }
 
-    LaunchedEffect(shouldShowNameEditDialog) {
-        if (shouldShowNameEditDialog) {
-            showNameDialog = true
-            viewModel.resetNameEditDialogState()
-        }
-    }
-
     LaunchedEffect(persistentPlayerName) {
         viewModel.enableNotification()
-        if (!initialNameCheckDone && persistentPlayerName == GameSettingsRepository.DEFAULT_PLAYER_NAME) {
-            showNameDialog = true
-            initialNameCheckDone = true
-        } else if (persistentPlayerName != GameSettingsRepository.DEFAULT_PLAYER_NAME) {
-            initialNameCheckDone = true
-        }
     }
 
     if (showGridSizeDialogMain) {
-        GridSizeDialog(
+        GridSizeBottomSheet(
+            currentSize = gameState.gridSize,
             onSizeSelected = { size ->
                 viewModel.updateGridSize(size)
                 showGridSizeDialogMain = false
@@ -151,64 +132,103 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
         )
     }
 
+    if (showAuthDialog && firebaseAuth.currentUser == null) {
+        Dialog(
+
+            onDismissRequest = { showAuthDialog = false },
+        ) {
+            GoogleSignInCard(
+                firebaseAuth = firebaseAuth,
+                onAuthSuccess = {
+                    showAuthDialog = false
+                    viewModel.loadUserDataFromFirebase()
+                }
+            )
+        }
+    }
+
     MainScreenContent(
         navController = navController,
         playerName = playerName,
         highScore = persistentHighScore,
         currentLevel = currentLevel,
         unlockedLevels = unlockedLevels,
-        onEditNameClick = { showNameDialog = true },
-        showNameDialog = showNameDialog,
-        onDismissDialog = { showNameDialog = false },
-        onNameChange = { newName ->
-            viewModel.updatePlayerName(newName)
-            if (newName.isNotBlank() && newName != GameSettingsRepository.DEFAULT_PLAYER_NAME) {
-                initialNameCheckDone = true
-            }
-        },
         actions = {
+            val theme = LocalGameTheme.current
+            val textSecondary = theme.textColor.copy(alpha = 0.6f)
+            
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(24.dp),
+                modifier = Modifier.fillMaxWidth()
             ) {
                 if (hasSaved) {
-                    CylinderActionButton(
-                        text = "Resume",
-                        modifier = Modifier
-                            .width(220.dp)
-                            .height(60.dp)
-                            .testTag("MainScreen_Button_ResumeGame"),
-                        leadingIcon = R.drawable.ic_pause,
-                        onClick = {
+                    // Extract best tile from current game state, or use a default
+                    val maxTile = gameState.grid.flatten().maxOrNull() ?: 0
+                    LastGameCard(
+                        score = gameState.score,
+                        bestTile = maxTile,
+                        grid = gameState.grid,
+                        onResumeClick = {
                             viewModel.resumeSavedGame()
                             navController.navigate("game?resume=true&newGame=false")
-                        }
-                    )
-                    CylinderActionButton(
-                        text = "Play Game",
-                        modifier = Modifier
-                            .width(220.dp)
-                            .height(60.dp)
-                            .testTag("MainScreen_Button_PlayGame"),
-                        leadingIcon = R.drawable.ic_play,
-                        onClick = {
-                            viewModel.declineSavedGame()
-                            showGridSizeDialogMain = true
-                        }
+                        },
+                        modifier = Modifier.testTag("MainScreen_Card_LastGame")
                     )
                 } else {
-                    CylinderActionButton(
-                        modifier = Modifier
-                            .width(220.dp)
-                            .height(60.dp)
-                            .testTag("MainScreen_Button_PlayGame"),
-                        text = "Play Game",
-                        leadingIcon = R.drawable.ic_play,
-                        onClick = {
+                    StartJourneyCard(
+                        onNewGameClick = {
                             showGridSizeDialogMain = true
-                        }
+                        },
+                        modifier = Modifier.testTag("MainScreen_Card_StartJourney")
                     )
                 }
+
+                BestScoreCard(
+                    score = persistentHighScore,
+                    modifier = Modifier.testTag("MainScreen_Card_BestScore"),
+                    accentColor = theme.primaryColor
+                )
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                ) {
+                    Box(modifier = Modifier.weight(1f).height(1.dp).background(theme.textColor.copy(alpha = 0.2f)))
+                    Text(
+                        text = stringResource(R.string.game_modes),
+                        color = textSecondary,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                    Box(modifier = Modifier.weight(1f).height(1.dp).background(theme.textColor.copy(alpha = 0.2f)))
+                }
+
+                GameModeCard(
+                    title = stringResource(R.string.classic_2048),
+                    subtitle = stringResource(R.string.classic_2048_subtitle),
+                    tagText = stringResource(R.string.classic_2048_tag),
+                    accentColor = theme.primaryColor,
+                    icon = { MainModeIcon(mode = MainModeIconType.Classic, tint = theme.primaryColor) },
+                    onClick = {
+                        showGridSizeDialogMain = true
+                    },
+                    modifier = Modifier.testTag("MainScreen_Button_ClassicMode")
+                )
+
+                GameModeCard(
+                    title = stringResource(R.string.time_attack),
+                    subtitle = stringResource(R.string.time_attack_subtitle),
+                    tagText = stringResource(R.string.time_attack_tag),
+                    accentColor = theme.secondaryColor,
+                    icon = { MainModeIcon(mode = MainModeIconType.TimeAttack, tint = theme.secondaryColor) },
+                    onClick = {
+                        navController.navigate("timeAttack")
+                    },
+                    modifier = Modifier.testTag("MainScreen_Button_TimeAttackMode")
+                )
             }
         }
     )
@@ -222,265 +242,139 @@ fun MainScreenContent(
     highScore: Int,
     currentLevel: Int,
     unlockedLevels: Set<Int>,
-    onEditNameClick: () -> Unit,
-    showNameDialog: Boolean,
-    onDismissDialog: () -> Unit,
-    onNameChange: (String) -> Unit,
     actions: @Composable () -> Unit
 ) {
+    val theme = LocalGameTheme.current
+    val textSecondary = theme.textColor.copy(alpha = 0.6f)
+    val cardBorder = theme.textColor.copy(alpha = 0.1f)
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .testTag("MainScreen_Root")
-            .background(PurpleDarkBackground)
-            .padding(16.dp), // Consistent padding
+            .background(theme.backgroundColor)
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp, vertical = 16.dp)
+            .safeDrawingPadding(),
     ) {
-        Row(
+        // Top Bar
+        Box(
             modifier = Modifier
-                .weight(1f)
                 .fillMaxWidth()
-                .padding(bottom = 16.dp),
-            horizontalArrangement = Arrangement.End
+                .padding(bottom = 24.dp)
         ) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .shadow(
-                        elevation = 8.dp,
-                        shape = RoundedCornerShape(8.dp),
-                        ambientColor = HighLighter.copy(alpha = 0.5f),
-                        spotColor = HighLighter.copy(alpha = 0.5f)
-                    )
-                    .background(
-                        color = HighLighter,
-                        shape = RoundedCornerShape(8.dp)
-                    )
-                    .clickable(onClick = onEditNameClick)
-                    .padding(10.dp)
-                    .testTag("MainScreen_Button_EditName")
+            // Title Section (Centered)
+            Column(
+                modifier = Modifier.align(Alignment.TopCenter),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Icon(
-                    Icons.Default.Edit,
-                    contentDescription = "Edit Player Name",
-                    tint = Color.White
+                Text(
+                    text = "2048",
+                    fontSize = 62.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontFamily = lilitaOneFontFamily,
+                    fontStyle = FontStyle.Italic,
+                    color = Color.Transparent,
+                    style = LocalTextStyle.current.copy(
+                        brush = Brush.horizontalGradient(
+                            listOf(theme.primaryColor, theme.secondaryColor)
+                        )
+                    ),
+                    letterSpacing = 4.sp
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "N E O N   R U S H",
+                    color = theme.primaryColor,
+                    fontSize = 16.sp,
+                    letterSpacing = 4.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontStyle = FontStyle.Italic
+                )
+            }
+
+            // Profile Button (Top Right)
+            Box(
+                modifier = Modifier.align(Alignment.TopEnd)
+            ) {
+                MainTopIconButton(
+                    label = "PROFILE",
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Rounded.AccountCircle,
+                            contentDescription = null,
+                            tint = theme.primaryColor,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    },
+                    onClick = { navController.navigate("profile") },
+                    modifier = Modifier.testTag("MainScreen_Button_Profile")
                 )
             }
         }
 
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(3f),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Top
-        ) {
-            PlayerWelcomeText(playerName)
+        // Actions / Game Content
+        actions()
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = buildAnnotatedString {
-                    append("Highest Score: ")
-                    withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
-                        append(highScore.toString())
-                    }
-                },
-                style = MaterialTheme.typography.titleLarge,
-                color = Color.White
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = buildAnnotatedString {
-                    append("Current Level: ")
-                    withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = Color(0xFFFFD700))) {
-                        append(currentLevel.toString())
-                    }
-                },
-                style = MaterialTheme.typography.titleLarge,
-                color = Color.White
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = buildAnnotatedString {
-                    append("Unlocked Levels: ")
-                    withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
-                        append(unlockedLevels.size.toString())
-                    }
-                },
-                style = MaterialTheme.typography.bodyLarge,
-                color = Color.White.copy(alpha = 0.8f)
-            )
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            Image(
-                painter = painterResource(id = R.drawable.ic_logo),
-                contentDescription = "Game Logo",
-                modifier = Modifier
-                    .height(140.dp)
-                    .width(400.dp)
-                    .scale(1.2f)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(48.dp))
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 32.dp),
-            horizontalArrangement = Arrangement.Center
-        ) {
-            actions()
-        }
         Spacer(modifier = Modifier.weight(1f))
-
     }
+}
 
-    if (showNameDialog) {
-        NameEditDialog(
-            currentName = playerName,
-            onNameChange = onNameChange,
-            onDismiss = onDismissDialog
+private enum class MainModeIconType { Classic, TimeAttack }
+
+@Composable
+private fun MainTopIconButton(
+    label: String,
+    icon: @Composable () -> Unit,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val theme = LocalGameTheme.current
+    val cardBorder = theme.textColor.copy(alpha = 0.1f)
+    val textSecondary = theme.textColor.copy(alpha = 0.6f)
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier.clickable(onClick = onClick)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(52.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(theme.surfaceColor)
+                .border(1.dp, cardBorder, RoundedCornerShape(14.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            icon()
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = label,
+            color = textSecondary,
+            fontSize = 12.sp
         )
     }
 }
 
-
 @Composable
-fun CylinderActionButton(
-    modifier: Modifier = Modifier
-        .width(220.dp)
-        .height(60.dp),
-    text: String,
-    onClick: () -> Unit,
-    leadingIcon: Int? = null,
+private fun MainModeIcon(
+    mode: MainModeIconType,
+    tint: Color,
 ) {
-    Button(
-        onClick = onClick,
-        modifier = modifier,
-        colors = ButtonDefaults.buttonColors(containerColor = HighLighter),
-        shape = RoundedCornerShape(percent = 50),
-        elevation = ButtonDefaults.buttonElevation(
-            defaultElevation = 8.dp,
-            pressedElevation = 4.dp
-        ),
-        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            if (leadingIcon != null) {
-                Icon(painter = painterResource(leadingIcon), contentDescription = null, tint = Color.White)
-            }
-            Text(text, color = Color.White, style = MaterialTheme.typography.titleMedium)
-        }
+    val imageVector = when (mode) {
+        MainModeIconType.Classic -> Icons.Rounded.GridView
+        MainModeIconType.TimeAttack -> Icons.Rounded.Timer
     }
+
+    Icon(
+        imageVector = imageVector,
+        contentDescription = null,
+        tint = tint,
+        modifier = Modifier.size(30.dp)
+    )
 }
 
-@Composable
-fun NameEditDialog(
-    currentName: String,
-    onNameChange: (String) -> Unit,
-    onDismiss: () -> Unit
-) {
-    var nameInput by remember(currentName) { mutableStateOf(currentName) }
-    // Derived state for error checking - if name exceeds 15 chars, it's an error
-    val isError = nameInput.length > 15
 
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            shape = RoundedCornerShape(16.dp),
-            color = PurpleDarkBackground.copy(alpha = 0.95f),
-            shadowElevation = 8.dp
-        ) {
-            Column(
-                modifier = Modifier.padding(20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Text(
-                    text = "Edit Player Name",
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = Color.White
-                )
-
-                OutlinedTextField(
-                    value = nameInput,
-                    onValueChange = {
-                        if (it.length <= 25) {
-                            nameInput = it
-                        }
-                    },
-                    label = { Text("Enter name") },
-                    singleLine = true,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("MainScreen_TextField_NameInput"),
-                    shape = RoundedCornerShape(8.dp),
-                    isError = isError,
-                    supportingText = {
-                        if (isError) {
-                            Text(
-                                text = "Only 15 characters are allowed",
-                                color = MaterialTheme.colorScheme.error,
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
-                    },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White.copy(0.8f),
-                        cursorColor = HighLighter,
-                        focusedBorderColor = HighLighter,
-                        unfocusedBorderColor = HighLighter.copy(alpha = 0.6f),
-                        focusedLabelColor = HighLighter,
-                        unfocusedLabelColor = Color.White.copy(alpha = 0.7f),
-                        focusedContainerColor = Color.Transparent,
-                        unfocusedContainerColor = Color.Transparent,
-                        errorCursorColor = MaterialTheme.colorScheme.error,
-                        errorBorderColor = MaterialTheme.colorScheme.error,
-                        errorLabelColor = MaterialTheme.colorScheme.error
-                    )
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    TextButton(
-                        modifier = Modifier.testTag("MainScreen_Button_CancelEditName"),
-                        onClick = onDismiss
-                    ) {
-                        Text("Cancel", color = Color.White.copy(alpha = 0.8f))
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    NeonRoundedButton(
-                        modifier = Modifier.testTag("MainScreen_Button_SaveEditName"),
-                        onClick = {
-                            if (nameInput.isNotBlank() && !isError) {
-                                onNameChange(nameInput.trim())
-                                onDismiss()
-                            }
-                        },
-                        text = "Save",
-                        enabled = nameInput.isNotBlank() && !isError
-                    )
-                }
-            }
-        }
-    }
-}
 
 val lilitaOneFontFamily = FontFamily(Font(R.font.lilitaone_regular))
 
