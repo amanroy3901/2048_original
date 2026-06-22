@@ -144,13 +144,14 @@ fun GoogleSignInCard(
                                 }
                             }
                         },
-                        modifier = Modifier.weight(1.2f).height(48.dp).testTag("GoogleSignInCard_Button_GoogleSignIn"),
+                        modifier = Modifier.weight(1f).height(48.dp).testTag("GoogleSignInCard_Button_GoogleSignIn"),
                         shape = RoundedCornerShape(24.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color.White,
                             contentColor = Color(0xFF1F1F1F)
                         ),
-                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp)
                     ) {
                         Icon(
                             painter = painterResource(id = R.drawable.ic_google),
@@ -162,25 +163,28 @@ fun GoogleSignInCard(
                         Text(
                             text = if (isLoading) "Signing in..." else "Sign In",
                             fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp
+                            fontSize = 13.sp,
+                            maxLines = 1
                         )
                     }
                     Spacer(modifier = Modifier.width(12.dp))
 
                     Button(
                         onClick = onAuthSuccess,
-                        modifier = Modifier.weight(1f).height(48.dp).testTag("GoogleSignInCard_Button_ContinueAsGuest"),
+                        modifier = Modifier.weight(1.2f).height(48.dp).testTag("GoogleSignInCard_Button_ContinueAsGuest"),
                         shape = RoundedCornerShape(24.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color.Transparent,
                             contentColor = theme.textColor.copy(alpha = 0.8f)
                         ),
-                        border = BorderStroke(1.dp, theme.textColor.copy(alpha = 0.25f))
+                        border = BorderStroke(1.dp, theme.textColor.copy(alpha = 0.25f)),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp)
                     ) {
                         Text(
                             text = stringResource(R.string.continue_as_guest),
                             fontWeight = FontWeight.Medium,
-                            fontSize = 13.sp
+                            fontSize = 12.sp,
+                            maxLines = 1
                         )
                     }
                 }

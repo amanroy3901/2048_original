@@ -132,12 +132,21 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
     }
 
     if (showAuthDialog && firebaseAuth.currentUser == null) {
-        Dialog(
+        val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+        val screenWidth = configuration.screenWidthDp.dp
+        val dialogWidth = if (screenWidth * 0.9f > 400.dp) 400.dp else screenWidth * 0.9f
 
+        Dialog(
             onDismissRequest = { showAuthDialog = false },
+            properties = androidx.compose.ui.window.DialogProperties(
+                usePlatformDefaultWidth = false
+            )
         ) {
             GoogleSignInCard(
                 firebaseAuth = firebaseAuth,
+                modifier = Modifier
+                    .width(dialogWidth)
+                    .testTag("GoogleSignInCard_Dialog"),
                 onAuthSuccess = {
                     showAuthDialog = false
                     viewModel.loadUserDataFromFirebase()
