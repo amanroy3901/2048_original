@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.BarChart
@@ -18,6 +19,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
@@ -46,6 +48,7 @@ import androidx.navigation.compose.rememberNavController
 import com.avfusionapps.game_2048.R
 import com.avfusionapps.game_2048.data.GameSettingsRepository
 import com.avfusionapps.game_2048.ui.NeonRoundedButton
+import com.avfusionapps.game_2048.ui.drawNeonGlow
 import com.avfusionapps.game_2048.ui.components.BestScoreCard
 import com.avfusionapps.game_2048.ui.components.GameModeCard
 import com.avfusionapps.game_2048.ui.components.GoogleSignInCard
@@ -287,8 +290,8 @@ fun MainScreenContent(
             .fillMaxSize()
             .background(theme.backgroundColor)
     ) {
-        val screenW = maxWidth
-        val screenH = maxHeight
+        val screenW = this.maxWidth
+        val screenH = this.maxHeight
         val dims    = ScreenDimensions(screenW, screenH)
 
         // All tokens derived from actual screen fractions
@@ -347,24 +350,85 @@ fun MainScreenContent(
                     )
                 }
 
-                // Profile button (top-right)
-                Box(modifier = Modifier.align(Alignment.TopEnd)) {
-                    MainTopIconButton(
-                        label = "PROFILE",
-                        buttonSize    = iconBtnSize,
-                        cornerRadius  = iconBtnCorner,
-                        labelFontSize = iconLabelSize.value.sp,
-                        icon = {
+                // Profile button displaying user name (top-right)
+                Box(
+                    modifier = Modifier.align(Alignment.TopEnd)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .widthIn(min = 72.dp, max = screenW * 0.28f)
+                            .clip(RoundedCornerShape(iconBtnCorner))
+                            .background(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(
+                                        theme.surfaceColor,
+                                        theme.backgroundColor.copy(alpha = 0.6f)
+                                    )
+                                )
+                            )
+                            .drawWithContent {
+                                drawContent()
+                                drawNeonGlow(theme.primaryColor.copy(alpha = 0.3f), 6.dp)
+                            }
+                            .border(
+                                width = 1.dp,
+                                brush = Brush.linearGradient(
+                                    colors = listOf(
+                                        theme.primaryColor.copy(alpha = 0.6f),
+                                        theme.secondaryColor.copy(alpha = 0.6f)
+                                    )
+                                ),
+                                shape = RoundedCornerShape(iconBtnCorner)
+                            )
+                            .clickable { navController.navigate("profile") }
+                            .padding(horizontal = 8.dp, vertical = 6.dp)
+                            .testTag("MainScreen_Button_Profile"),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        // Circular glowing icon container
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    brush = Brush.radialGradient(
+                                        colors = listOf(
+                                            theme.secondaryColor.copy(alpha = 0.25f),
+                                            Color.Transparent
+                                        )
+                                    )
+                                )
+                                .border(
+                                    width = 1.dp,
+                                    color = theme.secondaryColor.copy(alpha = 0.5f),
+                                    shape = CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
                             Icon(
                                 imageVector = Icons.Rounded.AccountCircle,
                                 contentDescription = null,
-                                tint = theme.primaryColor,
-                                modifier = Modifier.size(iconSize)
+                                tint = theme.secondaryColor,
+                                modifier = Modifier.size(20.dp)
                             )
-                        },
-                        onClick  = { navController.navigate("profile") },
-                        modifier = Modifier.testTag("MainScreen_Button_Profile")
-                    )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = playerName,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = lilitaOneFontFamily,
+                            fontSize = (iconLabelSize.value + 1f).sp,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            style = LocalTextStyle.current.copy(
+                                brush = Brush.horizontalGradient(
+                                    colors = listOf(theme.primaryColor, theme.secondaryColor)
+                                )
+                            ),
+                            letterSpacing = 0.5.sp
+                        )
+                    }
                 }
             }
 
