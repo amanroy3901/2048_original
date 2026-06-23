@@ -28,10 +28,19 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.Undo
+import androidx.compose.material.icons.automirrored.rounded.HelpOutline
+import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.Timer
+import androidx.compose.material.icons.rounded.Lightbulb
+import androidx.compose.material.icons.rounded.EmojiEvents
+import androidx.compose.ui.res.stringResource
+import com.avfusionapps.game_2048.R
+import com.avfusionapps.game_2048.ui.components.FloatingBonusText
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -44,6 +53,17 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import android.content.res.Configuration
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.key
+import androidx.compose.ui.draw.scale
+import com.avfusionapps.game_2048.ui.components.SquareIconButton
+import com.avfusionapps.game_2048.ui.components.NeonCard
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -145,81 +165,105 @@ fun TimeAttackScreen(
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .testTag("TimeAttackScreen_Root")
-            .background(theme.backgroundColor)
-            .safeDrawingPadding()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .pointerInput(Unit) {
-                var totalX = 0f
-                var totalY = 0f
-                detectDragGestures(
-                    onDragEnd = {
-                        if (!gameState.isGameOver) {
-                            val minSwipeDistance = 50
-                            when {
-                                abs(totalX) > abs(totalY) && abs(totalX) > minSwipeDistance -> {
-                                    viewModel.onSwipe(if (totalX > 0) Direction.RIGHT else Direction.LEFT)
-                                }
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
-                                abs(totalY) > abs(totalX) && abs(totalY) > minSwipeDistance -> {
-                                    viewModel.onSwipe(if (totalY > 0) Direction.DOWN else Direction.UP)
-                                }
-                            }
-                        }
-                        totalX = 0f; totalY = 0f
-                    }
-                ) { change, dragAmount ->
-                    change.consume()
-                    totalX += dragAmount.x
-                    totalY += dragAmount.y
-                }
+    if (isLandscape) {
+        TimeAttackScreenLandscape(
+            viewModel = viewModel,
+            gameState = gameState,
+            highScore = highScore,
+            floatingBonuses = floatingBonuses,
+            onBonusAnimationFinished = { id ->
+                floatingBonuses = floatingBonuses.filter { it.id != id }
             },
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Top
-    ) {
-        // Header
-        TimeAttackTopBar(
-            timeRemainingMillis = gameState.timeRemainingMillis,
-            isPaused = gameState.isPaused,
+            onBack = { navController.popBackStack() },
             onPauseToggle = { viewModel.togglePause() },
             onHelpClick = {
                 forceShowTutorial = true
                 viewModel.setPaused(true)
             },
-            onBack = { navController.popBackStack() },
-            floatingBonuses = floatingBonuses,
-            onBonusAnimationFinished = { id ->
-                floatingBonuses = floatingBonuses.filter { it.id != id }
-            }
-        )
-
-        GameScoreBoard(
-            score = gameState.score,
-            highScore = highScore
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Game grid
-        GameBoard(
-            grid = gameState.grid,
-            tileAnimationInfo = gameState.tileAnimationInfo,
-            moveCount = gameState.moveCount,
-            onAnimationsComplete = { viewModel.clearAnimationInfo() }
-        )
-
-        Spacer(modifier = Modifier.weight(1f))
-
-        GameSwipeIndicator()
-
-        TimeAttackBottomBar(
             onUndoClick = { viewModel.undoMove() },
-            onNewGameClick = { viewModel.startNewGame() },
+            onRestartClick = { viewModel.startNewGame() },
             onHintClick = { viewModel.showHint(context) }
         )
+    } else {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .testTag("TimeAttackScreen_Root")
+                .background(theme.backgroundColor)
+                .safeDrawingPadding()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .pointerInput(Unit) {
+                    var totalX = 0f
+                    var totalY = 0f
+                    detectDragGestures(
+                        onDragEnd = {
+                            if (!gameState.isGameOver) {
+                                val minSwipeDistance = 50
+                                when {
+                                    abs(totalX) > abs(totalY) && abs(totalX) > minSwipeDistance -> {
+                                        viewModel.onSwipe(if (totalX > 0) Direction.RIGHT else Direction.LEFT)
+                                    }
+
+                                    abs(totalY) > abs(totalX) && abs(totalY) > minSwipeDistance -> {
+                                        viewModel.onSwipe(if (totalY > 0) Direction.DOWN else Direction.UP)
+                                    }
+                                }
+                            }
+                            totalX = 0f; totalY = 0f
+                        }
+                    ) { change, dragAmount ->
+                        change.consume()
+                        totalX += dragAmount.x
+                        totalY += dragAmount.y
+                    }
+                },
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Top
+        ) {
+            // Header
+            TimeAttackTopBar(
+                timeRemainingMillis = gameState.timeRemainingMillis,
+                isPaused = gameState.isPaused,
+                onPauseToggle = { viewModel.togglePause() },
+                onHelpClick = {
+                    forceShowTutorial = true
+                    viewModel.setPaused(true)
+                },
+                onBack = { navController.popBackStack() },
+                floatingBonuses = floatingBonuses,
+                onBonusAnimationFinished = { id ->
+                    floatingBonuses = floatingBonuses.filter { it.id != id }
+                }
+            )
+
+            GameScoreBoard(
+                score = gameState.score,
+                highScore = highScore
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Game grid
+            GameBoard(
+                grid = gameState.grid,
+                tileAnimationInfo = gameState.tileAnimationInfo,
+                moveCount = gameState.moveCount,
+                onAnimationsComplete = { viewModel.clearAnimationInfo() }
+            )
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            GameSwipeIndicator()
+
+            TimeAttackBottomBar(
+                onUndoClick = { viewModel.undoMove() },
+                onNewGameClick = { viewModel.startNewGame() },
+                onHintClick = { viewModel.showHint(context) }
+            )
+        }
     }
 
     // Pause overlay
@@ -275,7 +319,7 @@ private fun BonusNotification(bonus: com.avfusionapps.game_2048.model.BonusType)
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = Icons.Default.Timer,
+                imageVector = Icons.Rounded.Timer,
                 contentDescription = null,
                 tint = contentColor
             )
@@ -288,6 +332,446 @@ private fun BonusNotification(bonus: com.avfusionapps.game_2048.model.BonusType)
                 color = contentColor,
                 fontWeight = FontWeight.Bold
             )
+        }
+    }
+}
+
+@Composable
+private fun TimeAttackScreenLandscape(
+    viewModel: TimeAttackViewModel,
+    gameState: TimeAttackState,
+    highScore: Int,
+    floatingBonuses: List<FloatingBonus>,
+    onBonusAnimationFinished: (Long) -> Unit,
+    onBack: () -> Unit,
+    onPauseToggle: () -> Unit,
+    onHelpClick: () -> Unit,
+    onUndoClick: () -> Unit,
+    onRestartClick: () -> Unit,
+    onHintClick: () -> Unit
+) {
+    val theme = LocalGameTheme.current
+    val scrollStateLeft = rememberScrollState()
+    val scrollStateRight = rememberScrollState()
+
+    // Responsive scaling based on landscape height
+    val configuration = LocalConfiguration.current
+    val screenHeight = configuration.screenHeightDp
+    val scaleFactor = (screenHeight / 400f).coerceIn(0.75f, 1.5f)
+
+    val containerPaddingHorizontal = (16 * scaleFactor).dp
+    val containerPaddingVertical = (12 * scaleFactor).dp
+    val columnSpacing = (16 * scaleFactor).dp
+    val itemSpacing = (8 * scaleFactor).dp
+    
+    val backButtonSize = (40 * scaleFactor).dp
+    val levelTitleFontSize = (14 * scaleFactor).sp
+
+    val minutes = (gameState.timeRemainingMillis / 60000).toInt()
+    val seconds = ((gameState.timeRemainingMillis % 60000) / 1000).toInt()
+    val millis = ((gameState.timeRemainingMillis % 1000) / 10).toInt()
+
+    val timerColor by animateColorAsState(
+        targetValue = when {
+            gameState.timeRemainingMillis < 10_000L -> Color(0xFFFF3378) // Red/Pink from theme
+            gameState.timeRemainingMillis < 30_000L -> Color(0xFFFFD700) // Yellow
+            else -> Color(0xFF00FF66) // Green
+        },
+        label = "timerColor"
+    )
+
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(theme.backgroundColor)
+            .safeDrawingPadding()
+            .padding(horizontal = containerPaddingHorizontal, vertical = containerPaddingVertical)
+            .pointerInput(Unit) {
+                var totalX = 0f
+                var totalY = 0f
+                detectDragGestures(
+                    onDragEnd = {
+                        if (!gameState.isGameOver) {
+                            val minSwipeDistance = 50
+                            when {
+                                abs(totalX) > abs(totalY) && abs(totalX) > minSwipeDistance -> {
+                                    viewModel.onSwipe(if (totalX > 0) Direction.RIGHT else Direction.LEFT)
+                                }
+
+                                abs(totalY) > abs(totalX) && abs(totalY) > minSwipeDistance -> {
+                                    viewModel.onSwipe(if (totalY > 0) Direction.DOWN else Direction.UP)
+                                }
+                            }
+                        }
+                        totalX = 0f; totalY = 0f
+                    }
+                ) { change, dragAmount ->
+                    change.consume()
+                    totalX += dragAmount.x
+                    totalY += dragAmount.y
+                }
+            },
+        horizontalArrangement = Arrangement.spacedBy(columnSpacing),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Column 1: Left Panel (Back/Title, Timer Card, Score, Multiplier)
+        Column(
+            modifier = Modifier
+                .weight(0.28f)
+                .fillMaxHeight()
+                .verticalScroll(scrollStateLeft),
+            verticalArrangement = Arrangement.spacedBy(itemSpacing)
+        ) {
+            // Back Button & Title
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy((12 * scaleFactor).dp)
+            ) {
+                SquareIconButton(
+                    icon = Icons.AutoMirrored.Rounded.ArrowBack,
+                    contentDescription = "Back",
+                    onClick = onBack,
+                    size = backButtonSize
+                )
+                Text(
+                    text = "TIME ATTACK",
+                    color = theme.textColor,
+                    fontSize = levelTitleFontSize,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp
+                )
+            }
+
+            // Timer Card
+            val cardPaddingHorizontal = (12 * scaleFactor).dp
+            val cardPaddingVertical = (8 * scaleFactor).dp
+            NeonCard(
+                accentColor = timerColor,
+                isSelected = false,
+                onClick = null,
+                cornerRadius = (12 * scaleFactor).dp,
+                borderWidth = 1.dp,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = cardPaddingHorizontal, vertical = cardPaddingVertical),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            imageVector = Icons.Rounded.Timer,
+                            contentDescription = null,
+                            tint = timerColor,
+                            modifier = Modifier.size((16 * scaleFactor).dp)
+                        )
+                        Spacer(modifier = Modifier.height((2 * scaleFactor).dp))
+                        Text(
+                            text = String.format("%02d:%02d.%02d", minutes, seconds, millis),
+                            color = timerColor,
+                            fontSize = (24 * scaleFactor).sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            letterSpacing = 1.sp
+                        )
+                        Spacer(modifier = Modifier.height((2 * scaleFactor).dp))
+                        Text(
+                            text = stringResource(id = R.string.time_left),
+                            color = theme.textColor.copy(alpha = 0.5f),
+                            fontSize = (10 * scaleFactor).sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp
+                        )
+                    }
+
+                    floatingBonuses.forEach { bonus ->
+                        key(bonus.id) {
+                            FloatingBonusText(
+                                text = bonus.text,
+                                onAnimationFinished = { onBonusAnimationFinished(bonus.id) }
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Stat Cards: Score & Best Score & Multiplier
+            LandscapeStatCard(
+                icon = Icons.Rounded.Star,
+                title = stringResource(id = R.string.score),
+                value = gameState.score.toString(),
+                accentColor = theme.primaryColor,
+                scaleFactor = scaleFactor
+            )
+
+            LandscapeStatCard(
+                icon = Icons.Rounded.EmojiEvents,
+                title = stringResource(id = R.string.best_score),
+                value = highScore.toString(),
+                accentColor = theme.secondaryColor,
+                scaleFactor = scaleFactor
+            )
+
+            LandscapeStatCard(
+                icon = Icons.Rounded.Timer,
+                title = "MULTIPLIER",
+                value = String.format("x%.1f", gameState.multiplier),
+                accentColor = theme.primaryColor,
+                scaleFactor = scaleFactor
+            )
+        }
+
+        // Column 2: Center Panel (GameBoard & Swipe indicators)
+        Column(
+            modifier = Modifier
+                .weight(0.44f)
+                .fillMaxHeight(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            GameBoard(
+                grid = gameState.grid,
+                tileAnimationInfo = gameState.tileAnimationInfo,
+                moveCount = gameState.moveCount,
+                onAnimationsComplete = { viewModel.clearAnimationInfo() },
+                modifier = Modifier
+                    .weight(1f)
+                    .aspectRatio(1f)
+                    .padding(vertical = (4 * scaleFactor).dp)
+            )
+
+            Spacer(modifier = Modifier.height((4 * scaleFactor).dp))
+
+            // Swipe Indicator Text
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = "<<<",
+                    color = theme.primaryColor,
+                    fontSize = (10 * scaleFactor).sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp
+                )
+                Spacer(modifier = Modifier.width((8 * scaleFactor).dp))
+                Text(
+                    text = stringResource(id = R.string.swipe_to_move),
+                    color = theme.textColor.copy(alpha = 0.7f),
+                    fontSize = (10 * scaleFactor).sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.5.sp
+                )
+                Spacer(modifier = Modifier.width((8 * scaleFactor).dp))
+                Text(
+                    text = ">>>",
+                    color = theme.secondaryColor,
+                    fontSize = (10 * scaleFactor).sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp
+                )
+            }
+        }
+
+        // Column 3: Right Panel (Help/Pause icons, Action Cards)
+        Column(
+            modifier = Modifier
+                .weight(0.28f)
+                .fillMaxHeight()
+                .verticalScroll(scrollStateRight),
+            verticalArrangement = Arrangement.spacedBy(itemSpacing)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy((12 * scaleFactor).dp)) {
+                    SquareIconButton(
+                        icon = Icons.AutoMirrored.Rounded.HelpOutline,
+                        contentDescription = "Help",
+                        onClick = onHelpClick,
+                        size = backButtonSize
+                    )
+                    SquareIconButton(
+                        icon = if (gameState.isPaused) Icons.Rounded.PlayArrow else Icons.Rounded.Pause,
+                        contentDescription = "Pause/Play",
+                        onClick = onPauseToggle,
+                        size = backButtonSize
+                    )
+                }
+            }
+
+            LandscapeActionCard(
+                icon = Icons.AutoMirrored.Rounded.Undo,
+                title = stringResource(id = R.string.undo),
+                badge = "3",
+                accentColor = theme.primaryColor,
+                onClick = onUndoClick,
+                scaleFactor = scaleFactor
+            )
+
+            LandscapeActionCard(
+                icon = Icons.Rounded.Lightbulb,
+                title = stringResource(id = R.string.hint),
+                badge = "5",
+                accentColor = theme.secondaryColor,
+                onClick = onHintClick,
+                scaleFactor = scaleFactor
+            )
+
+            LandscapeActionCard(
+                icon = Icons.Rounded.Refresh,
+                title = stringResource(id = R.string.new_game),
+                accentColor = theme.primaryColor,
+                onClick = onRestartClick,
+                scaleFactor = scaleFactor
+            )
+        }
+    }
+}
+
+@Composable
+private fun LandscapeStatCard(
+    icon: ImageVector,
+    title: String,
+    value: String,
+    accentColor: Color,
+    scaleFactor: Float,
+    modifier: Modifier = Modifier
+) {
+    val theme = LocalGameTheme.current
+    val cardPaddingHorizontal = (12 * scaleFactor).dp
+    val cardPaddingVertical = (6 * scaleFactor).dp
+    val badgeSize = (32 * scaleFactor).dp
+    val iconSize = (16 * scaleFactor).dp
+    val titleFontSize = (8 * scaleFactor).sp
+    val valueFontSize = (16 * scaleFactor).sp
+    val spacing = (12 * scaleFactor).dp
+    val cornerRadius = (12 * scaleFactor).dp
+
+    NeonCard(
+        accentColor = accentColor,
+        isSelected = false,
+        onClick = null,
+        cornerRadius = cornerRadius,
+        borderWidth = 1.dp,
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = cardPaddingHorizontal, vertical = cardPaddingVertical),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(badgeSize)
+                    .clip(RoundedCornerShape(badgeSize / 2))
+                    .background(theme.backgroundColor)
+                    .border(
+                        width = 1.dp,
+                        color = accentColor.copy(alpha = 0.4f),
+                        shape = RoundedCornerShape(badgeSize / 2)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = accentColor,
+                    modifier = Modifier.size(iconSize)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(spacing))
+
+            Column {
+                Text(
+                    text = title,
+                    fontSize = titleFontSize,
+                    fontWeight = FontWeight.Bold,
+                    color = theme.textColor.copy(alpha = 0.6f),
+                    letterSpacing = 1.sp
+                )
+                Text(
+                    text = value,
+                    fontSize = valueFontSize,
+                    fontWeight = FontWeight.Bold,
+                    color = theme.textColor
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LandscapeActionCard(
+    icon: ImageVector,
+    title: String,
+    badge: String? = null,
+    accentColor: Color,
+    onClick: () -> Unit,
+    scaleFactor: Float,
+    modifier: Modifier = Modifier
+) {
+    val theme = LocalGameTheme.current
+    val cardPaddingHorizontal = (12 * scaleFactor).dp
+    val cardPaddingVertical = (8 * scaleFactor).dp
+    val iconSize = (18 * scaleFactor).dp
+    val spacing = (12 * scaleFactor).dp
+    val titleFontSize = (10 * scaleFactor).sp
+    val badgeFontSize = (9 * scaleFactor).sp
+    val cornerRadius = (12 * scaleFactor).dp
+
+    NeonCard(
+        accentColor = accentColor,
+        isSelected = true,
+        onClick = onClick,
+        cornerRadius = cornerRadius,
+        borderWidth = 1.dp,
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = cardPaddingHorizontal, vertical = cardPaddingVertical),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = title,
+                    tint = accentColor,
+                    modifier = Modifier.size(iconSize)
+                )
+                Spacer(modifier = Modifier.width(spacing))
+                Text(
+                    text = title,
+                    fontSize = titleFontSize,
+                    fontWeight = FontWeight.Bold,
+                    color = theme.textColor,
+                    letterSpacing = 1.sp
+                )
+            }
+            if (badge != null) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape((4 * scaleFactor).dp))
+                        .background(accentColor.copy(alpha = 0.15f))
+                        .padding(horizontal = (8 * scaleFactor).dp, vertical = (2 * scaleFactor).dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = badge,
+                        color = accentColor,
+                        fontSize = badgeFontSize,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
         }
     }
 }

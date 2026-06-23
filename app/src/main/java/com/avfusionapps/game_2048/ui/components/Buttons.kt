@@ -62,14 +62,16 @@ fun SquareIconButton(
     contentDescription: String?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    tint: Color = LocalGameTheme.current.textColor
+    tint: Color = LocalGameTheme.current.textColor,
+    size: androidx.compose.ui.unit.Dp = 48.dp
 ) {
     val theme = LocalGameTheme.current
     val cardBorder = theme.textColor.copy(alpha = 0.1f)
+    val iconSize = size * 0.5f
 
     Box(
         modifier = modifier
-            .size(48.dp)
+            .size(size)
             .clip(RoundedCornerShape(12.dp))
             .background(theme.surfaceColor)
             .border(1.dp, cardBorder, RoundedCornerShape(12.dp))
@@ -80,7 +82,7 @@ fun SquareIconButton(
             imageVector = icon,
             contentDescription = contentDescription,
             tint = tint,
-            modifier = Modifier.size(24.dp)
+            modifier = Modifier.size(iconSize)
         )
     }
 }
@@ -91,14 +93,16 @@ fun SquareIconButton(
     contentDescription: String?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    tint: Color = LocalGameTheme.current.textColor
+    tint: Color = LocalGameTheme.current.textColor,
+    size: androidx.compose.ui.unit.Dp = 48.dp
 ) {
     val theme = LocalGameTheme.current
     val cardBorder = theme.textColor.copy(alpha = 0.1f)
+    val iconSize = size * 0.5f
 
     Box(
         modifier = modifier
-            .size(48.dp)
+            .size(size)
             .clip(RoundedCornerShape(12.dp))
             .background(theme.surfaceColor)
             .border(1.dp, cardBorder, RoundedCornerShape(12.dp))
@@ -109,7 +113,7 @@ fun SquareIconButton(
             painter = painter,
             contentDescription = contentDescription,
             tint = tint,
-            modifier = Modifier.size(24.dp)
+            modifier = Modifier.size(iconSize)
         )
     }
 }
