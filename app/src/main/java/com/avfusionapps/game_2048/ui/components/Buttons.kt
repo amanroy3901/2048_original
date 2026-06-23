@@ -29,11 +29,14 @@ fun CylinderActionButton(
     leadingIcon: Int? = null,
 ) {
     val theme = LocalGameTheme.current
+    val buttonColor = theme.primaryColor
+    val isLight = (buttonColor.red * 0.2126f + buttonColor.green * 0.7152f + buttonColor.blue * 0.0722f) > 0.5f
+    val contentColor = if (isLight) Color(0xFF1F1F1F) else Color.White
 
     Button(
         onClick = onClick,
         modifier = modifier.semantics { this.contentDescription = text },
-        colors = ButtonDefaults.buttonColors(containerColor = theme.primaryColor),
+        colors = ButtonDefaults.buttonColors(containerColor = buttonColor),
         shape = RoundedCornerShape(percent = 50),
         elevation = ButtonDefaults.buttonElevation(
             defaultElevation = 8.dp,
@@ -46,9 +49,9 @@ fun CylinderActionButton(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             if (leadingIcon != null) {
-                Icon(painter = painterResource(leadingIcon), contentDescription = null, tint = Color.White)
+                Icon(painter = painterResource(leadingIcon), contentDescription = null, tint = contentColor)
             }
-            Text(text, color = Color.White, style = MaterialTheme.typography.titleMedium)
+            Text(text, color = contentColor, style = MaterialTheme.typography.titleMedium)
         }
     }
 }

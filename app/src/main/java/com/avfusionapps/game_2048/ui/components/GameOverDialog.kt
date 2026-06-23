@@ -136,6 +136,10 @@ fun GameOverDialog(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // Play Again Button
+                val isLight = ((theme.primaryColor.red * 0.2126f + theme.primaryColor.green * 0.7152f + theme.primaryColor.blue * 0.0722f) +
+                               (theme.secondaryColor.red * 0.2126f + theme.secondaryColor.green * 0.7152f + theme.secondaryColor.blue * 0.0722f)) / 2f > 0.5f
+                val contentColor = if (isLight) Color(0xFF1F1F1F) else Color.White
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -160,7 +164,7 @@ fun GameOverDialog(
                         Icon(
                             imageVector = Icons.Rounded.Refresh,
                             contentDescription = null,
-                            tint = Color.White,
+                            tint = contentColor,
                             modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -168,7 +172,7 @@ fun GameOverDialog(
                             text = "Play Again",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = contentColor
                         )
                     }
                 }
@@ -339,6 +343,10 @@ fun TimeAttackGameOverDialog(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // Play Again Button
+                val isLight = ((theme.primaryColor.red * 0.2126f + theme.primaryColor.green * 0.7152f + theme.primaryColor.blue * 0.0722f) +
+                               (theme.secondaryColor.red * 0.2126f + theme.secondaryColor.green * 0.7152f + theme.secondaryColor.blue * 0.0722f)) / 2f > 0.5f
+                val contentColor = if (isLight) Color(0xFF1F1F1F) else Color.White
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -363,7 +371,7 @@ fun TimeAttackGameOverDialog(
                         Icon(
                             imageVector = Icons.Rounded.Refresh,
                             contentDescription = null,
-                            tint = Color.White,
+                            tint = contentColor,
                             modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -371,7 +379,7 @@ fun TimeAttackGameOverDialog(
                             text = "Play Again",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = contentColor
                         )
                     }
                 }

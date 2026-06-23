@@ -260,6 +260,10 @@ fun TimeAttackScreen(
 @Composable
 private fun BonusNotification(bonus: com.avfusionapps.game_2048.model.BonusType) {
     val theme = LocalGameTheme.current
+    val buttonColor = theme.primaryColor
+    val isLight = (buttonColor.red * 0.2126f + buttonColor.green * 0.7152f + buttonColor.blue * 0.0722f) > 0.5f
+    val contentColor = if (isLight) Color(0xFF1F1F1F) else Color.White
+
     Card(
         colors = CardDefaults.cardColors(
             containerColor = theme.primaryColor.copy(alpha = 0.9f)
@@ -273,7 +277,7 @@ private fun BonusNotification(bonus: com.avfusionapps.game_2048.model.BonusType)
             Icon(
                 imageVector = Icons.Default.Timer,
                 contentDescription = null,
-                tint = Color.White
+                tint = contentColor
             )
 
             Spacer(modifier = Modifier.width(8.dp))
@@ -281,7 +285,7 @@ private fun BonusNotification(bonus: com.avfusionapps.game_2048.model.BonusType)
             Text(
                 text = bonus.message,
                 style = MaterialTheme.typography.titleMedium,
-                color = Color.White,
+                color = contentColor,
                 fontWeight = FontWeight.Bold
             )
         }

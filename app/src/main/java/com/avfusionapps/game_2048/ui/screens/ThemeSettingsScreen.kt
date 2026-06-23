@@ -144,21 +144,35 @@ fun ThemeSettingsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Grid of themes
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(3),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.heightIn(max = 600.dp), // Provide bounds for nested scrolling
-                userScrollEnabled = false // Let parent scroll handle it
+            // Grid of themes (using Column and Rows to measure height dynamically and avoid nested scroll limits)
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(GameTheme.allThemes()) { themeOpt ->
-                    ThemeGridItem(
-                        theme = themeOpt,
-                        isSelected = themeOpt.name == selectedTheme.name,
-                        onClick = { selectedTheme = themeOpt },
-                        modifier = Modifier.testTag("ThemeSettingsScreen_Button_ThemeItem_${themeOpt.name}")
-                    )
+                val themes = GameTheme.allThemes()
+                val chunkedThemes = themes.chunked(3)
+                chunkedThemes.forEach { rowThemes ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        rowThemes.forEach { themeOpt ->
+                            Box(modifier = Modifier.weight(1f)) {
+                                ThemeGridItem(
+                                    theme = themeOpt,
+                                    isSelected = themeOpt.name == selectedTheme.name,
+                                    onClick = { selectedTheme = themeOpt },
+                                    modifier = Modifier.testTag("ThemeSettingsScreen_Button_ThemeItem_${themeOpt.name}")
+                                )
+                            }
+                        }
+                        // Balance row if it has fewer than 3 items
+                        if (rowThemes.size < 3) {
+                            repeat(3 - rowThemes.size) {
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
+                        }
+                    }
                 }
             }
             
@@ -184,16 +198,18 @@ fun ThemeSettingsScreen(
             shape = RoundedCornerShape(16.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                val isLight = (selectedTheme.primaryColor.red * 0.2126f + selectedTheme.primaryColor.green * 0.7152f + selectedTheme.primaryColor.blue * 0.0722f) > 0.5f
+                val contentColor = if (isLight) Color(0xFF1F1F1F) else Color.White
                 Icon(
                     imageVector = Icons.Rounded.Check,
                     contentDescription = null,
-                    tint = if (selectedTheme.name == "Minimal White") Color.Black else Color.White,
+                    tint = contentColor,
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = "APPLY THEME",
-                    color = if (selectedTheme.name == "Minimal White") Color.Black else Color.White,
+                    color = contentColor,
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp,
                     letterSpacing = 1.sp
@@ -218,6 +234,8 @@ private fun ThemePreviewCard(theme: GameTheme, isCurrent: Boolean) {
             .padding(16.dp)
     ) {
         if (isCurrent) {
+            val isLight = (theme.primaryColor.red * 0.2126f + theme.primaryColor.green * 0.7152f + theme.primaryColor.blue * 0.0722f) > 0.5f
+            val contentColor = if (isLight) Color(0xFF1F1F1F) else Color.White
             Box(
                 modifier = Modifier
                     .offset(y = (-8).dp, x = (-8).dp)
@@ -229,7 +247,7 @@ private fun ThemePreviewCard(theme: GameTheme, isCurrent: Boolean) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = "CURRENT",
-                        color = if (theme.name == "Minimal White") Color.Black else Color.White,
+                        color = contentColor,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -237,7 +255,7 @@ private fun ThemePreviewCard(theme: GameTheme, isCurrent: Boolean) {
                     Icon(
                         imageVector = Icons.Rounded.Check,
                         contentDescription = null,
-                        tint = if (theme.name == "Minimal White") Color.Black else Color.White,
+                        tint = contentColor,
                         modifier = Modifier.size(12.dp)
                     )
                 }
@@ -357,6 +375,8 @@ private fun ThemeGridItem(
                 .padding(6.dp)
         ) {
             if (isSelected) {
+                val isLight = (theme.primaryColor.red * 0.2126f + theme.primaryColor.green * 0.7152f + theme.primaryColor.blue * 0.0722f) > 0.5f
+                val contentColor = if (isLight) Color(0xFF1F1F1F) else Color.White
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
@@ -369,7 +389,7 @@ private fun ThemeGridItem(
                     Icon(
                         imageVector = Icons.Rounded.Check,
                         contentDescription = null,
-                        tint = if (theme.name == "Minimal White") Color.Black else Color.White,
+                        tint = contentColor,
                         modifier = Modifier.size(12.dp)
                     )
                 }

@@ -129,6 +129,9 @@ fun StartJourneyCard(
                         )
                     }
 
+                    val isLight = (primary.red * 0.2126f + primary.green * 0.7152f + primary.blue * 0.0722f) > 0.5f
+                    val buttonContentColor = if (isLight) Color(0xFF1F1F1F) else Color.White
+
                     Button(
                         onClick = onNewGameClick,
                         modifier = Modifier
@@ -138,7 +141,7 @@ fun StartJourneyCard(
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = primary,
-                            contentColor = Color.White
+                            contentColor = buttonContentColor
                         ),
                         contentPadding = PaddingValues(0.dp)
                     ) {

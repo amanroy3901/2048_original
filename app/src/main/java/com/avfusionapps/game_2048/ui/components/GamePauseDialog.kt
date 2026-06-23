@@ -138,6 +138,10 @@ fun GamePauseDialog(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // Resume Button
+                val isLight = ((theme.primaryColor.red * 0.2126f + theme.primaryColor.green * 0.7152f + theme.primaryColor.blue * 0.0722f) +
+                               (theme.secondaryColor.red * 0.2126f + theme.secondaryColor.green * 0.7152f + theme.secondaryColor.blue * 0.0722f)) / 2f > 0.5f
+                val contentColor = if (isLight) Color(0xFF1F1F1F) else Color.White
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -162,7 +166,7 @@ fun GamePauseDialog(
                         Icon(
                             imageVector = Icons.Rounded.PlayArrow,
                             contentDescription = stringResource(id = R.string.desc_resume_button),
-                            tint = Color.White,
+                            tint = contentColor,
                             modifier = Modifier.size(28.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -170,7 +174,7 @@ fun GamePauseDialog(
                             text = stringResource(id = R.string.resume),
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = contentColor
                         )
                     }
                 }

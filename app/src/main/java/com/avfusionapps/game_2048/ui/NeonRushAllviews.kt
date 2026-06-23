@@ -94,6 +94,10 @@ fun NeonRoundedButton(
     glowRadius: Dp = 10.dp,
     enabled: Boolean = true
 ) {
+    val isLight = (buttonColor.red * 0.2126f + buttonColor.green * 0.7152f + buttonColor.blue * 0.0722f) > 0.5f
+    val baseContentColor = if (isLight) Color(0xFF1F1F1F) else Color.White
+    val contentColor = if (enabled) baseContentColor else baseContentColor.copy(alpha = 0.5f)
+
     Button(
         onClick = onClick,
         modifier = modifier
@@ -121,17 +125,17 @@ fun NeonRoundedButton(
                 Icon(
                     painter = painterResource(icon),
                     contentDescription = contentDescription,
-                    tint = if (enabled) Color.White else Color.White.copy(alpha = 0.5f)
+                    tint = contentColor
                 )
                 if (!text.isNullOrBlank()) Spacer(modifier = Modifier.width(8.dp))
             }
             if (!text.isNullOrBlank()) {
                 Text(
                     text = text,
-                    color = if (enabled) Color.White else Color.White.copy(alpha = 0.5f),
+                    color = contentColor,
                     style = TextStyle(
                         fontSize = MaterialTheme.typography.bodyLarge.fontSize,
-                        shadow = if (enabled) Shadow(color = glowColor, blurRadius = 10f) else null
+                        shadow = if (enabled && !isLight) Shadow(color = glowColor, blurRadius = 10f) else null
                     )
                 )
             }
