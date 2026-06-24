@@ -86,6 +86,7 @@ import com.avfusionapps.game_2048.ui.components.GameOverDialog
 import com.avfusionapps.game_2048.ui.theme.HighLighter
 import com.avfusionapps.game_2048.ui.theme.LocalGameTheme
 import com.avfusionapps.game_2048.ui.theme._2048OriginalTheme
+import com.avfusionapps.game_2048.ui.components.LevelPlayBanner
 import com.avfusionapps.game_2048.ui.components.AnimatedLevelUnlockDialog
 import com.avfusionapps.game_2048.viewmodel.Direction
 import com.avfusionapps.game_2048.viewmodel.GameViewModel
