@@ -16,6 +16,7 @@ import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.SwipeUp
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -195,6 +196,9 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
         onTimeAttackClick = {
             navController.navigate("timeAttack")
         },
+        onNeonDropClick = {
+            navController.navigate("dropMerge")
+        },
         onSettingsClick = {
             navController.navigate("themeSettings")
         },
@@ -299,6 +303,18 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
                         .testTag("MainScreen_Button_TimeAttackMode")
                         .height(gameModeH)
                 )
+
+                GameModeCard(
+                    title = stringResource(R.string.neon_drop),
+                    subtitle = stringResource(R.string.neon_drop_subtitle),
+                    tagText = stringResource(R.string.neon_drop_tag),
+                    accentColor = theme.accentColor,
+                    icon = { size -> MainModeIcon(mode = MainModeIconType.NeonDrop, tint = theme.accentColor, size = size) },
+                    onClick = { navController.navigate("dropMerge") },
+                    modifier = Modifier
+                        .testTag("MainScreen_Button_NeonDropMode")
+                        .height(gameModeH)
+                )
             }
         }
     )
@@ -321,6 +337,7 @@ fun MainScreenContent(
     onResumeClick: () -> Unit = {},
     onStartClick: () -> Unit = {},
     onTimeAttackClick: () -> Unit = {},
+    onNeonDropClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
     actions: @Composable (ScreenDimensions) -> Unit
 ) {
@@ -728,6 +745,23 @@ fun MainScreenContent(
                             cardHeight = gameModeCardH,
                             modifier = Modifier.weight(1f)
                         )
+
+                        GameModeCardLandscape(
+                            title = "Neon Drop",
+                            subtitle = "Shoot tiles up to merge & chain!",
+                            accentColor = theme.accentColor,
+                            graphic = {
+                                Icon(
+                                    imageVector = Icons.Rounded.SwipeUp,
+                                    contentDescription = null,
+                                    tint = theme.accentColor,
+                                    modifier = Modifier.fillMaxSize(0.75f)
+                                )
+                            },
+                            onClick = onNeonDropClick,
+                            cardHeight = gameModeCardH,
+                            modifier = Modifier.weight(1f)
+                        )
                     }
 
                     // Tip of the Day
@@ -895,7 +929,7 @@ fun MainScreenContent(
     }
 }
 
-private enum class MainModeIconType { Classic, TimeAttack }
+private enum class MainModeIconType { Classic, TimeAttack, NeonDrop }
 
 @Composable
 private fun MainTopIconButton(
@@ -943,6 +977,7 @@ private fun MainModeIcon(
     val imageVector = when (mode) {
         MainModeIconType.Classic -> Icons.Rounded.GridView
         MainModeIconType.TimeAttack -> Icons.Rounded.Timer
+        MainModeIconType.NeonDrop -> Icons.Rounded.SwipeUp
     }
 
     Icon(
