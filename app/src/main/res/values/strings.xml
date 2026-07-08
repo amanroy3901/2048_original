@@ -13,6 +13,13 @@
     <string name="time_attack">TIME ATTACK</string>
     <string name="time_attack_subtitle">Beat the clock, chase high scores</string>
     <string name="time_attack_tag">⏱ 60 Seconds</string>
+    <string name="neon_drop">NEON DROP</string>
+    <string name="neon_drop_subtitle">Shoot tiles up, merge &amp; chain</string>
+    <string name="neon_drop_tag">⬆ Merge Shooter</string>
+    <string name="drop_next">NEXT</string>
+    <string name="drop_locked">Locked</string>
+    <string name="drop_unlocked">UNLOCKED!</string>
+    <string name="drop_combo">COMBO ×%1$d</string>
     <string name="best_score">BEST SCORE</string>
     <string name="continue_game">Continue</string>
     <string name="continue_game_subtitle">Pick up where\nyou left off</string>

@@ -34,6 +34,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.avfusionapps.game_2048.notification.ReminderManager
+import com.avfusionapps.game_2048.ui.screens.DropMergeScreen
 import com.avfusionapps.game_2048.ui.screens.GameScreen
 import com.avfusionapps.game_2048.ui.screens.GoogleAuthScreen
 import com.avfusionapps.game_2048.ui.screens.MainScreen
@@ -225,6 +226,9 @@ class MainActivity : ComponentActivity() {
                         }
                         composable("timeAttack") {
                             TimeAttackScreen(navController = navController)
+                        }
+                        composable("dropMerge") {
+                            DropMergeScreen(navController = navController)
                         }
                         composable(
                             route = "game?resume={resume}",
