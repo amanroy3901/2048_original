@@ -1,27 +1,36 @@
 package com.avfusionapps.game_2048.viewmodel
 
 import android.app.Application
+import com.avfusionapps.game_2048.model.TileAnimationInfo
+import android.content.Context
+import android.util.Log
+import android.widget.Toast
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.avfusionapps.game_2048.data.GameSettingsRepository
+import com.avfusionapps.game_2048.notification.ReminderManager
+import com.avfusionapps.game_2048.data.model.LevelProgression
+import com.avfusionapps.game_2048.data.repository.LevelProgressionRepository
+import com.avfusionapps.game_2048.data.room.GameMoveRepository
+import com.google.firebase.Firebase
+import com.google.firebase.analytics.analytics
+import com.google.firebase.auth.auth
 import kotlinx.coroutines.channels.BufferOverflow
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-/**
- * Represents the animation state for a tile after a move.
- * @param startPosition The grid coordinates (row, col) where the tile originated *before* this move. Null if it didn't move.
- * @param isNew True if this tile was newly added in this move.
- * @param isMerged True if this tile is the result of a merge in this move.
- */
-data class TileAnimationInfo(
-    val startPosition: Pair<Int, Int>? = null,
-    val isNew: Boolean = false,
-    val isMerged: Boolean = false
-)
 
 /**
  * Represents the overall state of the game, including UI elements and logic state.
@@ -34,6 +43,9 @@ data class TileAnimationInfo(
  * @param tileAnimationInfo A map where the key is the *final* grid position (row, col) of a tile,
  *                          and the value contains information about how it arrived there (moved from, new, merged).
  * @param moveCount Counter for the number of moves made.
+ * @param currentLevel The current level based on the highest tile achieved.
+ * @param unlockedLevels Set of levels that have been unlocked by the player.
+ * @param hasSavedGame Indicates if there is a saved game state.
  */
 data class GameState(
     val grid: List<List<Int>> = emptyList(), // Initialize empty, set properly in init
@@ -43,7 +55,10 @@ data class GameState(
     val gridSize: Int = 4, // Default size
     val isGameOver: Boolean = false,
     val tileAnimationInfo: Map<Pair<Int, Int>, TileAnimationInfo> = emptyMap(),
-    val moveCount: Int = 0
+    val moveCount: Int = 0,
+    val currentLevel: Int = 1,
+    val unlockedLevels: Set<Int> = setOf(1),
+    val hasSavedGame: Boolean = false
 )
 
 /**
@@ -65,19 +80,105 @@ private data class ProcessedTile(
     val mergedFromIndex: Int? = null
 )
 
-// ViewModel extending AndroidViewModel to get Application context for Repository
 class GameViewModel(application: Application) : AndroidViewModel(application) {
 
-    // Repository for handling persistent data storage (name, high score)
+    override fun onCleared() {
+        super.onCleared()
+        saveCurrentGameState()
+    }
+
+    /**
+     * Saves the current game state to the database.
+     * Called when the app is paused or the ViewModel is cleared.
+     */
+    fun saveCurrentGameState() {
+        // Only save if there's an active game (not game over and has moves)
+        if (!gameState.isGameOver && gameState.moveCount > 0) {
+            viewModelScope.launch {
+                val moveId = gameMoveRepository.saveMove(
+                    gameState.grid,
+                    gameState.score,
+                    gameState.moveCount
+                )
+                println("Saved game state on pause: Move #${gameState.moveCount}, Grid size: ${gameState.gridSize}")
+
+                updateGameState(gameState.copy(hasSavedGame = true))
+            }
+        }
+    }
+
     private val settingsRepository = GameSettingsRepository(application)
+    private val reminderManager = ReminderManager(application)
+    private val gameMoveRepository = GameMoveRepository(application)
+    private val levelProgressionRepository = LevelProgressionRepository(application)
+    private val firebaseAnalytics = Firebase.analytics
 
-    // --- State Management ---
 
-    // The primary mutable state holder for the UI, observed by Composables.
     var gameState by mutableStateOf(GameState())
-        private set // Restrict direct mutation from outside the ViewModel
+        private set
 
-    // StateFlow representing the PERSISTENT player name from DataStore, shared with UI.
+    private val _gameStateFlow = MutableStateFlow(GameState())
+    val gameStateFlow: StateFlow<GameState> = _gameStateFlow.asStateFlow()
+
+    private val _resumePrompt = MutableStateFlow(false)
+    val resumePrompt: StateFlow<Boolean> = _resumePrompt.asStateFlow()
+
+    private val _newlyUnlockedLevel = MutableStateFlow<Int?>(null)
+    val newlyUnlockedLevel: StateFlow<Int?> = _newlyUnlockedLevel.asStateFlow()
+
+    private val _newlyUnlockedTileValue = MutableStateFlow<Int?>(null)
+    val newlyUnlockedTileValue: StateFlow<Int?> = _newlyUnlockedTileValue.asStateFlow()
+
+    private val _shouldShowNameEditDialog = MutableStateFlow(false)
+    val shouldShowNameEditDialog: StateFlow<Boolean> = _shouldShowNameEditDialog.asStateFlow()
+
+    fun resetNameEditDialogState() {
+        _shouldShowNameEditDialog.value = false
+    }
+
+    private fun updateGameState(newState: GameState) {
+        gameState = newState
+        _gameStateFlow.value = newState
+        
+        // Save to Firebase whenever game state changes
+        viewModelScope.launch {
+            saveGameStateToFirebase(newState)
+        }
+    }
+
+    /**
+     * Saves the complete game state to Firebase Firestore
+     */
+    private suspend fun saveGameStateToFirebase(state: GameState) {
+        try {
+            val user = Firebase.auth.currentUser
+            if (user != null) {
+                // Save level progression
+                val progression = LevelProgression(
+                    playerId = user.uid,
+                    playerName = user.displayName ?: state.playerName,
+                    currentLevel = state.currentLevel,
+                    unlockedLevels = state.unlockedLevels.toList(),
+                    highScore = persistentHighScore.value,
+                    lastUpdated = com.google.firebase.Timestamp.now()
+                )
+                levelProgressionRepository.saveLevelProgression(progression)
+                
+                // Update high score in settings if it's higher
+                if (state.score > persistentHighScore.value) {
+                    settingsRepository.updateHighScoreIfHigher(state.score)
+                }
+                
+                Log.d("GameViewModel", "Game state saved to Firebase: Level ${state.currentLevel}, Score ${state.score}")
+            }
+        } catch (e: Exception) {
+            Log.e("GameViewModel", "Error saving game state to Firebase", e)
+        }
+    }
+
+    private var _canUndo = MutableStateFlow(false)
+    val canUndo: StateFlow<Boolean> = _canUndo.asStateFlow()
+
     val persistentPlayerName: StateFlow<String> = settingsRepository.playerNameFlow
         .stateIn(
             scope = viewModelScope, // Scope tied to ViewModel lifecycle
@@ -85,7 +186,6 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             initialValue = GameSettingsRepository.DEFAULT_PLAYER_NAME // Provide initial default
         )
 
-    // StateFlow representing the PERSISTENT high score from DataStore, shared with UI.
     val persistentHighScore: StateFlow<Int> = settingsRepository.highScoreFlow
         .stateIn(
             scope = viewModelScope,
@@ -93,53 +193,184 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             initialValue = GameSettingsRepository.DEFAULT_HIGH_SCORE
         )
 
-    // --- Haptic Feedback Signal ---
-    // A SharedFlow to emit events to the UI when a merge occurs, triggering haptics.
-    private val _mergeEvent = MutableSharedFlow<Unit>(replay = 0, extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    private val _mergeEvent = MutableSharedFlow<Unit>(
+        replay = 0,
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
     val mergeEvent: SharedFlow<Unit> = _mergeEvent.asSharedFlow()
 
-    // --- Initialization ---
-    init {
-        // Load persistent values and set up the initial game state when ViewModel is created.
+    val hasSavedGameFlow: StateFlow<Boolean> = gameStateFlow
+        .map { it.hasSavedGame }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    val currentLevel: StateFlow<Int> = gameStateFlow
+        .map { it.currentLevel }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 1)
+
+    val unlockedLevels: StateFlow<Set<Int>> = gameStateFlow
+        .map { it.unlockedLevels }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), setOf(1))
+
+    val soundEnabled: StateFlow<Boolean> = settingsRepository.soundEnabledFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    val vibrationEnabled: StateFlow<Boolean> = settingsRepository.vibrationEnabledFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    val hasSeenClassicTutorial: StateFlow<Boolean?> = settingsRepository.hasSeenClassicTutorialFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
+
+    fun setHasSeenClassicTutorial(hasSeen: Boolean) {
         viewModelScope.launch {
-            val initialName = persistentPlayerName.first() // Get stored name
-            val initialHighScore = persistentHighScore.first() // Get stored high score
-            gameState = gameState.copy(
-                playerName = initialName,
-                highScore = initialHighScore,
-                // Initialize grid based on default size (or potentially saved size later)
-                grid = List(gameState.gridSize) { List(gameState.gridSize) { 0 } }
-            )
-            // If the grid is empty (e.g., first launch), add initial tiles.
-            if (gameState.grid.all { row -> row.all { it == 0 } }) {
-                initializeGame()
+            settingsRepository.updateHasSeenClassicTutorial(hasSeen)
+        }
+    }
+
+    fun updateSoundEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.updateSoundEnabled(enabled)
+        }
+    }
+
+    fun updateVibrationEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.updateVibrationEnabled(enabled)
+        }
+    }
+
+    /**
+     * Calculates the current level based on the highest tile value in the grid.
+     * Level progression: 2048 -> Level 2, 4096 -> Level 4, 8192 -> Level 8, etc.
+     */
+    private fun calculateCurrentLevel(grid: List<List<Int>>): Int {
+        val highestTile = grid.flatten().maxOrNull() ?: 0
+        return LevelProgression.getLevelForTileValue(highestTile)
+    }
+
+    /**
+     * Checks if a new level should be unlocked based on the highest tile achieved.
+     * Returns the new unlocked level if any, or null if no new level unlocked.
+     */
+    private fun checkLevelUnlock(
+        grid: List<List<Int>>,
+        currentUnlockedLevels: Set<Int>,
+        previousCurrentLevel: Int
+    ): Int? {
+        val highestTile = grid.flatten().maxOrNull() ?: 0
+        val newLevel = LevelProgression.getLevelForTileValue(highestTile)
+        return if (newLevel > previousCurrentLevel && newLevel !in currentUnlockedLevels) {
+            newLevel
+        } else {
+            null
+        }
+    }
+
+    init {
+        viewModelScope.launch {
+            val initialName = persistentPlayerName.first()
+            val initialHighScore = persistentHighScore.first()
+
+            // Check if user is authenticated and load their data
+            val user = Firebase.auth.currentUser
+            var currentLevel = 1
+            var unlockedLevels = setOf(1)
+            
+            if (user != null) {
+                // User is authenticated, load their data from Firebase
+                loadUserDataFromFirebase()
+                // Get the loaded data from Firebase
+                val levelProgression = levelProgressionRepository.getLevelProgression().first()
+                currentLevel = levelProgression?.currentLevel ?: 1
+                unlockedLevels = levelProgression?.unlockedLevels?.toSet() ?: setOf(1)
+            } else {
+                // User not authenticated, load from local storage
+                val levelProgression = levelProgressionRepository.getLevelProgression().first()
+                currentLevel = levelProgression?.currentLevel ?: 1
+                unlockedLevels = levelProgression?.unlockedLevels?.toSet() ?: setOf(1)
+            }
+
+            val lastMove = gameMoveRepository.getLastMove()
+
+            if (lastMove != null) {
+                updateGameState(
+                    gameState.copy(
+                        playerName = initialName,
+                        highScore = initialHighScore,
+                        currentLevel = currentLevel,
+                        unlockedLevels = unlockedLevels,
+                        grid = lastMove.grid,
+                        score = lastMove.score,
+                        gridSize = lastMove.grid.size,
+                        hasSavedGame = true
+                    )
+                )
+                _resumePrompt.value = true
+            } else {
+                updateGameState(
+                    gameState.copy(
+                    playerName = initialName,
+                    highScore = initialHighScore,
+                    currentLevel = currentLevel,
+                    unlockedLevels = unlockedLevels,
+                    grid = List(gameState.gridSize) { List(gameState.gridSize) { 0 } }
+                ))
+                if (gameState.grid.all { row -> row.all { it == 0 } }) {
+                    initializeGame()
+                }
+            }
+            updateCanUndoState()
+        }
+    }
+
+    fun markResumableWithoutMove() {
+        val hasTiles = gameState.grid.any { row -> row.any { it != 0 } }
+        if (hasTiles && !gameState.isGameOver) {
+            updateGameState(gameState.copy(hasSavedGame = true))
+            viewModelScope.launch {
+                gameMoveRepository.saveMove(
+                    gameState.grid,
+                    gameState.score,
+                    gameState.moveCount
+                )
+                updateCanUndoState()
             }
         }
     }
 
-    // --- Public Functions Called by UI ---
-
     /** Updates the player name in local state and triggers persistent save. */
     fun updatePlayerName(name: String) {
         val validName = name.ifBlank { GameSettingsRepository.DEFAULT_PLAYER_NAME }
-        gameState = gameState.copy(playerName = validName) // Update UI state immediately
-        viewModelScope.launch { settingsRepository.updatePlayerName(validName) } // Save in background
+        updateGameState(gameState.copy(playerName = validName)) // Update UI state immediately
+        viewModelScope.launch { 
+            settingsRepository.updatePlayerName(validName)
+            Toast.makeText(getApplication(), "Name updated!", Toast.LENGTH_SHORT).show()
+            // Also save to Firebase if user is authenticated
+            val user = Firebase.auth.currentUser
+            if (user != null) {
+                saveGameStateToFirebase(gameState.copy(playerName = validName))
+            }
+        } // Save in background
     }
 
     /** Sets a new grid size, resets the game board, and initializes it. */
     fun updateGridSize(size: Int) {
-        if (size >= 3 && size != gameState.gridSize) { // Basic validation and check if size changed
-            gameState = gameState.copy(
-                gridSize = size,
-                score = 0, // Reset score for new size
-                isGameOver = false,
-                moveCount = 0,
-                tileAnimationInfo = emptyMap(),
-                grid = List(size) { List(size) { 0 } } // Create new empty grid
-            )
-            initializeGame() // Add starting tiles to the new grid
+        if (size >= 3 && size != gameState.gridSize) {
+            updateGameState(
+                gameState.copy(
+                    gridSize = size,
+                    score = 0, // Reset score for new size
+                    isGameOver = false,
+                    moveCount = 0,
+                    tileAnimationInfo = emptyMap(),
+                    grid = List(size) { List(size) { 0 } }
+                ))
+            initializeGame()
         } else if (size == gameState.gridSize) {
-            // If size is the same, just start a new game on the current grid size
             initializeGame()
         }
     }
@@ -148,16 +379,46 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     fun initializeGame() {
         val size = gameState.gridSize
         val newGrid = MutableList(size) { MutableList(size) { 0 } }
-        addRandomTile(newGrid) // Add first tile
-        addRandomTile(newGrid) // Add second tile
-        gameState = gameState.copy(
-            grid = newGrid,
-            score = 0,
-            isGameOver = false,
-            moveCount = 0,
-            tileAnimationInfo = emptyMap() // Clear previous animations
-            // Note: Keeps existing playerName and highScore from gameState
+        addRandomTile(newGrid)
+        addRandomTile(newGrid)
+        updateGameState(
+            gameState.copy(
+                grid = newGrid,
+                score = 0,
+                isGameOver = false,
+                moveCount = 0,
+                tileAnimationInfo = emptyMap(),
+                hasSavedGame = false
+            )
         )
+
+        viewModelScope.launch {
+            gameMoveRepository.clearAllMoves()
+            updateCanUndoState()
+        }
+    }
+
+    /** Resumes the previous game from the last saved move */
+    fun resumeGame() {
+        viewModelScope.launch {
+            val lastMove = gameMoveRepository.getLastMove()
+            if (lastMove != null) {
+                updateGameState(
+                    gameState.copy(
+                        grid = lastMove.grid,
+                        score = lastMove.score,
+                        moveCount = lastMove.moveNumber,
+                        isGameOver = false,
+                        tileAnimationInfo = emptyMap(),
+                        hasSavedGame = false
+                    )
+                )
+
+                updateCanUndoState()
+            } else {
+                initializeGame()
+            }
+        }
     }
 
     /**
@@ -166,105 +427,330 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
      * Updates the gameState.
      */
     fun move(direction: Direction) {
-        if (gameState.isGameOver) return // Ignore moves if game is over
+        if (gameState.isGameOver) return
 
         val currentGrid = gameState.grid
         val size = gameState.gridSize
-        // Create a new grid initialized to zeros. We'll populate it based on moves.
         val newGrid = MutableList(size) { MutableList(size) { 0 } }
-        var boardMoved = false // Flag if any tile moved/merged on the entire board
+        var boardMoved = false
         var scoreIncreaseThisTurn = 0
-        // Map to store animation info: Key = final position (r,c), Value = Animation details
         val animationInfoMap = mutableMapOf<Pair<Int, Int>, TileAnimationInfo>()
 
-        // Process the grid line by line (row or column based on direction)
-        for (i in 0 until size) { // i = row index for LEFT/RIGHT, column index for UP/DOWN
-            val currentLine = getLine(currentGrid, i, direction) // Extract the line to process
-            val (processedLine, lineScore, lineMoved) = processLine(currentLine) // Process merges/slides
+        for (i in 0 until size) {
+            val currentLine = getLine(currentGrid, i, direction)
+            val (processedLine, lineScore, lineMoved) = processLine(currentLine)
 
-            if (lineMoved) boardMoved = true // Mark if any line had changes
-            scoreIncreaseThisTurn += lineScore // Accumulate score
+            if (lineMoved) boardMoved = true
+            scoreIncreaseThisTurn += lineScore
 
-            // Place the results back onto the newGrid and record animation origins
             processedLine.forEachIndexed { resultIndex, processedTile ->
-                if (processedTile.value > 0) { // Only process tiles with values
-                    // Calculate the final grid position for this tile
+                if (processedTile.value > 0) {
                     val finalPos = getFinalPosition(i, resultIndex, direction, size)
-                    newGrid[finalPos.first][finalPos.second] = processedTile.value // Place tile in new grid
+                    newGrid[finalPos.first][finalPos.second] =
+                        processedTile.value
+                    val originalPos =
+                        getFinalPosition(i, processedTile.originalIndex, direction, size)
 
-                    // Calculate where this tile originated in grid coordinates
-                    val originalPos = getFinalPosition(i, processedTile.originalIndex, direction, size)
-
-                    // Determine if the tile physically moved to a different grid cell
                     val positionChanged = finalPos != originalPos
-                    // Determine if this tile resulted from a merge
                     val didMerge = processedTile.mergedFromIndex != null
 
-                    // If the tile moved or merged, record its starting position for animation
                     if (positionChanged || didMerge) {
+                        val mergedFromPos = if (didMerge) {
+                            getFinalPosition(i, processedTile.mergedFromIndex!!, direction, size)
+                        } else null
+
                         animationInfoMap[finalPos] = TileAnimationInfo(
                             startPosition = originalPos,
+                            mergedFromPosition = mergedFromPos,
                             isMerged = didMerge,
-                            isNew = false // It came from an existing tile, so not new
+                            isNew = false
                         )
                     }
 
-                    // If a merge happened, emit event for haptic feedback
                     if (didMerge) {
                         _mergeEvent.tryEmit(Unit)
                     }
                 }
             }
-        } // End of line processing loop
+        }
 
-        // --- Post-Move Actions ---
 
-        // If any tile moved or merged on the board
         if (boardMoved) {
-            // Add a new random tile to an empty spot in the just-calculated newGrid
             val (newTileRow, newTileCol) = addRandomTile(newGrid)
-            if (newTileRow != -1) { // Check if a tile was successfully added
-                // Record animation info for the newly added tile
-                // This overwrites any previous move/merge info if the new tile landed there (shouldn't happen)
+            if (newTileRow != -1) {
                 animationInfoMap[Pair(newTileRow, newTileCol)] = TileAnimationInfo(isNew = true)
             }
 
-            // --- Update Score & High Score ---
             val newScore = gameState.score + scoreIncreaseThisTurn
-            val currentPersistentHighScore = persistentHighScore.value // Get latest saved high score
-            // Check if the persistent high score needs updating
+            val currentPersistentHighScore =
+                persistentHighScore.value
             if (newScore > currentPersistentHighScore) {
                 viewModelScope.launch {
                     settingsRepository.updateHighScoreIfHigher(newScore)
                 }
             }
-            // Update the highScore displayed in the current game session immediately
             val newLocalHighScore = maxOf(newScore, gameState.highScore)
 
-            // --- Check Game Over ---
-            // Check *after* adding the new tile, using the final newGrid state
             val gameOver = isGameOver(newGrid)
 
-            // --- Update Game State ---
-            // Commit all changes to the central gameState object
-            gameState = gameState.copy(
-                grid = newGrid, // The final grid state after moves and new tile
-                score = newScore,
-                highScore = newLocalHighScore, // Reflect the best score seen so far
-                isGameOver = gameOver,
-                tileAnimationInfo = animationInfoMap, // Pass the collected animation data
-                moveCount = gameState.moveCount + 1 // Increment move counter
+            // Check for level unlocks
+            val currentLevel = calculateCurrentLevel(newGrid)
+            val newlyUnlockedLevel = checkLevelUnlock(
+                newGrid,
+                gameState.unlockedLevels,
+                gameState.currentLevel
+            )
+            
+            val newUnlockedLevels = if (newlyUnlockedLevel != null) {
+                gameState.unlockedLevels + newlyUnlockedLevel
+            } else {
+                gameState.unlockedLevels
+            }
+
+            val previousHighestTile = gameState.grid.flatten().maxOrNull() ?: 0
+            val currentHighestTile = newGrid.flatten().maxOrNull() ?: 0
+            if (currentHighestTile >= 128 && currentHighestTile > previousHighestTile) {
+                _newlyUnlockedTileValue.value = currentHighestTile
+            }
+
+            val newMoveCount = gameState.moveCount + 1
+            updateGameState(
+                gameState.copy(
+                    grid = newGrid,
+                    score = newScore,
+                    highScore = newLocalHighScore,
+                    currentLevel = currentLevel,
+                    unlockedLevels = newUnlockedLevels,
+                    isGameOver = gameOver,
+                    tileAnimationInfo = animationInfoMap,
+                    moveCount = newMoveCount
+                )
             )
 
-            if (gameOver) { println("Game Over! Final Score: $newScore") }
+            // Handle level unlock
+            if (newlyUnlockedLevel != null) {
+                _newlyUnlockedLevel.value = newlyUnlockedLevel
+                viewModelScope.launch {
+                    // Save level progression to Firebase
+                    levelProgressionRepository.unlockLevel(newlyUnlockedLevel, gameState.playerName)
+                    
+                    // Track level unlock in Firebase Analytics
+                    val bundle = android.os.Bundle().apply {
+                        putLong("level", newlyUnlockedLevel.toLong())
+                        putString("player_name", gameState.playerName)
+                        putLong("score", newScore.toLong())
+                        putLong("moves", newMoveCount.toLong())
+                    }
+                    firebaseAnalytics.logEvent("level_unlocked", bundle)
+                }
+            }
+
+            viewModelScope.launch {
+                val moveId = gameMoveRepository.saveMove(newGrid, newScore, newMoveCount)
+                println("Saved move #$newMoveCount with ID $moveId, grid size: ${newGrid.size}")
+
+                gameMoveRepository.keepOnlyLastMoves(3)
+                updateCanUndoState()
+
+                if (!gameOver) {
+                    updateGameState(gameState.copy(hasSavedGame = true))
+                }
+            }
+
+            if (gameOver) {
+                println("Game Over! Final Score: $newScore")
+            }
 
         } else {
-            // If no tiles moved at all, check if the board is full and stuck (Game Over)
             if (isGameOver(gameState.grid)) { // Check the current grid
-                gameState = gameState.copy(isGameOver = true)
+                updateGameState(gameState.copy(isGameOver = true))
                 println("Game Over! (No valid moves left)")
             }
         }
+    }
+
+    fun enableNotification() {
+        reminderManager.scheduleReminders()
+    }
+
+    /**
+     * Undoes the last move by restoring the previous game state from the database.
+     * @return True if the undo was successful, false if there are no moves to undo.
+     */
+    fun undoMove(context: Context) {
+        viewModelScope.launch {
+            val moves = gameMoveRepository.getLastMoves(2)
+
+            if (moves.size >= 2) {
+                val latest = moves[0]
+                val previousMove = moves[1]
+
+                Log.d("VIVEK", "undoMove: $latest")
+                Log.d("VIVEK", "undoMove: $previousMove")
+
+                val restoredGrid: List<List<Int>> = previousMove.grid.map { it.toList() }
+                
+                // Recalculate current level from the restored grid
+                val restoredCurrentLevel = calculateCurrentLevel(previousMove.grid)
+                val restoredUnlockedLevels = gameState.unlockedLevels + restoredCurrentLevel
+
+                updateGameState(
+                    gameState.copy(
+                        grid = restoredGrid,
+                        score = previousMove.score,
+                        moveCount = previousMove.moveNumber,
+                        currentLevel = restoredCurrentLevel,
+                        unlockedLevels = restoredUnlockedLevels,
+                        tileAnimationInfo = emptyMap(),
+                        isGameOver = false
+                    )
+                )
+
+                gameMoveRepository.deleteMoveByNumber(latest.moveNumber)
+                updateCanUndoState()
+            } else {
+                Toast.makeText(context, "At least 2 move is required to use Undo", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    /**
+     * Resumes a saved game from the database.
+     * This function ensures the grid is properly loaded from the saved state.
+     */
+    fun resumeSavedGame() {
+        viewModelScope.launch {
+            val lastMove = gameMoveRepository.getLastMove()
+            if (lastMove != null) {
+                println("Resuming game with grid: ${lastMove.grid}")
+                println("Grid size: ${lastMove.grid.size}x${lastMove.grid.firstOrNull()?.size ?: 0}")
+                println("Score: ${lastMove.score}, Move: ${lastMove.moveNumber}")
+
+                val gridSize = lastMove.grid.size
+                
+                // Recalculate current level from the resumed grid
+                val resumedCurrentLevel = calculateCurrentLevel(lastMove.grid)
+                val resumedUnlockedLevels = gameState.unlockedLevels + resumedCurrentLevel
+
+                gameState = gameState.copy(
+                    grid = lastMove.grid,
+                    gridSize = gridSize,
+                    score = lastMove.score,
+                    moveCount = lastMove.moveNumber,
+                    currentLevel = resumedCurrentLevel,
+                    unlockedLevels = resumedUnlockedLevels,
+                    tileAnimationInfo = emptyMap(),
+                    isGameOver = false,
+                    hasSavedGame = false
+                )
+                updateCanUndoState()
+            } else {
+                // If no saved move found, initialize a new game
+                println("No saved game found, starting new game")
+                initializeGame()
+            }
+        }
+    }
+
+    /**
+     * Declines to resume a saved game and starts a new game instead.
+     */
+    fun declineSavedGame() {
+        gameState = gameState.copy(hasSavedGame = false)
+        initializeGame() // This will clear saved moves and start a new game
+    }
+
+    fun consumeResumePrompt() { _resumePrompt.value = false }
+
+    fun consumeNewlyUnlockedLevel() {
+        _newlyUnlockedLevel.value = null
+        _newlyUnlockedTileValue.value = null
+    }
+
+    /**
+     * Loads user data from Firebase after successful authentication
+     * This should be called when the user signs in
+     */
+    fun loadUserDataFromFirebase() {
+        viewModelScope.launch {
+            try {
+                val user = Firebase.auth.currentUser
+                if (user != null) {
+                    Log.d("GameViewModel", "Loading user data from Firebase for user: ${user.uid}")
+                    
+                    // Load level progression from Firebase
+                    val levelProgression = levelProgressionRepository.getLevelProgression().first()
+                    
+                    var nameToUse = levelProgression?.playerName ?: GameSettingsRepository.DEFAULT_PLAYER_NAME
+                    var currentLevel = levelProgression?.currentLevel ?: 1
+                    var unlockedLevels = levelProgression?.unlockedLevels?.toSet() ?: setOf(1)
+                    val cloudHighScore = levelProgression?.highScore ?: 0
+
+                    if (cloudHighScore > persistentHighScore.value) {
+                        settingsRepository.updateHighScoreIfHigher(cloudHighScore)
+                    }
+                    
+                    var wasNameGenerated = false
+
+                    // If name is default, try to generate from email
+                    if (nameToUse == GameSettingsRepository.DEFAULT_PLAYER_NAME) {
+                        val email = user.email
+                        if (email != null) {
+                            val generatedName = generateNameFromEmail(email)
+                            if (generatedName.isNotBlank()) {
+                                nameToUse = generatedName
+                                wasNameGenerated = true
+                                
+                                // Save the generated name immediately
+                                settingsRepository.updatePlayerName(nameToUse)
+                            }
+                        }
+                    }
+
+                    // Update game state with data
+                    val newState = gameState.copy(
+                        playerName = nameToUse,
+                        currentLevel = currentLevel,
+                        unlockedLevels = unlockedLevels
+                    )
+                    updateGameState(newState)
+                    
+                    // Show dialog AFTER state update
+                    if (wasNameGenerated) {
+                        _shouldShowNameEditDialog.value = true
+                    }
+                    
+                    // If we generated a name, save it to Firebase as well
+                    if (levelProgression == null || levelProgression.playerName == GameSettingsRepository.DEFAULT_PLAYER_NAME) {
+                         saveGameStateToFirebase(newState)
+                    }
+
+                    Log.d("GameViewModel", "User data loaded: Name $nameToUse, Level $currentLevel")
+                    
+                    // Load high score from local storage (it will sync to Firebase when updated)
+                    val highScore = persistentHighScore.value
+                    Log.d("GameViewModel", "Current high score: $highScore")
+                }
+            } catch (e: Exception) {
+                Log.e("GameViewModel", "Error loading user data from Firebase", e)
+            }
+        }
+    }
+
+    private fun generateNameFromEmail(email: String): String {
+        val namePart = email.substringBefore('@')
+        val alphaNumeric = namePart.filter { it.isLetterOrDigit() }
+        // Take up to 20 characters to capture more of the name, 
+        // relying on UI to handle truncation/editing if needed
+        return alphaNumeric.take(20) 
+    }
+
+    /**
+     * Updates the canUndo state based on available moves in the database.
+     */
+    private suspend fun updateCanUndoState() {
+        val moveCount = gameMoveRepository.getMoveCount()
+        _canUndo.value = moveCount > 1 // Need at least 2 moves to undo (current + previous)
     }
 
     /** Clears the animation information map, typically called by UI after animations complete. */
@@ -275,7 +761,6 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // --- Private Helper Functions ---
 
     /** Extracts a specific line (row or column) from the grid based on the move direction. */
     private fun getLine(grid: List<List<Int>>, index: Int, direction: Direction): List<Int> {
@@ -291,7 +776,12 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /** Calculates the final (row, col) grid coordinates given the original line index, the tile's index within the processed line result, the direction, and grid size. */
-    private fun getFinalPosition(lineIndex: Int, resultIndex: Int, direction: Direction, size: Int): Pair<Int, Int> {
+    private fun getFinalPosition(
+        lineIndex: Int,
+        resultIndex: Int,
+        direction: Direction,
+        size: Int
+    ): Pair<Int, Int> {
         return when (direction) {
             // For UP: resultIndex becomes row, lineIndex is column
             Direction.UP -> Pair(resultIndex, lineIndex)
@@ -311,7 +801,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
      */
     private fun processLine(line: List<Int>): Triple<List<ProcessedTile>, Int, Boolean> {
         // Map original indices to their non-zero values
-        val indexedNonZero = line.mapIndexedNotNull { index, value -> if (value != 0) index to value else null }
+        val indexedNonZero =
+            line.mapIndexedNotNull { index, value -> if (value != 0) index to value else null }
 
         if (indexedNonZero.isEmpty()) {
             // If the line was empty, return an empty processed list and no change
@@ -334,7 +825,13 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 if (value1 == value2) {
                     // --- Merge Occurred ---
                     val mergedValue = value1 * 2
-                    result.add(ProcessedTile(value = mergedValue, originalIndex = originalIndex1, mergedFromIndex = originalIndex2))
+                    result.add(
+                        ProcessedTile(
+                            value = mergedValue,
+                            originalIndex = originalIndex1,
+                            mergedFromIndex = originalIndex2
+                        )
+                    )
                     score += mergedValue
                     lineChanged = true // Merge always means the line changed
                     i += 2 // Skip the next tile since it was merged
@@ -355,7 +852,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         // Now, explicitly check if the original grid index differs from the final grid index for *every* tile placed.
         // This catches cases where tiles only slid, without merging.
         result.forEachIndexed { finalLineIndex, processedTile ->
-            if(processedTile.originalIndex != finalLineIndex) {
+            if (processedTile.originalIndex != finalLineIndex) {
                 lineChanged = true
             }
         }
@@ -401,5 +898,148 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
         return true // No empty cells and no possible merges
+    }
+
+    fun showHint(context: Context) {
+        // Find the best move using a simple heuristic (highest score yield)
+        val bestMove = findBestMove(gameState.grid)
+        if (bestMove != null) {
+            Toast.makeText(context, "Try swiping ${bestMove.name}", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(context, "No obvious good moves!", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun findBestMove(grid: List<List<Int>>): Direction? {
+        var bestScore = -1
+        var bestDirection: Direction? = null
+
+        for (direction in Direction.values()) {
+            // Simulate move
+            val tempGrid = grid.map { it.toMutableList() }
+            var scoreGained = 0
+            var moved = false
+
+            // Simplified simulation logic just to gauge immediate score gain
+            when (direction) {
+                Direction.UP -> {
+                    for (c in 0 until gameState.gridSize) {
+                        val col = mutableListOf<Int>()
+                        for (r in 0 until gameState.gridSize) if (tempGrid[r][c] != 0) col.add(tempGrid[r][c])
+                        
+                        var i = 0
+                        while (i < col.size - 1) {
+                            if (col[i] == col[i + 1]) {
+                                scoreGained += col[i] * 2
+                                col[i] *= 2
+                                col.removeAt(i + 1)
+                            }
+                            i++
+                        }
+                        if (col.size != tempGrid.count { it[c] != 0 }) moved = true
+                    }
+                }
+                Direction.DOWN -> {
+                    for (c in 0 until gameState.gridSize) {
+                        val col = mutableListOf<Int>()
+                        for (r in gameState.gridSize - 1 downTo 0) if (tempGrid[r][c] != 0) col.add(tempGrid[r][c])
+                        
+                        var i = 0
+                        while (i < col.size - 1) {
+                            if (col[i] == col[i + 1]) {
+                                scoreGained += col[i] * 2
+                                col[i] *= 2
+                                col.removeAt(i + 1)
+                            }
+                            i++
+                        }
+                        if (col.size != tempGrid.count { it[c] != 0 }) moved = true
+                    }
+                }
+                Direction.LEFT -> {
+                    for (r in 0 until gameState.gridSize) {
+                        val row = mutableListOf<Int>()
+                        for (c in 0 until gameState.gridSize) if (tempGrid[r][c] != 0) row.add(tempGrid[r][c])
+                        
+                        var i = 0
+                        while (i < row.size - 1) {
+                            if (row[i] == row[i + 1]) {
+                                scoreGained += row[i] * 2
+                                row[i] *= 2
+                                row.removeAt(i + 1)
+                            }
+                            i++
+                        }
+                        if (row.size != tempGrid[r].count { it != 0 }) moved = true
+                    }
+                }
+                Direction.RIGHT -> {
+                    for (r in 0 until gameState.gridSize) {
+                        val row = mutableListOf<Int>()
+                        for (c in gameState.gridSize - 1 downTo 0) if (tempGrid[r][c] != 0) row.add(tempGrid[r][c])
+                        
+                        var i = 0
+                        while (i < row.size - 1) {
+                            if (row[i] == row[i + 1]) {
+                                scoreGained += row[i] * 2
+                                row[i] *= 2
+                                row.removeAt(i + 1)
+                            }
+                            i++
+                        }
+                        if (row.size != tempGrid[r].count { it != 0 }) moved = true
+                    }
+                }
+            }
+
+            if (moved && scoreGained > bestScore) {
+                bestScore = scoreGained
+                bestDirection = direction
+            }
+        }
+
+        // If no immediate merge, just return the first valid move
+        if (bestDirection == null) {
+            for (direction in Direction.values()) {
+                if (canMoveInDirection(grid, direction)) return direction
+            }
+        }
+        
+        return bestDirection
+    }
+
+    private fun canMoveInDirection(grid: List<List<Int>>, direction: Direction): Boolean {
+        // Basic check if a move is possible in the given direction
+        when (direction) {
+            Direction.UP -> {
+                for (c in 0 until gameState.gridSize) {
+                    for (r in 1 until gameState.gridSize) {
+                        if (grid[r][c] != 0 && (grid[r - 1][c] == 0 || grid[r - 1][c] == grid[r][c])) return true
+                    }
+                }
+            }
+            Direction.DOWN -> {
+                for (c in 0 until gameState.gridSize) {
+                    for (r in 0 until gameState.gridSize - 1) {
+                        if (grid[r][c] != 0 && (grid[r + 1][c] == 0 || grid[r + 1][c] == grid[r][c])) return true
+                    }
+                }
+            }
+            Direction.LEFT -> {
+                for (r in 0 until gameState.gridSize) {
+                    for (c in 1 until gameState.gridSize) {
+                        if (grid[r][c] != 0 && (grid[r][c - 1] == 0 || grid[r][c - 1] == grid[r][c])) return true
+                    }
+                }
+            }
+            Direction.RIGHT -> {
+                for (r in 0 until gameState.gridSize) {
+                    for (c in 0 until gameState.gridSize - 1) {
+                        if (grid[r][c] != 0 && (grid[r][c + 1] == 0 || grid[r][c + 1] == grid[r][c])) return true
+                    }
+                }
+            }
+        }
+        return false
     }
 }
