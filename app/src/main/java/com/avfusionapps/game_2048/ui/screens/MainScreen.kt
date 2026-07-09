@@ -69,7 +69,8 @@ import com.avfusionapps.game_2048.data.GameSettingsRepository
 import com.avfusionapps.game_2048.ui.NeonRoundedButton
 import com.avfusionapps.game_2048.ui.drawNeonGlow
 import com.avfusionapps.game_2048.ui.components.BestScoreCard
-import com.avfusionapps.game_2048.ui.components.GameModeCard
+import com.avfusionapps.game_2048.ui.components.GameHubCard
+import com.avfusionapps.game_2048.ui.components.GameHubMode
 import com.avfusionapps.game_2048.ui.components.GoogleSignInCard
 import com.avfusionapps.game_2048.ui.components.GridSizeBottomSheet
 import com.avfusionapps.game_2048.ui.components.LastGameCard
@@ -210,7 +211,7 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
             val cardSpacing   = dims.screenH * 0.018f  // gap between cards
             val largeCardH    = dims.screenH * 0.220f  // LastGame / StartJourney card
             val bestScoreH    = dims.screenH * 0.105f  // Best score card
-            val gameModeH     = dims.screenH * 0.110f  // each game mode card
+            val gameHubH      = dims.screenH * 0.170f  // each game hub card (modes inside)
             val dividerVPad   = dims.screenH * 0.010f  // vertical padding around divider
             val dividerFontSz = (dims.screenW * 0.032f).value.sp
             val dividerHPad   = dims.screenW * 0.043f
@@ -280,40 +281,50 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
                     )
                 }
 
-                GameModeCard(
-                    title = stringResource(R.string.classic_2048),
-                    subtitle = stringResource(R.string.classic_2048_subtitle),
-                    tagText = stringResource(R.string.classic_2048_tag),
+                // One hub card per GAME — its playable modes live inside as chips.
+                GameHubCard(
+                    title = stringResource(R.string.merge_2048_hub),
+                    subtitle = stringResource(R.string.merge_2048_hub_subtitle),
+                    tagText = stringResource(R.string.merge_2048_hub_tag),
                     accentColor = theme.primaryColor,
-                    icon = { size -> MainModeIcon(mode = MainModeIconType.Classic, tint = theme.primaryColor, size = size) },
-                    onClick = { showGridSizeDialogMain = true },
+                    graphic = { size -> MainModeIcon(mode = MainModeIconType.Classic, tint = theme.primaryColor, size = size) },
+                    modes = listOf(
+                        GameHubMode(
+                            label = stringResource(R.string.mode_classic),
+                            icon = Icons.Rounded.GridView,
+                            onClick = { showGridSizeDialogMain = true },
+                            testTag = "MainScreen_Button_ClassicMode"
+                        ),
+                        GameHubMode(
+                            label = stringResource(R.string.time_attack),
+                            icon = Icons.Rounded.Timer,
+                            onClick = { navController.navigate("timeAttack") },
+                            testTag = "MainScreen_Button_TimeAttackMode",
+                            filled = false
+                        )
+                    ),
                     modifier = Modifier
-                        .testTag("MainScreen_Button_ClassicMode")
-                        .height(gameModeH)
+                        .testTag("MainScreen_Card_Merge2048")
+                        .height(gameHubH)
                 )
 
-                GameModeCard(
-                    title = stringResource(R.string.time_attack),
-                    subtitle = stringResource(R.string.time_attack_subtitle),
-                    tagText = stringResource(R.string.time_attack_tag),
-                    accentColor = theme.secondaryColor,
-                    icon = { size -> MainModeIcon(mode = MainModeIconType.TimeAttack, tint = theme.secondaryColor, size = size) },
-                    onClick = { navController.navigate("timeAttack") },
-                    modifier = Modifier
-                        .testTag("MainScreen_Button_TimeAttackMode")
-                        .height(gameModeH)
-                )
-
-                GameModeCard(
+                GameHubCard(
                     title = stringResource(R.string.neon_drop),
                     subtitle = stringResource(R.string.neon_drop_subtitle),
                     tagText = stringResource(R.string.neon_drop_tag),
                     accentColor = theme.accentColor,
-                    icon = { size -> MainModeIcon(mode = MainModeIconType.NeonDrop, tint = theme.accentColor, size = size) },
-                    onClick = { navController.navigate("dropMerge") },
+                    graphic = { size -> MainModeIcon(mode = MainModeIconType.NeonDrop, tint = theme.accentColor, size = size) },
+                    modes = listOf(
+                        GameHubMode(
+                            label = stringResource(R.string.mode_play),
+                            icon = Icons.Rounded.PlayArrow,
+                            onClick = { navController.navigate("dropMerge") },
+                            testTag = "MainScreen_Button_NeonDropMode"
+                        )
+                    ),
                     modifier = Modifier
-                        .testTag("MainScreen_Button_NeonDropMode")
-                        .height(gameModeH)
+                        .testTag("MainScreen_Card_NeonDrop")
+                        .height(gameHubH)
                 )
             }
         }
@@ -387,7 +398,7 @@ fun MainScreenContent(
             val skylineHeight = screenH * 0.15f
             
             val continueCardH = screenH * 0.42f
-            val gameModeCardH = screenH * 0.20f
+            val gameModeCardH = screenH * 0.26f
             val tipCardH = screenH * 0.09f
             
             Row(
@@ -709,58 +720,67 @@ fun MainScreenContent(
                         )
                     }
 
-                    // Game Mode Cards Row
+                    // Game hub cards — one per game, modes as chips inside.
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(screenW * 0.02f)
                     ) {
-                        GameModeCardLandscape(
-                            title = "Classic 2048",
-                            subtitle = "Slide matching tiles to reach 2048!",
+                        GameHubCard(
+                            title = stringResource(R.string.merge_2048_hub),
+                            subtitle = stringResource(R.string.merge_2048_hub_subtitle),
+                            tagText = stringResource(R.string.merge_2048_hub_tag),
                             accentColor = theme.primaryColor,
                             graphic = {
                                 IsometricTile2048Graphic(
                                     primaryColor = theme.primaryColor,
                                     secondaryColor = theme.secondaryColor,
-                                    modifier = Modifier.fillMaxSize()
+                                    modifier = Modifier.fillMaxSize(0.85f)
                                 )
                             },
-                            onClick = onStartClick,
-                            cardHeight = gameModeCardH,
-                            modifier = Modifier.weight(1f)
-                        )
-
-                        GameModeCardLandscape(
-                            title = "Time Attack",
-                            subtitle = "Beat the ticking clock to score!",
-                            accentColor = theme.secondaryColor,
-                            graphic = {
-                                StopwatchGraphic(
-                                    primaryColor = theme.primaryColor,
-                                    secondaryColor = theme.secondaryColor,
-                                    modifier = Modifier.fillMaxSize()
+                            modes = listOf(
+                                GameHubMode(
+                                    label = stringResource(R.string.mode_classic),
+                                    icon = Icons.Rounded.GridView,
+                                    onClick = onStartClick,
+                                    testTag = "MainScreen_Button_ClassicMode_Land"
+                                ),
+                                GameHubMode(
+                                    label = stringResource(R.string.time_attack),
+                                    icon = Icons.Rounded.Timer,
+                                    onClick = onTimeAttackClick,
+                                    testTag = "MainScreen_Button_TimeAttackMode_Land",
+                                    filled = false
                                 )
-                            },
-                            onClick = onTimeAttackClick,
-                            cardHeight = gameModeCardH,
-                            modifier = Modifier.weight(1f)
+                            ),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(gameModeCardH)
                         )
 
-                        GameModeCardLandscape(
-                            title = "Neon Drop",
-                            subtitle = "Shoot tiles up to merge & chain!",
+                        GameHubCard(
+                            title = stringResource(R.string.neon_drop),
+                            subtitle = stringResource(R.string.neon_drop_subtitle),
+                            tagText = stringResource(R.string.neon_drop_tag),
                             accentColor = theme.accentColor,
                             graphic = {
                                 Icon(
                                     imageVector = Icons.Rounded.SwipeUp,
                                     contentDescription = null,
                                     tint = theme.accentColor,
-                                    modifier = Modifier.fillMaxSize(0.75f)
+                                    modifier = Modifier.fillMaxSize(0.7f)
                                 )
                             },
-                            onClick = onNeonDropClick,
-                            cardHeight = gameModeCardH,
-                            modifier = Modifier.weight(1f)
+                            modes = listOf(
+                                GameHubMode(
+                                    label = stringResource(R.string.mode_play),
+                                    icon = Icons.Rounded.PlayArrow,
+                                    onClick = onNeonDropClick,
+                                    testTag = "MainScreen_Button_NeonDropMode_Land"
+                                )
+                            ),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(gameModeCardH)
                         )
                     }
 
