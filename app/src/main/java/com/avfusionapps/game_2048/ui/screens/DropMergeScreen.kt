@@ -7,6 +7,7 @@ import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.VectorConverter
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -22,9 +23,11 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -40,9 +43,11 @@ import androidx.compose.material.icons.automirrored.rounded.Undo
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -77,6 +82,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.avfusionapps.game_2048.R
 import com.avfusionapps.game_2048.model.DropMergeConfig
+import com.avfusionapps.game_2048.model.DropMergeState
 import com.avfusionapps.game_2048.model.DropStepKind
 import com.avfusionapps.game_2048.model.DropTile
 import com.avfusionapps.game_2048.ui.components.GameOverDialog
@@ -84,6 +90,7 @@ import com.avfusionapps.game_2048.ui.components.GamePauseDialog
 import com.avfusionapps.game_2048.ui.components.GameScoreBoard
 import com.avfusionapps.game_2048.ui.components.NeonCard
 import com.avfusionapps.game_2048.ui.components.SquareIconButton
+import com.avfusionapps.game_2048.ui.theme.GameTheme
 import com.avfusionapps.game_2048.ui.theme.LocalGameTheme
 import com.avfusionapps.game_2048.utils.SoundManager
 import com.avfusionapps.game_2048.viewmodel.DropAnim
@@ -115,23 +122,34 @@ fun DropMergeScreen(
     val context = LocalContext.current
     val soundManager = remember { SoundManager(context) }
 
-    // Sound + haptics from game events (respecting user settings).
+    // Board shake played on game over.
+    val shakeX = remember { Animatable(0f) }
+
+    // Sound + haptics + shake from game events (respecting user settings).
     LaunchedEffect(vibrationEnabled, soundEnabled) {
         viewModel.events.collectLatest { event ->
+            if (event == DropGameEvent.GAME_OVER) {
+                launch {
+                    listOf(0f, -16f, 13f, -9f, 6f, -3f, 0f).forEach {
+                        shakeX.animateTo(it, tween(42))
+                    }
+                }
+            }
             if (vibrationEnabled) {
                 when (event) {
                     DropGameEvent.MERGE, DropGameEvent.COMBO ->
                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     DropGameEvent.UNLOCK, DropGameEvent.PURGE, DropGameEvent.GAME_OVER ->
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                    DropGameEvent.SHOOT -> Unit
+                    DropGameEvent.SHOOT, DropGameEvent.SKIP -> Unit
                 }
             }
             if (soundEnabled) {
                 // SoundManager sleeps between tones — keep it off the main thread.
                 withContext(Dispatchers.Default) {
                     when (event) {
-                        DropGameEvent.SHOOT -> soundManager.playSound(SoundManager.SOUND_MOVE)
+                        DropGameEvent.SHOOT, DropGameEvent.SKIP ->
+                            soundManager.playSound(SoundManager.SOUND_MOVE)
                         DropGameEvent.MERGE, DropGameEvent.COMBO, DropGameEvent.PURGE ->
                             soundManager.playSound(SoundManager.SOUND_MERGE)
                         DropGameEvent.UNLOCK -> soundManager.playSound(SoundManager.SOUND_LEVEL_UP)
@@ -141,7 +159,7 @@ fun DropMergeScreen(
             }
         }
     }
-    androidx.compose.runtime.DisposableEffect(Unit) {
+    DisposableEffect(Unit) {
         onDispose { soundManager.release() }
     }
 
@@ -153,82 +171,48 @@ fun DropMergeScreen(
         }
     }
 
+    // Let the shake read before the dialog covers the board.
+    var showGameOverDialog by remember { mutableStateOf(false) }
+    LaunchedEffect(gameState.isGameOver) {
+        if (gameState.isGameOver) {
+            delay(600)
+            showGameOverDialog = true
+        } else {
+            showGameOverDialog = false
+        }
+    }
+
     BackHandler { viewModel.togglePause() }
 
-    Box(
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
             .background(theme.backgroundColor)
             .safeDrawingPadding()
             .testTag("DropMergeScreen_Root")
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Spacer(Modifier.height(8.dp))
+        val screenW = maxWidth
+        val screenH = maxHeight
+        val isLandscape = screenW > screenH
 
-            // ── Top bar: back / score / next-unlock badge ──
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                SquareIconButton(
-                    icon = Icons.AutoMirrored.Rounded.ArrowBack,
-                    contentDescription = stringResource(R.string.desc_back_button),
-                    onClick = { viewModel.setPaused(true) },
-                    modifier = Modifier.testTag("DropMerge_Button_Back")
-                )
-                Spacer(Modifier.width(10.dp))
-                GameScoreBoard(
-                    score = gameState.score,
-                    highScore = maxOf(bestScore, gameState.score),
-                    modifier = Modifier.weight(1f)
-                )
-                Spacer(Modifier.width(10.dp))
-                UnlockBadge(target = gameState.unlockTarget)
-            }
-
-            Spacer(Modifier.height(10.dp))
-
-            // ── Board + launcher ──
-            DropBoard(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-                viewModel = viewModel,
-                gameStateProvider = { gameState }
+        if (isLandscape) {
+            DropMergeLandscape(
+                screenW = screenW,
+                screenH = screenH,
+                gameState = gameState,
+                bestScore = bestScore,
+                shakeXProvider = { shakeX.value },
+                viewModel = viewModel
             )
-
-            Spacer(Modifier.height(8.dp))
-
-            // ── Bottom bar: undo / next preview / restart ──
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                SquareIconButton(
-                    icon = Icons.AutoMirrored.Rounded.Undo,
-                    contentDescription = stringResource(R.string.undo),
-                    onClick = { viewModel.undo() },
-                    tint = if (gameState.canUndo) theme.textColor else theme.textColor.copy(alpha = 0.3f),
-                    modifier = Modifier.testTag("DropMerge_Button_Undo")
-                )
-
-                NextTileChip(nextValue = gameState.nextValue)
-
-                SquareIconButton(
-                    icon = Icons.Rounded.Pause,
-                    contentDescription = stringResource(R.string.desc_pause_button),
-                    onClick = { viewModel.togglePause() },
-                    modifier = Modifier.testTag("DropMerge_Button_Pause")
-                )
-            }
+        } else {
+            DropMergePortrait(
+                screenW = screenW,
+                screenH = screenH,
+                gameState = gameState,
+                bestScore = bestScore,
+                shakeXProvider = { shakeX.value },
+                viewModel = viewModel
+            )
         }
 
         // ── Unlock banner ──
@@ -238,7 +222,7 @@ fun DropMergeScreen(
             exit = fadeOut() + scaleOut(targetScale = 0.9f),
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .padding(top = 90.dp)
+                .padding(top = screenH * 0.12f)
         ) {
             val unlockedValue = gameState.justUnlockedValue ?: 0
             UnlockBanner(value = unlockedValue)
@@ -262,7 +246,7 @@ fun DropMergeScreen(
         )
     }
 
-    if (gameState.isGameOver) {
+    if (showGameOverDialog) {
         GameOverDialog(
             score = gameState.score,
             onNewGame = { viewModel.startNewGame() },
@@ -271,28 +255,217 @@ fun DropMergeScreen(
     }
 }
 
+// ────────────────────────────── Orientations ────────────────────────────────
+
+@Composable
+private fun DropMergePortrait(
+    screenW: Dp,
+    screenH: Dp,
+    gameState: DropMergeState,
+    bestScore: Int,
+    shakeXProvider: () -> Float,
+    viewModel: DropMergeViewModel
+) {
+    val theme = LocalGameTheme.current
+    val hPad = screenW * 0.035f
+    val barH = screenH * 0.070f
+    val barSpacing = screenH * 0.014f
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = hPad),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Spacer(Modifier.height(barSpacing))
+
+        // ── Top bar: back / score / next-unlock badge ──
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(barH),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            SquareIconButton(
+                icon = Icons.AutoMirrored.Rounded.ArrowBack,
+                contentDescription = stringResource(R.string.desc_back_button),
+                onClick = { viewModel.setPaused(true) },
+                size = barH * 0.85f,
+                modifier = Modifier.testTag("DropMerge_Button_Back")
+            )
+            Spacer(Modifier.width(hPad * 0.8f))
+            GameScoreBoard(
+                score = gameState.score,
+                highScore = maxOf(bestScore, gameState.score),
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(Modifier.width(hPad * 0.8f))
+            UnlockBadge(target = gameState.unlockTarget, height = barH)
+        }
+
+        Spacer(Modifier.height(barSpacing))
+
+        // ── Board + launcher ──
+        DropBoard(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .offset { IntOffset(shakeXProvider().roundToInt(), 0) },
+            gameState = gameState,
+            viewModel = viewModel
+        )
+
+        Spacer(Modifier.height(barSpacing))
+
+        // ── Bottom bar: undo / skip + next / pause ──
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(barH)
+                .padding(bottom = barSpacing * 0.5f),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            SquareIconButton(
+                icon = Icons.AutoMirrored.Rounded.Undo,
+                contentDescription = stringResource(R.string.undo),
+                onClick = { viewModel.undo() },
+                tint = if (gameState.canUndo) theme.textColor else theme.textColor.copy(alpha = 0.3f),
+                size = barH * 0.85f,
+                modifier = Modifier.testTag("DropMerge_Button_Undo")
+            )
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                NextTileChip(nextValue = gameState.nextValue, height = barH * 0.62f)
+                Spacer(Modifier.width(hPad * 0.9f))
+                SkipTileButton(
+                    enabled = gameState.canSkip && !gameState.isResolving && !gameState.isGameOver,
+                    height = barH * 0.72f,
+                    onClick = { viewModel.skipTile() }
+                )
+            }
+
+            SquareIconButton(
+                icon = Icons.Rounded.Pause,
+                contentDescription = stringResource(R.string.desc_pause_button),
+                onClick = { viewModel.togglePause() },
+                size = barH * 0.85f,
+                modifier = Modifier.testTag("DropMerge_Button_Pause")
+            )
+        }
+    }
+}
+
+@Composable
+private fun DropMergeLandscape(
+    screenW: Dp,
+    screenH: Dp,
+    gameState: DropMergeState,
+    bestScore: Int,
+    shakeXProvider: () -> Float,
+    viewModel: DropMergeViewModel
+) {
+    val theme = LocalGameTheme.current
+    val pad = screenH * 0.03f
+    val sideW = screenW * 0.24f
+    val btnSize = screenH * 0.115f
+
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(pad)
+    ) {
+        // ── Left panel: back, score, unlock badge ──
+        Column(
+            modifier = Modifier
+                .width(sideW)
+                .fillMaxHeight(),
+            verticalArrangement = Arrangement.spacedBy(pad),
+            horizontalAlignment = Alignment.Start
+        ) {
+            SquareIconButton(
+                icon = Icons.AutoMirrored.Rounded.ArrowBack,
+                contentDescription = stringResource(R.string.desc_back_button),
+                onClick = { viewModel.setPaused(true) },
+                size = btnSize,
+                modifier = Modifier.testTag("DropMerge_Button_Back")
+            )
+            GameScoreBoard(
+                score = gameState.score,
+                highScore = maxOf(bestScore, gameState.score),
+                modifier = Modifier.fillMaxWidth()
+            )
+            UnlockBadge(target = gameState.unlockTarget, height = screenH * 0.16f)
+        }
+
+        // ── Center: board + launcher ──
+        DropBoard(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                .offset { IntOffset(shakeXProvider().roundToInt(), 0) },
+            gameState = gameState,
+            viewModel = viewModel
+        )
+
+        // ── Right panel: controls ──
+        Column(
+            modifier = Modifier
+                .width(sideW)
+                .fillMaxHeight(),
+            verticalArrangement = Arrangement.spacedBy(pad),
+            horizontalAlignment = Alignment.End
+        ) {
+            SquareIconButton(
+                icon = Icons.Rounded.Pause,
+                contentDescription = stringResource(R.string.desc_pause_button),
+                onClick = { viewModel.togglePause() },
+                size = btnSize,
+                modifier = Modifier.testTag("DropMerge_Button_Pause")
+            )
+            SquareIconButton(
+                icon = Icons.AutoMirrored.Rounded.Undo,
+                contentDescription = stringResource(R.string.undo),
+                onClick = { viewModel.undo() },
+                tint = if (gameState.canUndo) theme.textColor else theme.textColor.copy(alpha = 0.3f),
+                size = btnSize,
+                modifier = Modifier.testTag("DropMerge_Button_Undo")
+            )
+            Spacer(Modifier.weight(1f))
+            NextTileChip(nextValue = gameState.nextValue, height = screenH * 0.085f)
+            SkipTileButton(
+                enabled = gameState.canSkip && !gameState.isResolving && !gameState.isGameOver,
+                height = screenH * 0.095f,
+                onClick = { viewModel.skipTile() }
+            )
+        }
+    }
+}
+
 // ─────────────────────────────────── Board ──────────────────────────────────
 
 @Composable
 private fun DropBoard(
     modifier: Modifier,
-    viewModel: DropMergeViewModel,
-    gameStateProvider: () -> com.avfusionapps.game_2048.model.DropMergeState
+    gameState: DropMergeState,
+    viewModel: DropMergeViewModel
 ) {
     val theme = LocalGameTheme.current
-    val gameState = gameStateProvider()
     val density = LocalDensity.current
+    val currentColor = dropTileColor(theme, gameState.currentValue)
+    val inputEnabled = !gameState.isResolving && !gameState.isGameOver && !gameState.isPaused
 
-    androidx.compose.foundation.layout.BoxWithConstraints(
+    BoxWithConstraints(
         modifier = modifier,
         contentAlignment = Alignment.TopCenter
     ) {
-        // Geometry: 5 columns × 8 rows + a launcher strip below the board.
-        val gap = 4.dp
-        val launcherH = 84.dp
+        // Geometry — everything derived from the available constraints.
+        val gap = (min(maxWidth.value, maxHeight.value) * 0.010f).dp.coerceIn(3.dp, 7.dp)
+        val launcherGap = gap * 2.5f
+        val launcherExtra = 8.dp
         val cell: Dp = min(
             ((maxWidth - gap * (COLS + 1)) / COLS).value,
-            ((maxHeight - launcherH - gap * (ROWS + 1)) / ROWS).value
+            ((maxHeight - gap * (ROWS + 1) - launcherGap - launcherExtra) / (ROWS + 1)).value
         ).dp
         val boardW = cell * COLS + gap * (COLS + 1)
         val boardH = cell * ROWS + gap * (ROWS + 1)
@@ -308,6 +481,7 @@ private fun DropBoard(
 
         var aimCol by remember { mutableStateOf<Int?>(null) }
         var lastShotCol by remember { mutableIntStateOf(COLS / 2) }
+        val launcherCol = aimCol ?: lastShotCol
 
         fun fire(col: Int) {
             lastShotCol = col
@@ -322,15 +496,15 @@ private fun DropBoard(
                     .height(boardH)
                     .clip(RoundedCornerShape(14.dp))
                     .background(theme.surfaceColor.copy(alpha = 0.55f))
-                    .pointerInput(gameState.isGameOver) {
-                        detectTapGestures { offset -> fire(colFromX(offset.x)) }
+                    .pointerInput(inputEnabled) {
+                        detectTapGestures { offset -> if (inputEnabled) fire(colFromX(offset.x)) }
                     }
-                    .pointerInput(gameState.isGameOver) {
+                    .pointerInput(inputEnabled) {
                         detectDragGestures(
-                            onDragStart = { offset -> aimCol = colFromX(offset.x) },
-                            onDrag = { change, _ -> aimCol = colFromX(change.position.x) },
+                            onDragStart = { offset -> if (inputEnabled) aimCol = colFromX(offset.x) },
+                            onDrag = { change, _ -> if (inputEnabled) aimCol = colFromX(change.position.x) },
                             onDragEnd = {
-                                aimCol?.let { fire(it) }
+                                if (inputEnabled) aimCol?.let { fire(it) }
                                 aimCol = null
                             },
                             onDragCancel = { aimCol = null }
@@ -338,7 +512,7 @@ private fun DropBoard(
                     }
                     .testTag("DropMerge_Board")
             ) {
-                // Column tracks with danger pulse.
+                // Column tracks; the aimed one glows with the current tile's color.
                 for (c in 0 until COLS) {
                     val fill = gameState.columns[c].size
                     ColumnTrack(
@@ -348,17 +522,17 @@ private fun DropBoard(
                         topPad = gap,
                         danger = fill >= ROWS - DropMergeConfig.DANGER_FREE_CELLS,
                         critical = fill >= ROWS,
-                        highlighted = aimCol == c
+                        beamColor = if (aimCol == c) currentColor else null
                     )
                 }
 
-                // Ghost landing slot while aiming.
+                // Ghost landing slot while aiming — tinted like the tile.
                 aimCol?.let { c ->
                     val landRow = min(gameState.columns[c].size, ROWS - 1)
                     GhostSlot(
                         offset = IntOffset(xOf(c).roundToInt(), yOf(landRow).roundToInt()),
                         size = cell,
-                        color = theme.accentColor
+                        color = currentColor
                     )
                 }
 
@@ -398,23 +572,31 @@ private fun DropBoard(
                     key(gameState.comboCount) {
                         ComboText(
                             combo = gameState.comboCount,
+                            fontSize = (cell.value * 0.42f).sp,
                             modifier = Modifier.align(Alignment.TopCenter)
                         )
                     }
                 }
             }
 
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(launcherGap))
 
             // ── Launcher ──
             Launcher(
                 boardW = boardW,
                 cell = cell,
                 gap = gap,
+                extra = launcherExtra,
                 currentValue = gameState.currentValue,
-                launcherCol = aimCol ?: lastShotCol,
-                enabled = !gameState.isResolving && !gameState.isGameOver && !gameState.isPaused,
-                onShoot = { fire(it) }
+                moveCount = gameState.moveCount,
+                launcherCol = launcherCol,
+                enabled = inputEnabled,
+                onAim = { aimCol = it },
+                onRelease = {
+                    if (inputEnabled) aimCol?.let { fire(it) }
+                    aimCol = null
+                },
+                onShoot = { if (inputEnabled) fire(it) }
             )
         }
     }
@@ -428,7 +610,7 @@ private fun ColumnTrack(
     topPad: Dp,
     danger: Boolean,
     critical: Boolean,
-    highlighted: Boolean
+    beamColor: Color?
 ) {
     val theme = LocalGameTheme.current
     val pulse = rememberInfiniteTransition(label = "dangerPulse")
@@ -444,8 +626,24 @@ private fun ColumnTrack(
 
     val borderColor = when {
         danger -> theme.primaryColor.copy(alpha = pulseAlpha)
-        highlighted -> theme.accentColor.copy(alpha = 0.55f)
+        beamColor != null -> beamColor.copy(alpha = 0.65f)
         else -> theme.textColor.copy(alpha = 0.06f)
+    }
+
+    // Aimed column: a soft gradient beam in the incoming tile's color,
+    // strongest where the tile enters (bottom) and fading toward the ceiling.
+    val backgroundModifier = if (beamColor != null) {
+        Modifier.background(
+            brush = Brush.verticalGradient(
+                colors = listOf(
+                    beamColor.copy(alpha = 0.03f),
+                    beamColor.copy(alpha = 0.10f),
+                    beamColor.copy(alpha = 0.26f)
+                )
+            )
+        )
+    } else {
+        Modifier.background(theme.backgroundColor.copy(alpha = 0.45f))
     }
 
     Box(
@@ -454,10 +652,7 @@ private fun ColumnTrack(
             .width(width)
             .height(height)
             .clip(RoundedCornerShape(10.dp))
-            .background(
-                if (highlighted) theme.accentColor.copy(alpha = 0.07f)
-                else theme.backgroundColor.copy(alpha = 0.45f)
-            )
+            .then(backgroundModifier)
             .border(1.dp, borderColor, RoundedCornerShape(10.dp))
     )
 }
@@ -466,8 +661,8 @@ private fun ColumnTrack(
 private fun GhostSlot(offset: IntOffset, size: Dp, color: Color) {
     val pulse = rememberInfiniteTransition(label = "ghostPulse")
     val alpha by pulse.animateFloat(
-        initialValue = 0.25f, targetValue = 0.65f,
-        animationSpec = infiniteRepeatable(tween(500), RepeatMode.Reverse),
+        initialValue = 0.3f, targetValue = 0.75f,
+        animationSpec = infiniteRepeatable(tween(450), RepeatMode.Reverse),
         label = "ghostAlpha"
     )
     Box(
@@ -476,7 +671,7 @@ private fun GhostSlot(offset: IntOffset, size: Dp, color: Color) {
             .size(size)
             .clip(RoundedCornerShape(10.dp))
             .border(2.dp, color.copy(alpha = alpha), RoundedCornerShape(10.dp))
-            .background(color.copy(alpha = alpha * 0.12f))
+            .background(color.copy(alpha = alpha * 0.15f))
     )
 }
 
@@ -602,11 +797,17 @@ private fun TileNumber(value: Int, cell: Dp, background: Color) {
 }
 
 @Composable
-private fun ComboText(combo: Int, modifier: Modifier = Modifier) {
+private fun ComboText(
+    combo: Int,
+    fontSize: androidx.compose.ui.unit.TextUnit,
+    modifier: Modifier = Modifier
+) {
     val theme = LocalGameTheme.current
     val rise = remember { Animatable(0f) }
     val alpha = remember { Animatable(1f) }
+    val scale = remember { Animatable(0.5f) }
     LaunchedEffect(Unit) {
+        launch { scale.animateTo(1f, spring(dampingRatio = 0.45f, stiffness = Spring.StiffnessMedium)) }
         launch { rise.animateTo(-38f, tween(750, easing = LinearOutSlowInEasing)) }
         launch {
             delay(420)
@@ -616,29 +817,43 @@ private fun ComboText(combo: Int, modifier: Modifier = Modifier) {
     Text(
         text = stringResource(R.string.drop_combo, combo),
         color = theme.accentColor,
-        fontSize = 22.sp,
+        fontSize = fontSize,
         fontWeight = FontWeight.ExtraBold,
         letterSpacing = 1.5.sp,
         modifier = modifier
             .padding(top = 46.dp)
             .offset { IntOffset(0, rise.value.roundToInt()) }
+            .scale(scale.value)
             .alpha(alpha.value)
     )
 }
 
 // ───────────────────────────────── Launcher ─────────────────────────────────
 
+/**
+ * The launcher strip. The loaded tile is ONE block that slides smoothly to the
+ * aimed column (spring), can be dragged along the strip, and pops on reload.
+ */
 @Composable
 private fun Launcher(
     boardW: Dp,
     cell: Dp,
     gap: Dp,
+    extra: Dp,
     currentValue: Int,
+    moveCount: Int,
     launcherCol: Int,
     enabled: Boolean,
+    onAim: (Int) -> Unit,
+    onRelease: () -> Unit,
     onShoot: (Int) -> Unit
 ) {
     val theme = LocalGameTheme.current
+    val density = LocalDensity.current
+    val cellPx = with(density) { cell.toPx() }
+    val gapPx = with(density) { gap.toPx() }
+    fun colFromX(x: Float): Int =
+        ((x - gapPx / 2f) / (cellPx + gapPx)).toInt().coerceIn(0, COLS - 1)
 
     // Idle bob on the loaded tile.
     val bob = rememberInfiniteTransition(label = "launcherBob")
@@ -648,23 +863,47 @@ private fun Launcher(
         label = "bobY"
     )
 
-    // Absolute placement so launcher slots line up exactly with board columns.
+    // The slidable block: springs toward the aimed column.
+    val tileX by animateDpAsState(
+        targetValue = gap + (cell + gap) * launcherCol,
+        animationSpec = spring(dampingRatio = 0.72f, stiffness = Spring.StiffnessMedium),
+        label = "launcherTileX"
+    )
+
+    // Reload pop whenever a new tile arrives (shot resolved or skip used).
+    val reloadScale = remember { Animatable(1f) }
+    LaunchedEffect(currentValue, moveCount) {
+        reloadScale.snapTo(0.55f)
+        reloadScale.animateTo(1f, spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMedium))
+    }
+
+    val color = dropTileColor(theme, currentValue)
+
     Box(
         modifier = Modifier
             .width(boardW)
-            .height(cell + 8.dp)
+            .height(cell + extra)
+            .pointerInput(enabled) {
+                detectDragGestures(
+                    onDragStart = { offset -> if (enabled) onAim(colFromX(offset.x)) },
+                    onDrag = { change, _ -> if (enabled) onAim(colFromX(change.position.x)) },
+                    onDragEnd = { onRelease() },
+                    onDragCancel = { onRelease() }
+                )
+            }
     ) {
+        // Slot pads.
         for (c in 0 until COLS) {
             Box(
                 modifier = Modifier
                     .offset(x = gap + (cell + gap) * c)
                     .width(cell)
-                    .height(cell + 8.dp)
+                    .height(cell + extra)
                     .clip(RoundedCornerShape(10.dp))
                     .background(theme.surfaceColor.copy(alpha = 0.6f))
                     .border(
                         1.dp,
-                        if (c == launcherCol) theme.accentColor.copy(alpha = 0.5f)
+                        if (c == launcherCol) color.copy(alpha = 0.5f)
                         else theme.textColor.copy(alpha = 0.07f),
                         RoundedCornerShape(10.dp)
                     )
@@ -674,24 +913,7 @@ private fun Launcher(
                     .testTag("DropMerge_LauncherSlot_$c"),
                 contentAlignment = Alignment.Center
             ) {
-                if (c == launcherCol) {
-                    // The loaded tile rides on the aimed slot.
-                    val color = dropTileColor(theme, currentValue)
-                    Box(
-                        modifier = Modifier
-                            .offset { IntOffset(0, bobY.roundToInt()) }
-                            .size(cell * 0.92f)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(
-                                Brush.verticalGradient(listOf(color, color.copy(alpha = 0.85f)))
-                            )
-                            .border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(10.dp))
-                            .alpha(if (enabled) 1f else 0.45f),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        TileNumber(value = currentValue, cell = cell, background = color)
-                    }
-                } else {
+                if (c != launcherCol) {
                     Icon(
                         imageVector = Icons.Rounded.KeyboardArrowUp,
                         contentDescription = null,
@@ -701,52 +923,123 @@ private fun Launcher(
                 }
             }
         }
+
+        // The single slidable loaded tile, riding above the slots.
+        Box(
+            modifier = Modifier
+                .offset(x = tileX)
+                .offset { IntOffset(0, bobY.roundToInt()) }
+                .width(cell)
+                .height(cell + extra),
+            contentAlignment = Alignment.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(cell * 0.92f)
+                    .scale(reloadScale.value)
+                    .drawBehind {
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colors = listOf(color.copy(alpha = 0.35f), Color.Transparent)
+                            ),
+                            radius = size.maxDimension * 0.8f,
+                            center = center
+                        )
+                    }
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(
+                        Brush.verticalGradient(listOf(color, color.copy(alpha = 0.85f)))
+                    )
+                    .border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(10.dp))
+                    .alpha(if (enabled) 1f else 0.45f),
+                contentAlignment = Alignment.Center
+            ) {
+                TileNumber(value = currentValue, cell = cell, background = color)
+            }
+        }
     }
 }
 
-// ───────────────────────────── Badges & banners ─────────────────────────────
+// ───────────────────────────── Controls & badges ────────────────────────────
 
 @Composable
-private fun UnlockBadge(target: Int) {
+private fun SkipTileButton(
+    enabled: Boolean,
+    height: Dp,
+    onClick: () -> Unit
+) {
+    val theme = LocalGameTheme.current
+    val shape = RoundedCornerShape(50)
+    Row(
+        modifier = Modifier
+            .height(height)
+            .clip(shape)
+            .background(theme.surfaceColor.copy(alpha = 0.8f))
+            .border(1.dp, theme.accentColor.copy(alpha = if (enabled) 0.55f else 0.2f), shape)
+            .testTag("DropMerge_Button_Skip")
+            .let { if (enabled) it.pointerInput(Unit) { detectTapGestures { onClick() } } else it }
+            .padding(horizontal = height * 0.4f)
+            .alpha(if (enabled) 1f else 0.45f),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.SkipNext,
+            contentDescription = stringResource(R.string.drop_skip),
+            tint = theme.accentColor,
+            modifier = Modifier.size(height * 0.55f)
+        )
+        Spacer(Modifier.width(height * 0.15f))
+        Text(
+            text = stringResource(R.string.drop_skip),
+            color = theme.accentColor,
+            fontSize = (height.value * 0.34f).sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.sp
+        )
+    }
+}
+
+@Composable
+private fun UnlockBadge(target: Int, height: Dp) {
     val theme = LocalGameTheme.current
     val color = dropTileColor(theme, target)
     NeonCard(
         accentColor = color,
         isSelected = false,
         onClick = null,
-        cornerRadius = 12.dp
+        cornerRadius = height * 0.18f
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+            modifier = Modifier.padding(horizontal = height * 0.16f, vertical = height * 0.08f)
         ) {
             Box(
                 modifier = Modifier
-                    .size(34.dp)
-                    .clip(RoundedCornerShape(8.dp))
+                    .size(height * 0.52f)
+                    .clip(RoundedCornerShape(height * 0.12f))
                     .background(color.copy(alpha = 0.45f)),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = target.toString(),
                     color = Color.White.copy(alpha = 0.9f),
-                    fontSize = if (target >= 1000) 9.sp else 12.sp,
+                    fontSize = (height.value * if (target >= 1000) 0.14f else 0.18f).sp,
                     fontWeight = FontWeight.Bold
                 )
             }
-            Spacer(Modifier.height(2.dp))
+            Spacer(Modifier.height(height * 0.03f))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     imageVector = Icons.Rounded.Lock,
                     contentDescription = null,
                     tint = theme.textColor.copy(alpha = 0.6f),
-                    modifier = Modifier.size(9.dp)
+                    modifier = Modifier.size(height * 0.14f)
                 )
                 Spacer(Modifier.width(2.dp))
                 Text(
                     text = stringResource(R.string.drop_locked),
                     color = theme.textColor.copy(alpha = 0.6f),
-                    fontSize = 9.sp,
+                    fontSize = (height.value * 0.13f).sp,
                     fontWeight = FontWeight.SemiBold
                 )
             }
@@ -795,39 +1088,47 @@ private fun UnlockBanner(value: Int) {
 }
 
 @Composable
-private fun NextTileChip(nextValue: Int) {
+private fun NextTileChip(nextValue: Int, height: Dp) {
     val theme = LocalGameTheme.current
     val color = dropTileColor(theme, nextValue)
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
             text = stringResource(R.string.drop_next),
             color = theme.textColor.copy(alpha = 0.55f),
-            fontSize = 12.sp,
+            fontSize = (height.value * 0.34f).sp,
             fontWeight = FontWeight.Bold,
             letterSpacing = 1.sp
         )
-        Spacer(Modifier.width(8.dp))
-        Box(
-            modifier = Modifier
-                .size(34.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Brush.verticalGradient(listOf(color, color.copy(alpha = 0.85f))))
-                .border(1.dp, Color.White.copy(alpha = 0.18f), RoundedCornerShape(8.dp)),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = nextValue.toString(),
-                color = if (color.luminance() > 0.55f) Color(0xFF1E1E2E) else Color.White,
-                fontSize = if (nextValue >= 100) 10.sp else 13.sp,
-                fontWeight = FontWeight.Bold
-            )
+        Spacer(Modifier.width(height * 0.22f))
+        // Animated swap when the value changes.
+        key(nextValue) {
+            val appear = remember { Animatable(0.6f) }
+            LaunchedEffect(Unit) {
+                appear.animateTo(1f, spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMedium))
+            }
+            Box(
+                modifier = Modifier
+                    .size(height)
+                    .scale(appear.value)
+                    .clip(RoundedCornerShape(height * 0.24f))
+                    .background(Brush.verticalGradient(listOf(color, color.copy(alpha = 0.85f))))
+                    .border(1.dp, Color.White.copy(alpha = 0.18f), RoundedCornerShape(height * 0.24f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = nextValue.toString(),
+                    color = if (color.luminance() > 0.55f) Color(0xFF1E1E2E) else Color.White,
+                    fontSize = (height.value * if (nextValue >= 100) 0.30f else 0.38f).sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
     }
 }
 
 /** Theme color for a tile value; values above 2048 reuse the 2048 accent. */
 private fun dropTileColor(
-    theme: com.avfusionapps.game_2048.ui.theme.GameTheme,
+    theme: GameTheme,
     value: Int
 ): Color = theme.tileColors[value]
     ?: theme.tileColors[2048]

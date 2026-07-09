@@ -84,6 +84,8 @@ data class DropMergeState(
     /** True while a shot's cascade is being played back — input is locked. */
     val isResolving: Boolean = false,
     val canUndo: Boolean = false,
+    /** One free skip (swap current → next) per turn; resets after each shot. */
+    val canSkip: Boolean = true,
     val moveCount: Int = 0,
     /* ---- transient, animation-facing fields (cleared as steps advance) ---- */
     val lastStep: DropStep? = null,
