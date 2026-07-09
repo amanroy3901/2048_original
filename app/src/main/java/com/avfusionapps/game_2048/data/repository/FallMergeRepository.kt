@@ -12,13 +12,13 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 import java.io.IOException
 
-private val Context.riseDataStore: DataStore<Preferences> by preferencesDataStore(name = "neon_rise")
+private val Context.fallMergeDataStore: DataStore<Preferences> by preferencesDataStore(name = "fall_merge")
 
 /**
- * Persistence for the Neon Rise mode: best score, best tile ever built and
- * games played. Intentionally no currencies or consumables.
+ * Persistence for the Neon Drop (falling merge) mode: best score, best tile
+ * and games played. Intentionally no currencies or consumables.
  */
-class RiseRepository(private val context: Context) {
+class FallMergeRepository(private val context: Context) {
 
     companion object {
         val BEST_SCORE_KEY = intPreferencesKey("best_score")
@@ -26,26 +26,26 @@ class RiseRepository(private val context: Context) {
         val GAMES_PLAYED_KEY = intPreferencesKey("games_played")
     }
 
-    val bestScore: Flow<Int> = context.riseDataStore.data
+    val bestScore: Flow<Int> = context.fallMergeDataStore.data
         .catch { exception ->
             if (exception is IOException) emit(emptyPreferences()) else throw exception
         }
         .map { preferences -> preferences[BEST_SCORE_KEY] ?: 0 }
 
-    val bestTile: Flow<Int> = context.riseDataStore.data
+    val bestTile: Flow<Int> = context.fallMergeDataStore.data
         .catch { exception ->
             if (exception is IOException) emit(emptyPreferences()) else throw exception
         }
         .map { preferences -> preferences[BEST_TILE_KEY] ?: 0 }
 
-    val gamesPlayed: Flow<Int> = context.riseDataStore.data
+    val gamesPlayed: Flow<Int> = context.fallMergeDataStore.data
         .catch { exception ->
             if (exception is IOException) emit(emptyPreferences()) else throw exception
         }
         .map { preferences -> preferences[GAMES_PLAYED_KEY] ?: 0 }
 
     suspend fun updateBests(score: Int, tile: Int) {
-        context.riseDataStore.edit { preferences ->
+        context.fallMergeDataStore.edit { preferences ->
             val currentBestScore = preferences[BEST_SCORE_KEY] ?: 0
             if (score > currentBestScore) preferences[BEST_SCORE_KEY] = score
             val currentBestTile = preferences[BEST_TILE_KEY] ?: 0
@@ -54,7 +54,7 @@ class RiseRepository(private val context: Context) {
     }
 
     suspend fun incrementGamesPlayed() {
-        context.riseDataStore.edit { preferences ->
+        context.fallMergeDataStore.edit { preferences ->
             preferences[GAMES_PLAYED_KEY] = (preferences[GAMES_PLAYED_KEY] ?: 0) + 1
         }
     }

@@ -20,7 +20,7 @@ import kotlin.random.Random
 class DropMergeEngine(
     private val random: Random = Random.Default,
     startId: Long = 1L,
-    /** Column capacity — Neon Drop uses the default; Neon Rise passes its own. */
+    /** Column capacity — both games use the default; kept as a parameter. */
     private val rows: Int = DropMergeConfig.ROWS
 ) {
     private var nextId: Long = startId
@@ -86,7 +86,7 @@ class DropMergeEngine(
         col: Int,
         tile: DropTile,
         bestTileEver: Int,
-        /** Neon Rise disables the low-tier purge — pressure rows are its churn. */
+        /** Optionally disable the low-tier purge (both current games keep it on). */
         purgeEnabled: Boolean = true
     ): DropShotResult {
         val full = isColumnFull(columns, col)

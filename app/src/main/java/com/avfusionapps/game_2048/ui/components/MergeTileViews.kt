@@ -1,6 +1,7 @@
 package com.avfusionapps.game_2048.ui.components
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.VectorConverter
@@ -47,7 +48,7 @@ import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 /*
- * Shared tile rendering for the merge-shooter games (Neon Drop & Neon Rise).
+ * Shared tile rendering for the merge games (Neon Shoot & Neon Drop).
  * Both use the same top-anchored board model, so tiles animate identically:
  * stable-id position springs, value pops with glow, consume fly-ins.
  */
@@ -60,7 +61,9 @@ fun mergeTileColor(theme: GameTheme, value: Int): Color =
 
 /**
  * A live board tile: animates position by id, pops + glows on value growth.
- * [tumbleOnSpawn] adds a 360° tumble to the entrance flight (Neon Rise shots).
+ * [tumbleOnSpawn] adds a 360° tumble to the entrance flight.
+ * [gravity] switches motion to accelerating free-fall with an impact squash
+ * (Neon Drop's falling tiles); default is the springy shooter motion.
  */
 @Composable
 fun BoardTileView(
@@ -69,7 +72,8 @@ fun BoardTileView(
     spawn: Offset,
     size: Dp,
     theme: GameTheme,
-    tumbleOnSpawn: Boolean = false
+    tumbleOnSpawn: Boolean = false,
+    gravity: Boolean = false
 ) {
     val position = remember { Animatable(spawn, Offset.VectorConverter) }
     val popScale = remember { Animatable(1f) }
@@ -79,10 +83,20 @@ fun BoardTileView(
 
     LaunchedEffect(target) {
         launch {
-            position.animateTo(
-                target,
-                spring(dampingRatio = 0.62f, stiffness = Spring.StiffnessMediumLow)
-            )
+            if (gravity) {
+                // Free-fall: accelerate toward the target, then squash on impact.
+                position.animateTo(
+                    target,
+                    tween(DropAnim.FALL_TIME, easing = FastOutLinearInEasing)
+                )
+                popScale.snapTo(0.86f)
+                popScale.animateTo(1f, spring(dampingRatio = 0.4f, stiffness = Spring.StiffnessHigh))
+            } else {
+                position.animateTo(
+                    target,
+                    spring(dampingRatio = 0.62f, stiffness = Spring.StiffnessMediumLow)
+                )
+            }
         }
         if (rotation.value != 0f) {
             launch {

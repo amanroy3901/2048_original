@@ -4,7 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.avfusionapps.game_2048.data.GameSettingsRepository
-import com.avfusionapps.game_2048.data.repository.DropMergeRepository
+import com.avfusionapps.game_2048.data.repository.FallMergeRepository
 import com.avfusionapps.game_2048.game.DropMergeEngine
 import com.avfusionapps.game_2048.model.DropMergeConfig
 import com.avfusionapps.game_2048.model.DropMergeState
@@ -24,26 +24,15 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-/** Feedback events the screen turns into sound/haptics. */
-enum class DropGameEvent { SHOOT, SKIP, MERGE, COMBO, PURGE, UNLOCK, GAME_OVER }
+/**
+ * ViewModel for Neon Drop — the top-drop falling-merge game. Rules are the
+ * exact mirror of Neon Shoot and run on the same [DropMergeEngine] (columns
+ * are anchored at the floor; the screen renders row 0 at the bottom and the
+ * tile enters from above with gravity motion). Purge and milestones are on.
+ */
+class FallMergeViewModel(application: Application) : AndroidViewModel(application) {
 
-/** Central timing knobs for the mode's playback + UI animations (millis). */
-object DropAnim {
-    const val SHOT_TRAVEL = 160L
-    const val MERGE_STEP = 210L
-    const val PURGE_STEP = 320L
-    const val TILE_MOVE = 180
-    const val MERGE_POP = 190
-    const val CONSUME_FLY = 160
-
-    /** Free-fall duration for Neon Drop's gravity tiles. */
-    const val FALL_TIME = 240
-    const val FALL_STEP = 260L
-}
-
-class DropMergeViewModel(application: Application) : AndroidViewModel(application) {
-
-    private val repository = DropMergeRepository(application.applicationContext)
+    private val repository = FallMergeRepository(application.applicationContext)
     private val settingsRepository = GameSettingsRepository(application)
     private val engine = DropMergeEngine()
 
@@ -99,17 +88,17 @@ class DropMergeViewModel(application: Application) : AndroidViewModel(applicatio
         _gameState.value = _gameState.value.copy(isPaused = paused)
     }
 
-    /** Fire the current tile up [col]. Ignored while paused/over/animating. */
-    fun shoot(col: Int) {
+    /** Drop the current tile down [col]. Ignored while paused/over/animating. */
+    fun drop(col: Int) {
         val state = _gameState.value
         if (state.isGameOver || state.isPaused || state.isResolving) return
         if (col !in 0 until DropMergeConfig.COLUMNS) return
 
-        // A full, non-matching column is a fatal shot — resolve it as game over.
         val tile = engine.freshTile(state.currentValue)
         val result = engine.resolveShot(state.columns, col, tile, state.bestTileEver)
 
         if (result.overflow) {
+            // Column full to the top and no match — the drop doesn't fit.
             _gameState.value = state.copy(isGameOver = true, isResolving = false)
             onGameOver()
             return
@@ -144,7 +133,7 @@ class DropMergeViewModel(application: Application) : AndroidViewModel(applicatio
                 )
 
                 when (step.kind) {
-                    DropStepKind.PLACE -> delay(DropAnim.SHOT_TRAVEL)
+                    DropStepKind.PLACE -> delay(DropAnim.FALL_STEP)
                     DropStepKind.MERGE -> {
                         _events.tryEmit(if (step.chainIndex > 1) DropGameEvent.COMBO else DropGameEvent.MERGE)
                         if (step.unlockedValue != null) _events.tryEmit(DropGameEvent.UNLOCK)
@@ -157,13 +146,12 @@ class DropMergeViewModel(application: Application) : AndroidViewModel(applicatio
                 }
             }
 
-            // Reload the launcher and settle the turn.
             val newCurrent = _gameState.value.nextValue
             val newNext = engine.spawnValue(runningBest)
             val settled = _gameState.value.copy(
                 isResolving = false,
                 canUndo = true,
-                canSkip = true, // fresh skip each turn
+                canSkip = true,
                 currentValue = newCurrent,
                 nextValue = newNext,
                 moveCount = _gameState.value.moveCount + 1,
@@ -180,11 +168,7 @@ class DropMergeViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-    /**
-     * Skip the current tile: it becomes the next tile and a fresh next is
-     * generated. Free, but once per turn (resets after each shot) so it can't
-     * be used to endlessly reroll the launcher.
-     */
+    /** Skip the current tile — once per turn (same rule as Neon Shoot). */
     fun skipTile() {
         val state = _gameState.value
         if (state.isGameOver || state.isPaused || state.isResolving || !state.canSkip) return
@@ -196,7 +180,7 @@ class DropMergeViewModel(application: Application) : AndroidViewModel(applicatio
         )
     }
 
-    /** Single free undo of the last shot. */
+    /** Single free undo of the last drop. */
     fun undo() {
         val snap = undoSnapshot ?: return
         val state = _gameState.value

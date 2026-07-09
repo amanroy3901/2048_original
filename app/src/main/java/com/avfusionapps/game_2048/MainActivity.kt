@@ -35,8 +35,8 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.avfusionapps.game_2048.notification.ReminderManager
 import com.avfusionapps.game_2048.ui.screens.DropMergeScreen
+import com.avfusionapps.game_2048.ui.screens.FallMergeScreen
 import com.avfusionapps.game_2048.ui.screens.GameScreen
-import com.avfusionapps.game_2048.ui.screens.RiseScreen
 import com.avfusionapps.game_2048.ui.screens.GoogleAuthScreen
 import com.avfusionapps.game_2048.ui.screens.MainScreen
 import com.avfusionapps.game_2048.ui.screens.ThemeSettingsScreen
@@ -231,8 +231,8 @@ class MainActivity : ComponentActivity() {
                         composable("dropMerge") {
                             DropMergeScreen(navController = navController)
                         }
-                        composable("neonRise") {
-                            RiseScreen(navController = navController)
+                        composable("fallMerge") {
+                            FallMergeScreen(navController = navController)
                         }
                         composable(
                             route = "game?resume={resume}",

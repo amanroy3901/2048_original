@@ -15,8 +15,8 @@ import androidx.compose.material.icons.rounded.BarChart
 import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.rounded.Timer
-import androidx.compose.material.icons.rounded.RocketLaunch
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.SwipeDown
 import androidx.compose.material.icons.rounded.SwipeUp
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.Star
@@ -198,11 +198,11 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
         onTimeAttackClick = {
             navController.navigate("timeAttack")
         },
-        onNeonDropClick = {
+        onNeonShootClick = {
             navController.navigate("dropMerge")
         },
-        onNeonRiseClick = {
-            navController.navigate("neonRise")
+        onNeonDropClick = {
+            navController.navigate("fallMerge")
         },
         onSettingsClick = {
             navController.navigate("themeSettings")
@@ -313,40 +313,40 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
                 )
 
                 GameHubCard(
-                    title = stringResource(R.string.neon_drop),
-                    subtitle = stringResource(R.string.neon_drop_subtitle),
-                    tagText = stringResource(R.string.neon_drop_tag),
+                    title = stringResource(R.string.neon_shoot),
+                    subtitle = stringResource(R.string.neon_shoot_subtitle),
+                    tagText = stringResource(R.string.neon_shoot_tag),
                     accentColor = theme.accentColor,
-                    graphic = { size -> MainModeIcon(mode = MainModeIconType.NeonDrop, tint = theme.accentColor, size = size) },
+                    graphic = { size -> MainModeIcon(mode = MainModeIconType.NeonShoot, tint = theme.accentColor, size = size) },
                     modes = listOf(
                         GameHubMode(
                             label = stringResource(R.string.mode_play),
                             icon = Icons.Rounded.PlayArrow,
                             onClick = { navController.navigate("dropMerge") },
+                            testTag = "MainScreen_Button_NeonShootMode"
+                        )
+                    ),
+                    modifier = Modifier
+                        .testTag("MainScreen_Card_NeonShoot")
+                        .height(gameHubH)
+                )
+
+                GameHubCard(
+                    title = stringResource(R.string.neon_drop),
+                    subtitle = stringResource(R.string.neon_drop_subtitle),
+                    tagText = stringResource(R.string.neon_drop_tag),
+                    accentColor = theme.secondaryColor,
+                    graphic = { size -> MainModeIcon(mode = MainModeIconType.NeonDrop, tint = theme.secondaryColor, size = size) },
+                    modes = listOf(
+                        GameHubMode(
+                            label = stringResource(R.string.mode_play),
+                            icon = Icons.Rounded.PlayArrow,
+                            onClick = { navController.navigate("fallMerge") },
                             testTag = "MainScreen_Button_NeonDropMode"
                         )
                     ),
                     modifier = Modifier
                         .testTag("MainScreen_Card_NeonDrop")
-                        .height(gameHubH)
-                )
-
-                GameHubCard(
-                    title = stringResource(R.string.neon_rise),
-                    subtitle = stringResource(R.string.neon_rise_subtitle),
-                    tagText = stringResource(R.string.neon_rise_tag),
-                    accentColor = theme.secondaryColor,
-                    graphic = { size -> MainModeIcon(mode = MainModeIconType.NeonRise, tint = theme.secondaryColor, size = size) },
-                    modes = listOf(
-                        GameHubMode(
-                            label = stringResource(R.string.mode_play),
-                            icon = Icons.Rounded.PlayArrow,
-                            onClick = { navController.navigate("neonRise") },
-                            testTag = "MainScreen_Button_NeonRiseMode"
-                        )
-                    ),
-                    modifier = Modifier
-                        .testTag("MainScreen_Card_NeonRise")
                         .height(gameHubH)
                 )
             }
@@ -371,8 +371,8 @@ fun MainScreenContent(
     onResumeClick: () -> Unit = {},
     onStartClick: () -> Unit = {},
     onTimeAttackClick: () -> Unit = {},
+    onNeonShootClick: () -> Unit = {},
     onNeonDropClick: () -> Unit = {},
-    onNeonRiseClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
     actions: @Composable (ScreenDimensions) -> Unit
 ) {
@@ -782,9 +782,9 @@ fun MainScreenContent(
                         )
 
                         GameHubCard(
-                            title = stringResource(R.string.neon_drop),
-                            subtitle = stringResource(R.string.neon_drop_subtitle),
-                            tagText = stringResource(R.string.neon_drop_tag),
+                            title = stringResource(R.string.neon_shoot),
+                            subtitle = stringResource(R.string.neon_shoot_subtitle),
+                            tagText = stringResource(R.string.neon_shoot_tag),
                             accentColor = theme.accentColor,
                             graphic = {
                                 Icon(
@@ -798,8 +798,8 @@ fun MainScreenContent(
                                 GameHubMode(
                                     label = stringResource(R.string.mode_play),
                                     icon = Icons.Rounded.PlayArrow,
-                                    onClick = onNeonDropClick,
-                                    testTag = "MainScreen_Button_NeonDropMode_Land"
+                                    onClick = onNeonShootClick,
+                                    testTag = "MainScreen_Button_NeonShootMode_Land"
                                 )
                             ),
                             modifier = Modifier
@@ -808,13 +808,13 @@ fun MainScreenContent(
                         )
 
                         GameHubCard(
-                            title = stringResource(R.string.neon_rise),
-                            subtitle = stringResource(R.string.neon_rise_subtitle),
-                            tagText = stringResource(R.string.neon_rise_tag),
+                            title = stringResource(R.string.neon_drop),
+                            subtitle = stringResource(R.string.neon_drop_subtitle),
+                            tagText = stringResource(R.string.neon_drop_tag),
                             accentColor = theme.secondaryColor,
                             graphic = {
                                 Icon(
-                                    imageVector = Icons.Rounded.RocketLaunch,
+                                    imageVector = Icons.Rounded.SwipeDown,
                                     contentDescription = null,
                                     tint = theme.secondaryColor,
                                     modifier = Modifier.fillMaxSize(0.7f)
@@ -824,8 +824,8 @@ fun MainScreenContent(
                                 GameHubMode(
                                     label = stringResource(R.string.mode_play),
                                     icon = Icons.Rounded.PlayArrow,
-                                    onClick = onNeonRiseClick,
-                                    testTag = "MainScreen_Button_NeonRiseMode_Land"
+                                    onClick = onNeonDropClick,
+                                    testTag = "MainScreen_Button_NeonDropMode_Land"
                                 )
                             ),
                             modifier = Modifier
@@ -999,7 +999,7 @@ fun MainScreenContent(
     }
 }
 
-private enum class MainModeIconType { Classic, TimeAttack, NeonDrop, NeonRise }
+private enum class MainModeIconType { Classic, TimeAttack, NeonShoot, NeonDrop }
 
 @Composable
 private fun MainTopIconButton(
@@ -1047,8 +1047,8 @@ private fun MainModeIcon(
     val imageVector = when (mode) {
         MainModeIconType.Classic -> Icons.Rounded.GridView
         MainModeIconType.TimeAttack -> Icons.Rounded.Timer
-        MainModeIconType.NeonDrop -> Icons.Rounded.SwipeUp
-        MainModeIconType.NeonRise -> Icons.Rounded.RocketLaunch
+        MainModeIconType.NeonShoot -> Icons.Rounded.SwipeUp
+        MainModeIconType.NeonDrop -> Icons.Rounded.SwipeDown
     }
 
     Icon(
