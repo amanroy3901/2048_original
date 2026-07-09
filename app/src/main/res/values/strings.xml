@@ -26,6 +26,11 @@
     <string name="drop_unlocked">UNLOCKED!</string>
     <string name="drop_combo">COMBO ×%1$d</string>
     <string name="drop_skip">SKIP</string>
+    <string name="neon_rise">NEON RISE</string>
+    <string name="neon_rise_subtitle">Rack up, shoot &amp; beat the line</string>
+    <string name="neon_rise_tag">⤴ Rack Shooter</string>
+    <string name="rise_rerack_hint">Hold a tile to re-rack</string>
+    <string name="rise_rerack_used">Re-rack used</string>
     <string name="best_score">BEST SCORE</string>
     <string name="continue_game">Continue</string>
     <string name="continue_game_subtitle">Pick up where\nyou left off</string>

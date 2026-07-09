@@ -15,6 +15,7 @@ import androidx.compose.material.icons.rounded.BarChart
 import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.rounded.Timer
+import androidx.compose.material.icons.rounded.RocketLaunch
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.SwipeUp
 import androidx.compose.material.icons.rounded.EmojiEvents
@@ -200,6 +201,9 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
         onNeonDropClick = {
             navController.navigate("dropMerge")
         },
+        onNeonRiseClick = {
+            navController.navigate("neonRise")
+        },
         onSettingsClick = {
             navController.navigate("themeSettings")
         },
@@ -208,10 +212,10 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
             val textSecondary = theme.textColor.copy(alpha = 0.6f)
 
             // All spacing and card heights derived from screen height fractions
-            val cardSpacing   = dims.screenH * 0.018f  // gap between cards
-            val largeCardH    = dims.screenH * 0.220f  // LastGame / StartJourney card
-            val bestScoreH    = dims.screenH * 0.105f  // Best score card
-            val gameHubH      = dims.screenH * 0.170f  // each game hub card (modes inside)
+            val cardSpacing   = dims.screenH * 0.016f  // gap between cards
+            val largeCardH    = dims.screenH * 0.190f  // LastGame / StartJourney card
+            val bestScoreH    = dims.screenH * 0.090f  // Best score card
+            val gameHubH      = dims.screenH * 0.145f  // each game hub card (modes inside)
             val dividerVPad   = dims.screenH * 0.010f  // vertical padding around divider
             val dividerFontSz = (dims.screenW * 0.032f).value.sp
             val dividerHPad   = dims.screenW * 0.043f
@@ -326,6 +330,25 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
                         .testTag("MainScreen_Card_NeonDrop")
                         .height(gameHubH)
                 )
+
+                GameHubCard(
+                    title = stringResource(R.string.neon_rise),
+                    subtitle = stringResource(R.string.neon_rise_subtitle),
+                    tagText = stringResource(R.string.neon_rise_tag),
+                    accentColor = theme.secondaryColor,
+                    graphic = { size -> MainModeIcon(mode = MainModeIconType.NeonRise, tint = theme.secondaryColor, size = size) },
+                    modes = listOf(
+                        GameHubMode(
+                            label = stringResource(R.string.mode_play),
+                            icon = Icons.Rounded.PlayArrow,
+                            onClick = { navController.navigate("neonRise") },
+                            testTag = "MainScreen_Button_NeonRiseMode"
+                        )
+                    ),
+                    modifier = Modifier
+                        .testTag("MainScreen_Card_NeonRise")
+                        .height(gameHubH)
+                )
             }
         }
     )
@@ -349,6 +372,7 @@ fun MainScreenContent(
     onStartClick: () -> Unit = {},
     onTimeAttackClick: () -> Unit = {},
     onNeonDropClick: () -> Unit = {},
+    onNeonRiseClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
     actions: @Composable (ScreenDimensions) -> Unit
 ) {
@@ -782,6 +806,32 @@ fun MainScreenContent(
                                 .weight(1f)
                                 .height(gameModeCardH)
                         )
+
+                        GameHubCard(
+                            title = stringResource(R.string.neon_rise),
+                            subtitle = stringResource(R.string.neon_rise_subtitle),
+                            tagText = stringResource(R.string.neon_rise_tag),
+                            accentColor = theme.secondaryColor,
+                            graphic = {
+                                Icon(
+                                    imageVector = Icons.Rounded.RocketLaunch,
+                                    contentDescription = null,
+                                    tint = theme.secondaryColor,
+                                    modifier = Modifier.fillMaxSize(0.7f)
+                                )
+                            },
+                            modes = listOf(
+                                GameHubMode(
+                                    label = stringResource(R.string.mode_play),
+                                    icon = Icons.Rounded.PlayArrow,
+                                    onClick = onNeonRiseClick,
+                                    testTag = "MainScreen_Button_NeonRiseMode_Land"
+                                )
+                            ),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(gameModeCardH)
+                        )
                     }
 
                     // Tip of the Day
@@ -949,7 +999,7 @@ fun MainScreenContent(
     }
 }
 
-private enum class MainModeIconType { Classic, TimeAttack, NeonDrop }
+private enum class MainModeIconType { Classic, TimeAttack, NeonDrop, NeonRise }
 
 @Composable
 private fun MainTopIconButton(
@@ -998,6 +1048,7 @@ private fun MainModeIcon(
         MainModeIconType.Classic -> Icons.Rounded.GridView
         MainModeIconType.TimeAttack -> Icons.Rounded.Timer
         MainModeIconType.NeonDrop -> Icons.Rounded.SwipeUp
+        MainModeIconType.NeonRise -> Icons.Rounded.RocketLaunch
     }
 
     Icon(

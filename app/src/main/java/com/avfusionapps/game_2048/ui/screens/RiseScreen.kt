@@ -3,11 +3,8 @@ package com.avfusionapps.game_2048.ui.screens
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.VectorConverter
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -17,9 +14,9 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -40,10 +37,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.Undo
-import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Pause
-import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -52,7 +47,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -65,7 +59,9 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -81,10 +77,10 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.avfusionapps.game_2048.R
-import com.avfusionapps.game_2048.model.DropMergeConfig
-import com.avfusionapps.game_2048.model.DropMergeState
 import com.avfusionapps.game_2048.model.DropStepKind
 import com.avfusionapps.game_2048.model.DropTile
+import com.avfusionapps.game_2048.model.RiseConfig
+import com.avfusionapps.game_2048.model.RiseState
 import com.avfusionapps.game_2048.ui.components.BoardTileView
 import com.avfusionapps.game_2048.ui.components.ComboText
 import com.avfusionapps.game_2048.ui.components.ConsumedTileView
@@ -95,12 +91,11 @@ import com.avfusionapps.game_2048.ui.components.NeonCard
 import com.avfusionapps.game_2048.ui.components.SquareIconButton
 import com.avfusionapps.game_2048.ui.components.TileNumber
 import com.avfusionapps.game_2048.ui.components.mergeTileColor
-import com.avfusionapps.game_2048.ui.theme.GameTheme
 import com.avfusionapps.game_2048.ui.theme.LocalGameTheme
 import com.avfusionapps.game_2048.utils.SoundManager
 import com.avfusionapps.game_2048.viewmodel.DropAnim
-import com.avfusionapps.game_2048.viewmodel.DropGameEvent
-import com.avfusionapps.game_2048.viewmodel.DropMergeViewModel
+import com.avfusionapps.game_2048.viewmodel.RiseGameEvent
+import com.avfusionapps.game_2048.viewmodel.RiseViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
@@ -109,13 +104,13 @@ import kotlinx.coroutines.withContext
 import kotlin.math.min
 import kotlin.math.roundToInt
 
-private const val COLS = DropMergeConfig.COLUMNS
-private const val ROWS = DropMergeConfig.ROWS
+private const val LANES = RiseConfig.LANES
+private const val RISE_ROWS = RiseConfig.ROWS
 
 @Composable
-fun DropMergeScreen(
+fun RiseScreen(
     navController: NavController,
-    viewModel: DropMergeViewModel = viewModel()
+    viewModel: RiseViewModel = viewModel()
 ) {
     val theme = LocalGameTheme.current
     val gameState by viewModel.gameState.collectAsState()
@@ -127,38 +122,42 @@ fun DropMergeScreen(
     val context = LocalContext.current
     val soundManager = remember { SoundManager(context) }
 
-    // Board shake played on game over.
+    // Horizontal shake on game over; vertical dip when a pressure row slams in.
     val shakeX = remember { Animatable(0f) }
+    val dipY = remember { Animatable(0f) }
 
-    // Sound + haptics + shake from game events (respecting user settings).
     LaunchedEffect(vibrationEnabled, soundEnabled) {
         viewModel.events.collectLatest { event ->
-            if (event == DropGameEvent.GAME_OVER) {
-                launch {
+            when (event) {
+                RiseGameEvent.GAME_OVER -> launch {
                     listOf(0f, -16f, 13f, -9f, 6f, -3f, 0f).forEach {
                         shakeX.animateTo(it, tween(42))
                     }
                 }
+                RiseGameEvent.PRESSURE -> launch {
+                    dipY.animateTo(12f, tween(90))
+                    dipY.animateTo(0f, spring(dampingRatio = 0.4f, stiffness = Spring.StiffnessMedium))
+                }
+                else -> Unit
             }
             if (vibrationEnabled) {
                 when (event) {
-                    DropGameEvent.MERGE, DropGameEvent.COMBO ->
+                    RiseGameEvent.MERGE, RiseGameEvent.COMBO ->
                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    DropGameEvent.UNLOCK, DropGameEvent.PURGE, DropGameEvent.GAME_OVER ->
+                    RiseGameEvent.UNLOCK, RiseGameEvent.PRESSURE, RiseGameEvent.GAME_OVER ->
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                    DropGameEvent.SHOOT, DropGameEvent.SKIP -> Unit
+                    RiseGameEvent.SHOOT, RiseGameEvent.RERACK -> Unit
                 }
             }
             if (soundEnabled) {
-                // SoundManager sleeps between tones — keep it off the main thread.
                 withContext(Dispatchers.Default) {
                     when (event) {
-                        DropGameEvent.SHOOT, DropGameEvent.SKIP ->
+                        RiseGameEvent.SHOOT, RiseGameEvent.RERACK ->
                             soundManager.playSound(SoundManager.SOUND_MOVE)
-                        DropGameEvent.MERGE, DropGameEvent.COMBO, DropGameEvent.PURGE ->
+                        RiseGameEvent.MERGE, RiseGameEvent.COMBO, RiseGameEvent.PRESSURE ->
                             soundManager.playSound(SoundManager.SOUND_MERGE)
-                        DropGameEvent.UNLOCK -> soundManager.playSound(SoundManager.SOUND_LEVEL_UP)
-                        DropGameEvent.GAME_OVER -> soundManager.playSound(SoundManager.SOUND_GAME_OVER)
+                        RiseGameEvent.UNLOCK -> soundManager.playSound(SoundManager.SOUND_LEVEL_UP)
+                        RiseGameEvent.GAME_OVER -> soundManager.playSound(SoundManager.SOUND_GAME_OVER)
                     }
                 }
             }
@@ -168,7 +167,6 @@ fun DropMergeScreen(
         onDispose { soundManager.release() }
     }
 
-    // Auto-dismiss the unlock banner.
     LaunchedEffect(gameState.justUnlockedValue) {
         if (gameState.justUnlockedValue != null) {
             delay(1700)
@@ -176,7 +174,6 @@ fun DropMergeScreen(
         }
     }
 
-    // Let the shake read before the dialog covers the board.
     var showGameOverDialog by remember { mutableStateOf(false) }
     LaunchedEffect(gameState.isGameOver) {
         if (gameState.isGameOver) {
@@ -194,33 +191,32 @@ fun DropMergeScreen(
             .fillMaxSize()
             .background(theme.backgroundColor)
             .safeDrawingPadding()
-            .testTag("DropMergeScreen_Root")
+            .testTag("RiseScreen_Root")
     ) {
         val screenW = maxWidth
         val screenH = maxHeight
         val isLandscape = screenW > screenH
 
         if (isLandscape) {
-            DropMergeLandscape(
+            RiseLandscape(
                 screenW = screenW,
                 screenH = screenH,
                 gameState = gameState,
                 bestScore = bestScore,
-                shakeXProvider = { shakeX.value },
+                shakeProvider = { IntOffset(shakeX.value.roundToInt(), dipY.value.roundToInt()) },
                 viewModel = viewModel
             )
         } else {
-            DropMergePortrait(
+            RisePortrait(
                 screenW = screenW,
                 screenH = screenH,
                 gameState = gameState,
                 bestScore = bestScore,
-                shakeXProvider = { shakeX.value },
+                shakeProvider = { IntOffset(shakeX.value.roundToInt(), dipY.value.roundToInt()) },
                 viewModel = viewModel
             )
         }
 
-        // ── Unlock banner ──
         AnimatedVisibility(
             visible = gameState.justUnlockedValue != null,
             enter = fadeIn() + scaleIn(initialScale = 0.7f),
@@ -229,12 +225,10 @@ fun DropMergeScreen(
                 .align(Alignment.TopCenter)
                 .padding(top = screenH * 0.12f)
         ) {
-            val unlockedValue = gameState.justUnlockedValue ?: 0
-            UnlockBanner(value = unlockedValue)
+            RiseUnlockBanner(value = gameState.justUnlockedValue ?: 0)
         }
     }
 
-    // ── Dialogs ──
     if (gameState.isPaused && !gameState.isGameOver) {
         GamePauseDialog(
             currentScore = gameState.score,
@@ -263,18 +257,18 @@ fun DropMergeScreen(
 // ────────────────────────────── Orientations ────────────────────────────────
 
 @Composable
-private fun DropMergePortrait(
+private fun RisePortrait(
     screenW: Dp,
     screenH: Dp,
-    gameState: DropMergeState,
+    gameState: RiseState,
     bestScore: Int,
-    shakeXProvider: () -> Float,
-    viewModel: DropMergeViewModel
+    shakeProvider: () -> IntOffset,
+    viewModel: RiseViewModel
 ) {
     val theme = LocalGameTheme.current
     val hPad = screenW * 0.035f
     val barH = screenH * 0.070f
-    val barSpacing = screenH * 0.014f
+    val barSpacing = screenH * 0.012f
 
     Column(
         modifier = Modifier
@@ -284,7 +278,6 @@ private fun DropMergePortrait(
     ) {
         Spacer(Modifier.height(barSpacing))
 
-        // ── Top bar: back / score / next-unlock badge ──
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -296,7 +289,7 @@ private fun DropMergePortrait(
                 contentDescription = stringResource(R.string.desc_back_button),
                 onClick = { viewModel.setPaused(true) },
                 size = barH * 0.85f,
-                modifier = Modifier.testTag("DropMerge_Button_Back")
+                modifier = Modifier.testTag("Rise_Button_Back")
             )
             Spacer(Modifier.width(hPad * 0.8f))
             GameScoreBoard(
@@ -305,24 +298,22 @@ private fun DropMergePortrait(
                 modifier = Modifier.weight(1f)
             )
             Spacer(Modifier.width(hPad * 0.8f))
-            UnlockBadge(target = gameState.unlockTarget, height = barH)
+            RiseUnlockBadge(target = gameState.unlockTarget, height = barH)
         }
 
         Spacer(Modifier.height(barSpacing))
 
-        // ── Board + launcher ──
-        DropBoard(
+        RiseBoard(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
-                .offset { IntOffset(shakeXProvider().roundToInt(), 0) },
+                .offset { shakeProvider() },
             gameState = gameState,
             viewModel = viewModel
         )
 
         Spacer(Modifier.height(barSpacing))
 
-        // ── Bottom bar: undo / skip + next / pause ──
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -337,16 +328,23 @@ private fun DropMergePortrait(
                 onClick = { viewModel.undo() },
                 tint = if (gameState.canUndo) theme.textColor else theme.textColor.copy(alpha = 0.3f),
                 size = barH * 0.85f,
-                modifier = Modifier.testTag("DropMerge_Button_Undo")
+                modifier = Modifier.testTag("Rise_Button_Undo")
             )
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                NextTileChip(nextValue = gameState.nextValue, height = barH * 0.62f)
-                Spacer(Modifier.width(hPad * 0.9f))
-                SkipTileButton(
-                    enabled = gameState.canSkip && !gameState.isResolving && !gameState.isGameOver,
-                    height = barH * 0.72f,
-                    onClick = { viewModel.skipTile() }
+                PressureRing(
+                    shotsLeft = gameState.shotsUntilPressure,
+                    total = gameState.pressureEvery,
+                    size = barH * 0.85f
+                )
+                Spacer(Modifier.width(hPad))
+                Text(
+                    text = stringResource(
+                        if (gameState.canReRack) R.string.rise_rerack_hint else R.string.rise_rerack_used
+                    ),
+                    color = theme.textColor.copy(alpha = if (gameState.canReRack) 0.6f else 0.3f),
+                    fontSize = (barH.value * 0.20f).sp,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
 
@@ -355,20 +353,20 @@ private fun DropMergePortrait(
                 contentDescription = stringResource(R.string.desc_pause_button),
                 onClick = { viewModel.togglePause() },
                 size = barH * 0.85f,
-                modifier = Modifier.testTag("DropMerge_Button_Pause")
+                modifier = Modifier.testTag("Rise_Button_Pause")
             )
         }
     }
 }
 
 @Composable
-private fun DropMergeLandscape(
+private fun RiseLandscape(
     screenW: Dp,
     screenH: Dp,
-    gameState: DropMergeState,
+    gameState: RiseState,
     bestScore: Int,
-    shakeXProvider: () -> Float,
-    viewModel: DropMergeViewModel
+    shakeProvider: () -> IntOffset,
+    viewModel: RiseViewModel
 ) {
     val theme = LocalGameTheme.current
     val pad = screenH * 0.03f
@@ -380,7 +378,6 @@ private fun DropMergeLandscape(
             .fillMaxSize()
             .padding(pad)
     ) {
-        // ── Left panel: back, score, unlock badge ──
         Column(
             modifier = Modifier
                 .width(sideW)
@@ -393,27 +390,25 @@ private fun DropMergeLandscape(
                 contentDescription = stringResource(R.string.desc_back_button),
                 onClick = { viewModel.setPaused(true) },
                 size = btnSize,
-                modifier = Modifier.testTag("DropMerge_Button_Back")
+                modifier = Modifier.testTag("Rise_Button_Back")
             )
             GameScoreBoard(
                 score = gameState.score,
                 highScore = maxOf(bestScore, gameState.score),
                 modifier = Modifier.fillMaxWidth()
             )
-            UnlockBadge(target = gameState.unlockTarget, height = screenH * 0.16f)
+            RiseUnlockBadge(target = gameState.unlockTarget, height = screenH * 0.16f)
         }
 
-        // ── Center: board + launcher ──
-        DropBoard(
+        RiseBoard(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight()
-                .offset { IntOffset(shakeXProvider().roundToInt(), 0) },
+                .offset { shakeProvider() },
             gameState = gameState,
             viewModel = viewModel
         )
 
-        // ── Right panel: controls ──
         Column(
             modifier = Modifier
                 .width(sideW)
@@ -426,7 +421,7 @@ private fun DropMergeLandscape(
                 contentDescription = stringResource(R.string.desc_pause_button),
                 onClick = { viewModel.togglePause() },
                 size = btnSize,
-                modifier = Modifier.testTag("DropMerge_Button_Pause")
+                modifier = Modifier.testTag("Rise_Button_Pause")
             )
             SquareIconButton(
                 icon = Icons.AutoMirrored.Rounded.Undo,
@@ -434,14 +429,21 @@ private fun DropMergeLandscape(
                 onClick = { viewModel.undo() },
                 tint = if (gameState.canUndo) theme.textColor else theme.textColor.copy(alpha = 0.3f),
                 size = btnSize,
-                modifier = Modifier.testTag("DropMerge_Button_Undo")
+                modifier = Modifier.testTag("Rise_Button_Undo")
             )
             Spacer(Modifier.weight(1f))
-            NextTileChip(nextValue = gameState.nextValue, height = screenH * 0.085f)
-            SkipTileButton(
-                enabled = gameState.canSkip && !gameState.isResolving && !gameState.isGameOver,
-                height = screenH * 0.095f,
-                onClick = { viewModel.skipTile() }
+            PressureRing(
+                shotsLeft = gameState.shotsUntilPressure,
+                total = gameState.pressureEvery,
+                size = screenH * 0.14f
+            )
+            Text(
+                text = stringResource(
+                    if (gameState.canReRack) R.string.rise_rerack_hint else R.string.rise_rerack_used
+                ),
+                color = theme.textColor.copy(alpha = if (gameState.canReRack) 0.6f else 0.3f),
+                fontSize = (screenH.value * 0.022f).sp,
+                fontWeight = FontWeight.SemiBold
             )
         }
     }
@@ -450,51 +452,55 @@ private fun DropMergeLandscape(
 // ─────────────────────────────────── Board ──────────────────────────────────
 
 @Composable
-private fun DropBoard(
+private fun RiseBoard(
     modifier: Modifier,
-    gameState: DropMergeState,
-    viewModel: DropMergeViewModel
+    gameState: RiseState,
+    viewModel: RiseViewModel
 ) {
     val theme = LocalGameTheme.current
     val density = LocalDensity.current
-    val currentColor = mergeTileColor(theme, gameState.currentValue)
     val inputEnabled = !gameState.isResolving && !gameState.isGameOver && !gameState.isPaused
 
     BoxWithConstraints(
         modifier = modifier,
         contentAlignment = Alignment.TopCenter
     ) {
-        // Geometry — everything derived from the available constraints.
-        val gap = (min(maxWidth.value, maxHeight.value) * 0.010f).dp.coerceIn(3.dp, 7.dp)
-        val launcherGap = gap * 2.5f
-        val launcherExtra = 8.dp
+        val gap = (min(maxWidth.value, maxHeight.value) * 0.010f).dp.coerceIn(2.dp, 6.dp)
+        val rackGap = gap * 2.5f
+        val rackExtra = 6.dp
         val cell: Dp = min(
-            ((maxWidth - gap * (COLS + 1)) / COLS).value,
-            ((maxHeight - gap * (ROWS + 1) - launcherGap - launcherExtra) / (ROWS + 1)).value
+            ((maxWidth - gap * (LANES + 1)) / LANES).value,
+            ((maxHeight - gap * (RISE_ROWS + 1) - rackGap - rackExtra) / (RISE_ROWS + 1)).value
         ).dp
-        val boardW = cell * COLS + gap * (COLS + 1)
-        val boardH = cell * ROWS + gap * (ROWS + 1)
+        val boardW = cell * LANES + gap * (LANES + 1)
+        val boardH = cell * RISE_ROWS + gap * (RISE_ROWS + 1)
 
         val cellPx = with(density) { cell.toPx() }
         val gapPx = with(density) { gap.toPx() }
         val boardHPx = with(density) { boardH.toPx() }
 
-        fun xOf(col: Int) = gapPx + col * (cellPx + gapPx)
+        fun xOf(lane: Int) = gapPx + lane * (cellPx + gapPx)
         fun yOf(row: Int) = gapPx + row * (cellPx + gapPx)
-        fun colFromX(x: Float): Int =
-            ((x - gapPx / 2f) / (cellPx + gapPx)).toInt().coerceIn(0, COLS - 1)
+        fun laneFromX(x: Float): Int =
+            ((x - gapPx / 2f) / (cellPx + gapPx)).toInt().coerceIn(0, LANES - 1)
 
-        var aimCol by remember { mutableStateOf<Int?>(null) }
-        var lastShotCol by remember { mutableIntStateOf(COLS / 2) }
-        val launcherCol = aimCol ?: lastShotCol
+        // Danger line sits on the boundary above row DANGER_ROW.
+        val dangerY = yOf(RiseConfig.DANGER_ROW) - gapPx / 2f
+        val anyNearLine = gameState.columns.any { it.size >= RiseConfig.DANGER_ROW - 1 }
 
-        fun fire(col: Int) {
-            lastShotCol = col
-            viewModel.shoot(col)
-        }
+        val pulse = rememberInfiniteTransition(label = "dangerLine")
+        val linePulse by pulse.animateFloat(
+            initialValue = if (anyNearLine) 0.45f else 0.28f,
+            targetValue = if (anyNearLine) 1f else 0.38f,
+            animationSpec = infiniteRepeatable(
+                tween(if (gameState.graceActive) 260 else 600),
+                RepeatMode.Reverse
+            ),
+            label = "dangerAlpha"
+        )
+        val lineColor = if (gameState.graceActive) Color(0xFFFF1744) else theme.accentColor
 
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            // ── The board ──
             Box(
                 modifier = Modifier
                     .width(boardW)
@@ -502,66 +508,58 @@ private fun DropBoard(
                     .clip(RoundedCornerShape(14.dp))
                     .background(theme.surfaceColor.copy(alpha = 0.55f))
                     .pointerInput(inputEnabled) {
-                        detectTapGestures { offset -> if (inputEnabled) fire(colFromX(offset.x)) }
+                        detectTapGestures { offset ->
+                            if (inputEnabled) viewModel.shoot(laneFromX(offset.x))
+                        }
                     }
-                    .pointerInput(inputEnabled) {
-                        detectDragGestures(
-                            onDragStart = { offset -> if (inputEnabled) aimCol = colFromX(offset.x) },
-                            onDrag = { change, _ -> if (inputEnabled) aimCol = colFromX(change.position.x) },
-                            onDragEnd = {
-                                if (inputEnabled) aimCol?.let { fire(it) }
-                                aimCol = null
-                            },
-                            onDragCancel = { aimCol = null }
-                        )
-                    }
-                    .testTag("DropMerge_Board")
+                    .testTag("Rise_Board")
             ) {
-                // Column tracks; the aimed one glows with the current tile's color.
-                for (c in 0 until COLS) {
-                    val fill = gameState.columns[c].size
-                    ColumnTrack(
-                        offsetX = with(density) { xOf(c).toDp() },
-                        width = cell,
-                        height = boardH - gap * 2,
-                        topPad = gap,
-                        danger = fill >= ROWS - DropMergeConfig.DANGER_FREE_CELLS,
-                        critical = fill >= ROWS,
-                        beamColor = if (aimCol == c) currentColor else null
+                // Lane tracks.
+                for (lane in 0 until LANES) {
+                    Box(
+                        modifier = Modifier
+                            .offset(x = with(density) { xOf(lane).toDp() }, y = gap)
+                            .width(cell)
+                            .height(boardH - gap * 2)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(theme.backgroundColor.copy(alpha = 0.45f))
+                            .border(1.dp, theme.textColor.copy(alpha = 0.06f), RoundedCornerShape(10.dp))
                     )
                 }
 
-                // Ghost landing slot while aiming — tinted like the tile.
-                aimCol?.let { c ->
-                    val landRow = min(gameState.columns[c].size, ROWS - 1)
-                    GhostSlot(
-                        offset = IntOffset(xOf(c).roundToInt(), yOf(landRow).roundToInt()),
-                        size = cell,
-                        color = currentColor
+                // Dashed danger line.
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    drawLine(
+                        color = lineColor.copy(alpha = linePulse),
+                        start = Offset(gapPx, dangerY),
+                        end = Offset(size.width - gapPx, dangerY),
+                        strokeWidth = 3.dp.toPx(),
+                        cap = StrokeCap.Round,
+                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(26f, 18f))
                     )
                 }
 
-                // Live tiles — keyed by stable id so moves/merges animate.
-                gameState.columns.forEachIndexed { c, columnTiles ->
-                    columnTiles.forEachIndexed { r, tile ->
+                // Live tiles — shots enter from the rack with a tumble.
+                gameState.columns.forEachIndexed { lane, stack ->
+                    stack.forEachIndexed { row, tile ->
                         key(tile.id) {
                             BoardTileView(
                                 tile = tile,
-                                target = Offset(xOf(c), yOf(r)),
-                                spawn = Offset(xOf(c), boardHPx + cellPx * 0.4f),
+                                target = Offset(xOf(lane), yOf(row)),
+                                spawn = Offset(xOf(lane), boardHPx + cellPx * 0.55f),
                                 size = cell,
-                                theme = theme
+                                theme = theme,
+                                tumbleOnSpawn = true
                             )
                         }
                     }
                 }
 
-                // Consumed tiles from the current step — fly into the merge
-                // target (MERGE) or shrink away in place (PURGE).
+                // Consumed merge ghosts.
                 val step = gameState.lastStep
                 if (step != null && step.consumed.isNotEmpty()) {
                     step.consumed.forEach { consumed ->
-                        key("ghost-${consumed.tile.id}") {
+                        key("rise-ghost-${consumed.tile.id}") {
                             ConsumedTileView(
                                 tile = consumed.tile,
                                 from = Offset(xOf(consumed.fromCol), yOf(consumed.fromRow)),
@@ -574,7 +572,6 @@ private fun DropBoard(
                     }
                 }
 
-                // Combo flair.
                 if (gameState.comboCount >= 2) {
                     key(gameState.comboCount) {
                         ComboText(
@@ -587,276 +584,162 @@ private fun DropBoard(
                 }
             }
 
-            Spacer(Modifier.height(launcherGap))
+            Spacer(Modifier.height(rackGap))
 
-            // ── Launcher ──
-            Launcher(
+            RiseRack(
                 boardW = boardW,
                 cell = cell,
                 gap = gap,
-                extra = launcherExtra,
-                currentValue = gameState.currentValue,
-                moveCount = gameState.moveCount,
-                launcherCol = launcherCol,
+                extra = rackExtra,
+                rack = gameState.rack,
                 enabled = inputEnabled,
-                onAim = { aimCol = it },
-                onRelease = {
-                    if (inputEnabled) aimCol?.let { fire(it) }
-                    aimCol = null
-                },
-                onShoot = { if (inputEnabled) fire(it) }
+                onShoot = { viewModel.shoot(it) },
+                onReRack = { viewModel.reRack(it) }
             )
         }
     }
 }
 
+// ─────────────────────────────────── Rack ───────────────────────────────────
+
+/** The floor rack: tap a tile to fire it up its lane, long-press to re-rack. */
 @Composable
-private fun ColumnTrack(
-    offsetX: Dp,
-    width: Dp,
-    height: Dp,
-    topPad: Dp,
-    danger: Boolean,
-    critical: Boolean,
-    beamColor: Color?
-) {
-    val theme = LocalGameTheme.current
-    val pulse = rememberInfiniteTransition(label = "dangerPulse")
-    val pulseAlpha by pulse.animateFloat(
-        initialValue = 0.25f,
-        targetValue = if (critical) 0.9f else 0.6f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(if (critical) 380 else 650),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "dangerAlpha"
-    )
-
-    val borderColor = when {
-        danger -> theme.primaryColor.copy(alpha = pulseAlpha)
-        beamColor != null -> beamColor.copy(alpha = 0.65f)
-        else -> theme.textColor.copy(alpha = 0.06f)
-    }
-
-    // Aimed column: a soft gradient beam in the incoming tile's color,
-    // strongest where the tile enters (bottom) and fading toward the ceiling.
-    val backgroundModifier = if (beamColor != null) {
-        Modifier.background(
-            brush = Brush.verticalGradient(
-                colors = listOf(
-                    beamColor.copy(alpha = 0.03f),
-                    beamColor.copy(alpha = 0.10f),
-                    beamColor.copy(alpha = 0.26f)
-                )
-            )
-        )
-    } else {
-        Modifier.background(theme.backgroundColor.copy(alpha = 0.45f))
-    }
-
-    Box(
-        modifier = Modifier
-            .offset(x = offsetX, y = topPad)
-            .width(width)
-            .height(height)
-            .clip(RoundedCornerShape(10.dp))
-            .then(backgroundModifier)
-            .border(1.dp, borderColor, RoundedCornerShape(10.dp))
-    )
-}
-
-@Composable
-private fun GhostSlot(offset: IntOffset, size: Dp, color: Color) {
-    val pulse = rememberInfiniteTransition(label = "ghostPulse")
-    val alpha by pulse.animateFloat(
-        initialValue = 0.3f, targetValue = 0.75f,
-        animationSpec = infiniteRepeatable(tween(450), RepeatMode.Reverse),
-        label = "ghostAlpha"
-    )
-    Box(
-        modifier = Modifier
-            .offset { offset }
-            .size(size)
-            .clip(RoundedCornerShape(10.dp))
-            .border(2.dp, color.copy(alpha = alpha), RoundedCornerShape(10.dp))
-            .background(color.copy(alpha = alpha * 0.15f))
-    )
-}
-
-
-// ───────────────────────────────── Launcher ─────────────────────────────────
-
-/**
- * The launcher strip. The loaded tile is ONE block that slides smoothly to the
- * aimed column (spring), can be dragged along the strip, and pops on reload.
- */
-@Composable
-private fun Launcher(
+private fun RiseRack(
     boardW: Dp,
     cell: Dp,
     gap: Dp,
     extra: Dp,
-    currentValue: Int,
-    moveCount: Int,
-    launcherCol: Int,
+    rack: List<DropTile?>,
     enabled: Boolean,
-    onAim: (Int) -> Unit,
-    onRelease: () -> Unit,
-    onShoot: (Int) -> Unit
+    onShoot: (Int) -> Unit,
+    onReRack: (Int) -> Unit
 ) {
     val theme = LocalGameTheme.current
-    val density = LocalDensity.current
-    val cellPx = with(density) { cell.toPx() }
-    val gapPx = with(density) { gap.toPx() }
-    fun colFromX(x: Float): Int =
-        ((x - gapPx / 2f) / (cellPx + gapPx)).toInt().coerceIn(0, COLS - 1)
-
-    // Idle bob on the loaded tile.
-    val bob = rememberInfiniteTransition(label = "launcherBob")
-    val bobY by bob.animateFloat(
-        initialValue = 0f, targetValue = -5f,
-        animationSpec = infiniteRepeatable(tween(700), RepeatMode.Reverse),
-        label = "bobY"
-    )
-
-    // The slidable block: springs toward the aimed column.
-    val tileX by animateDpAsState(
-        targetValue = gap + (cell + gap) * launcherCol,
-        animationSpec = spring(dampingRatio = 0.72f, stiffness = Spring.StiffnessMedium),
-        label = "launcherTileX"
-    )
-
-    // Reload pop whenever a new tile arrives (shot resolved or skip used).
-    val reloadScale = remember { Animatable(1f) }
-    LaunchedEffect(currentValue, moveCount) {
-        reloadScale.snapTo(0.55f)
-        reloadScale.animateTo(1f, spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMedium))
-    }
-
-    val color = mergeTileColor(theme, currentValue)
 
     Box(
         modifier = Modifier
             .width(boardW)
             .height(cell + extra)
-            .pointerInput(enabled) {
-                detectDragGestures(
-                    onDragStart = { offset -> if (enabled) onAim(colFromX(offset.x)) },
-                    onDrag = { change, _ -> if (enabled) onAim(colFromX(change.position.x)) },
-                    onDragEnd = { onRelease() },
-                    onDragCancel = { onRelease() }
-                )
-            }
     ) {
-        // Slot pads.
-        for (c in 0 until COLS) {
+        for (lane in 0 until LANES) {
+            val tile = rack.getOrNull(lane)
             Box(
                 modifier = Modifier
-                    .offset(x = gap + (cell + gap) * c)
+                    .offset(x = gap + (cell + gap) * lane)
                     .width(cell)
                     .height(cell + extra)
                     .clip(RoundedCornerShape(10.dp))
                     .background(theme.surfaceColor.copy(alpha = 0.6f))
                     .border(
                         1.dp,
-                        if (c == launcherCol) color.copy(alpha = 0.5f)
-                        else theme.textColor.copy(alpha = 0.07f),
+                        if (tile != null) theme.textColor.copy(alpha = 0.14f)
+                        else theme.textColor.copy(alpha = 0.05f),
                         RoundedCornerShape(10.dp)
                     )
-                    .pointerInput(enabled) {
-                        detectTapGestures { if (enabled) onShoot(c) }
+                    .pointerInput(enabled, tile?.id) {
+                        detectTapGestures(
+                            onTap = { if (enabled && tile != null) onShoot(lane) },
+                            onLongPress = { if (enabled && tile != null) onReRack(lane) }
+                        )
                     }
-                    .testTag("DropMerge_LauncherSlot_$c"),
+                    .testTag("Rise_RackSlot_$lane"),
                 contentAlignment = Alignment.Center
             ) {
-                if (c != launcherCol) {
-                    Icon(
-                        imageVector = Icons.Rounded.KeyboardArrowUp,
-                        contentDescription = null,
-                        tint = theme.textColor.copy(alpha = 0.25f),
-                        modifier = Modifier.size(cell * 0.4f)
+                if (tile != null) {
+                    // Keyed by id so refills and re-racks pop in fresh.
+                    key(tile.id) {
+                        val appear = remember { Animatable(0.4f) }
+                        LaunchedEffect(Unit) {
+                            appear.animateTo(1f, spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMedium))
+                        }
+                        val color = mergeTileColor(theme, tile.value)
+                        Box(
+                            modifier = Modifier
+                                .size(cell * 0.92f)
+                                .scale(appear.value)
+                                .drawBehind {
+                                    drawCircle(
+                                        brush = Brush.radialGradient(
+                                            colors = listOf(color.copy(alpha = 0.30f), Color.Transparent)
+                                        ),
+                                        radius = size.maxDimension * 0.8f,
+                                        center = center
+                                    )
+                                }
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(Brush.verticalGradient(listOf(color, color.copy(alpha = 0.85f))))
+                                .border(1.dp, Color.White.copy(alpha = 0.22f), RoundedCornerShape(10.dp))
+                                .alpha(if (enabled) 1f else 0.45f),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            TileNumber(value = tile.value, cell = cell, background = color)
+                        }
+                    }
+                } else {
+                    // Empty socket while refilling.
+                    Box(
+                        modifier = Modifier
+                            .size(cell * 0.5f)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(theme.textColor.copy(alpha = 0.05f))
                     )
                 }
             }
         }
-
-        // The single slidable loaded tile, riding above the slots.
-        Box(
-            modifier = Modifier
-                .offset(x = tileX)
-                .offset { IntOffset(0, bobY.roundToInt()) }
-                .width(cell)
-                .height(cell + extra),
-            contentAlignment = Alignment.Center
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(cell * 0.92f)
-                    .scale(reloadScale.value)
-                    .drawBehind {
-                        drawCircle(
-                            brush = Brush.radialGradient(
-                                colors = listOf(color.copy(alpha = 0.35f), Color.Transparent)
-                            ),
-                            radius = size.maxDimension * 0.8f,
-                            center = center
-                        )
-                    }
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(
-                        Brush.verticalGradient(listOf(color, color.copy(alpha = 0.85f)))
-                    )
-                    .border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(10.dp))
-                    .alpha(if (enabled) 1f else 0.45f),
-                contentAlignment = Alignment.Center
-            ) {
-                TileNumber(value = currentValue, cell = cell, background = color)
-            }
-        }
     }
 }
 
-// ───────────────────────────── Controls & badges ────────────────────────────
+// ───────────────────────────── Indicators & badges ──────────────────────────
 
+/** Circular countdown to the next pressure row; fills as shots are spent. */
 @Composable
-private fun SkipTileButton(
-    enabled: Boolean,
-    height: Dp,
-    onClick: () -> Unit
+private fun PressureRing(
+    shotsLeft: Int,
+    total: Int,
+    size: Dp
 ) {
     val theme = LocalGameTheme.current
-    val shape = RoundedCornerShape(50)
-    Row(
-        modifier = Modifier
-            .height(height)
-            .clip(shape)
-            .background(theme.surfaceColor.copy(alpha = 0.8f))
-            .border(1.dp, theme.accentColor.copy(alpha = if (enabled) 0.55f else 0.2f), shape)
-            .testTag("DropMerge_Button_Skip")
-            .let { if (enabled) it.pointerInput(Unit) { detectTapGestures { onClick() } } else it }
-            .padding(horizontal = height * 0.4f)
-            .alpha(if (enabled) 1f else 0.45f),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = Icons.Rounded.SkipNext,
-            contentDescription = stringResource(R.string.drop_skip),
-            tint = theme.accentColor,
-            modifier = Modifier.size(height * 0.55f)
-        )
-        Spacer(Modifier.width(height * 0.15f))
+    val progress = 1f - (shotsLeft.toFloat() / total.toFloat()).coerceIn(0f, 1f)
+    val urgent = shotsLeft <= 2
+
+    val pulse = rememberInfiniteTransition(label = "ringPulse")
+    val ringAlpha by pulse.animateFloat(
+        initialValue = if (urgent) 0.55f else 1f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(if (urgent) 320 else 800), RepeatMode.Reverse),
+        label = "ringAlpha"
+    )
+    val ringColor = if (urgent) theme.primaryColor else theme.accentColor
+
+    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(size)) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val stroke = this.size.minDimension * 0.10f
+            drawArc(
+                color = ringColor.copy(alpha = 0.15f),
+                startAngle = -90f,
+                sweepAngle = 360f,
+                useCenter = false,
+                style = Stroke(width = stroke, cap = StrokeCap.Round)
+            )
+            drawArc(
+                color = ringColor.copy(alpha = ringAlpha),
+                startAngle = -90f,
+                sweepAngle = 360f * progress,
+                useCenter = false,
+                style = Stroke(width = stroke, cap = StrokeCap.Round)
+            )
+        }
         Text(
-            text = stringResource(R.string.drop_skip),
-            color = theme.accentColor,
-            fontSize = (height.value * 0.34f).sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 1.sp
+            text = shotsLeft.toString(),
+            color = theme.textColor,
+            fontSize = (size.value * 0.34f).sp,
+            fontWeight = FontWeight.ExtraBold
         )
     }
 }
 
 @Composable
-private fun UnlockBadge(target: Int, height: Dp) {
+private fun RiseUnlockBadge(target: Int, height: Dp) {
     val theme = LocalGameTheme.current
     val color = mergeTileColor(theme, target)
     NeonCard(
@@ -904,7 +787,7 @@ private fun UnlockBadge(target: Int, height: Dp) {
 }
 
 @Composable
-private fun UnlockBanner(value: Int) {
+private fun RiseUnlockBanner(value: Int) {
     val theme = LocalGameTheme.current
     val color = mergeTileColor(theme, value)
     NeonCard(
@@ -939,45 +822,6 @@ private fun UnlockBanner(value: Int) {
                 fontWeight = FontWeight.ExtraBold,
                 letterSpacing = 1.5.sp
             )
-        }
-    }
-}
-
-@Composable
-private fun NextTileChip(nextValue: Int, height: Dp) {
-    val theme = LocalGameTheme.current
-    val color = mergeTileColor(theme, nextValue)
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            text = stringResource(R.string.drop_next),
-            color = theme.textColor.copy(alpha = 0.55f),
-            fontSize = (height.value * 0.34f).sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 1.sp
-        )
-        Spacer(Modifier.width(height * 0.22f))
-        // Animated swap when the value changes.
-        key(nextValue) {
-            val appear = remember { Animatable(0.6f) }
-            LaunchedEffect(Unit) {
-                appear.animateTo(1f, spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMedium))
-            }
-            Box(
-                modifier = Modifier
-                    .size(height)
-                    .scale(appear.value)
-                    .clip(RoundedCornerShape(height * 0.24f))
-                    .background(Brush.verticalGradient(listOf(color, color.copy(alpha = 0.85f))))
-                    .border(1.dp, Color.White.copy(alpha = 0.18f), RoundedCornerShape(height * 0.24f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = nextValue.toString(),
-                    color = if (color.luminance() > 0.55f) Color(0xFF1E1E2E) else Color.White,
-                    fontSize = (height.value * if (nextValue >= 100) 0.30f else 0.38f).sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
         }
     }
 }

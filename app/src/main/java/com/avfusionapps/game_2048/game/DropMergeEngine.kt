@@ -19,7 +19,9 @@ import kotlin.random.Random
  */
 class DropMergeEngine(
     private val random: Random = Random.Default,
-    startId: Long = 1L
+    startId: Long = 1L,
+    /** Column capacity — Neon Drop uses the default; Neon Rise passes its own. */
+    private val rows: Int = DropMergeConfig.ROWS
 ) {
     private var nextId: Long = startId
 
@@ -60,14 +62,14 @@ class DropMergeEngine(
     // ─────────────────────────────── Queries ────────────────────────────────
 
     fun isColumnFull(columns: DropColumns, col: Int): Boolean =
-        columns[col].size >= DropMergeConfig.ROWS
+        columns[col].size >= rows
 
     /**
      * Board is locked (game over) when every column is full and the current
      * tile can't merge with any column end — every possible shot would be fatal.
      */
     fun isBoardLocked(columns: DropColumns, currentValue: Int): Boolean =
-        columns.all { it.size >= DropMergeConfig.ROWS } &&
+        columns.all { it.size >= rows } &&
             columns.none { it.isNotEmpty() && it.last().value == currentValue }
 
     // ─────────────────────────────── Resolution ─────────────────────────────
@@ -83,7 +85,9 @@ class DropMergeEngine(
         columns: DropColumns,
         col: Int,
         tile: DropTile,
-        bestTileEver: Int
+        bestTileEver: Int,
+        /** Neon Rise disables the low-tier purge — pressure rows are its churn. */
+        purgeEnabled: Boolean = true
     ): DropShotResult {
         val full = isColumnFull(columns, col)
         val matchesEnd = columns[col].isNotEmpty() && columns[col].last().value == tile.value
@@ -152,6 +156,7 @@ class DropMergeEngine(
             }
 
             // 2b) Board is merge-stable — purge tiers below the spawn floor.
+            if (!purgeEnabled) break
             val floor = minSpawnValue(runningBest)
             val purged = mutableListOf<ConsumedTile>()
             for (c in cols.indices) {
