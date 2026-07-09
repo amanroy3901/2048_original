@@ -27,7 +27,7 @@ and share one implementation (25 unit tests).
 
 ## 2. Board
 
-- 5 columns × 8 rows; row 0 is the **floor**, stacks grow upward.
+- **6 columns × 10 rows** (wider and taller than Neon Shoot — long dramatic falls); row 0 is the **floor**, stacks grow upward.
 - The **dropper** strip sits above the board holding the current tile.
 - Danger: a column with ≤ 2 free cells pulses; a full column pulses harder.
 
