@@ -53,7 +53,8 @@ data class LevelProgression(
         fun getTargetForLevel(level: Int): Int {
             return when (level) {
                 1 -> 2
-                else -> Math.pow(2.0, (level + 6).toDouble()).toInt() // 128, 256, 512, 1024, etc.
+                // 2^(level+5): L2->128, L3->256, L4->512, L5->1024 — matches getLevelForTileValue.
+                else -> Math.pow(2.0, (level + 5).toDouble()).toInt()
             }
         }
 

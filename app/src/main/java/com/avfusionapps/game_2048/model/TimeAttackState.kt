@@ -4,10 +4,13 @@ data class TimeAttackState(
     val grid: List<List<Int>> = createEmptyGrid(),
     val previousGrid: List<List<Int>>? = null,
     val previousScore: Int = 0,
+    val previousTimeRemainingMillis: Long = 60_000L,
+    val previousMultiplier: Float = 1.0f,
     val score: Int = 0,
     val totalTimeConfiguredMillis: Long = 60_000L,
     val timeRemainingMillis: Long = 60_000L, // 60 seconds default
     val isGameOver: Boolean = false,
+    val timeSurvivedMillis: Long = 0L,
     val isPaused: Boolean = false,
     val multiplier: Float = 1.0f,
     val lastBonus: BonusType? = null,

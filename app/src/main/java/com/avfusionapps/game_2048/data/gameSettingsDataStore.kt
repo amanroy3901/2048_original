@@ -65,21 +65,18 @@ class GameSettingsRepository(private val context: Context) {
         }
     }
 
-    // Suspending function to save the high score ONLY if it's higher
+    // Suspending function to save the high score ONLY if it's higher.
+    // The compare-and-set happens *inside* the edit block, which DataStore serializes,
+    // so concurrent writers can never regress a higher stored value.
     suspend fun updateHighScoreIfHigher(newScore: Int) {
-        // Use first() to get the current value before editing
-        // Note: This reads *just before* editing. In rare concurrent scenarios,
-        // you might edit based on slightly stale data, but it's usually acceptable.
-        // For absolute safety, you might read inside the edit block, but that's less common.
-        val currentHighScore = highScoreFlow.first() // Get current stored high score
-
-        if (newScore > currentHighScore) {
-            context.gameSettingsDataStore.edit { preferences ->
+        context.gameSettingsDataStore.edit { preferences ->
+            val currentHighScore = preferences[HIGH_SCORE_KEY] ?: DEFAULT_HIGH_SCORE
+            if (newScore > currentHighScore) {
                 preferences[HIGH_SCORE_KEY] = newScore
                 println("DataStore: New high score saved: $newScore") // Logging
+            } else {
+                println("DataStore: Score $newScore not higher than $currentHighScore. Not saved.") // Logging
             }
-        } else {
-             println("DataStore: Score $newScore not higher than $currentHighScore. Not saved.") // Logging
         }
     }
 
