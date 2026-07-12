@@ -23,15 +23,17 @@ interface GameMoveDao {
      * Get the most recent move for the current game.
      * @return The most recent GameMove or null if no moves exist
      */
-    @Query("SELECT * FROM game_moves ORDER BY moveNumber DESC LIMIT 1")
+    @Query("SELECT * FROM game_moves ORDER BY id DESC LIMIT 1")
     suspend fun getLastMove(): GameMove?
-    
+
     /**
-     * Get the last N moves in descending order (most recent first).
+     * Get the last N moves in insertion order (most recent first).
+     * Ordered by the autoincrement primary key so duplicate/reset moveNumbers
+     * can never reorder or collide.
      * @param limit The maximum number of moves to retrieve
      * @return A list of the most recent GameMove objects
      */
-    @Query("SELECT * FROM game_moves ORDER BY moveNumber DESC LIMIT :limit")
+    @Query("SELECT * FROM game_moves ORDER BY id DESC LIMIT :limit")
     suspend fun getLastMoves(limit: Int): List<GameMove>
     
     /**
@@ -44,7 +46,7 @@ interface GameMoveDao {
      * Delete all moves except the most recent N moves.
      * @param keepCount The number of most recent moves to keep
      */
-    @Query("DELETE FROM game_moves WHERE id NOT IN (SELECT id FROM game_moves ORDER BY moveNumber DESC LIMIT :keepCount)")
+    @Query("DELETE FROM game_moves WHERE id NOT IN (SELECT id FROM game_moves ORDER BY id DESC LIMIT :keepCount)")
     suspend fun keepOnlyLastMoves(keepCount: Int)
     
     /**
@@ -63,4 +65,11 @@ interface GameMoveDao {
 
     @Query("DELETE FROM game_moves WHERE moveNumber = :moveNumber")
     suspend fun deleteMoveByNumber(moveNumber: Int)
+
+    /**
+     * Delete a single move by its unique primary key.
+     * Preferred over deleteMoveByNumber for undo, since moveNumber is not guaranteed unique.
+     */
+    @Query("DELETE FROM game_moves WHERE id = :id")
+    suspend fun deleteMoveById(id: Long)
 }

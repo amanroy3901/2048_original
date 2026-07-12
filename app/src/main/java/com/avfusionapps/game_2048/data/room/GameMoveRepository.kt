@@ -60,6 +60,9 @@ class GameMoveRepository(private val context: Context) {
     }
     suspend fun deleteMoveByNumber(moveNumber: Int) = gameMoveDao.deleteMoveByNumber(moveNumber)
 
+    /** Delete a single move by its unique primary key. */
+    suspend fun deleteMoveById(id: Long) = gameMoveDao.deleteMoveById(id)
+
     /**
      * Get the total number of moves stored in the database.
      * @return The count of moves

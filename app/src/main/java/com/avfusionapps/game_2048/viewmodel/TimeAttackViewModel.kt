@@ -45,6 +45,10 @@ class TimeAttackViewModel(application: Application) : AndroidViewModel(applicati
     private var timerJob: Job? = null
     private val initialTimeMillis = 60_000L // 60 seconds
     private val maxTimeMillis = 120_000L // Cap at 2 minutes
+    private val maxMultiplier = 5.0f // Score multiplier cap
+
+    // Real (non-paused) time the player has actually survived this round, in ms.
+    private var elapsedActiveMillis = 0L
 
     val highScore = repository.highScore
     val bestTimeSurvived = repository.bestTimeSurvived
@@ -93,6 +97,7 @@ class TimeAttackViewModel(application: Application) : AndroidViewModel(applicati
 
     fun startNewGame(isTutorialShowing: Boolean = false) {
         timerJob?.cancel()
+        elapsedActiveMillis = 0L
         val newGrid = createEmptyGrid()
         _gameState.value = TimeAttackState(
             grid = addRandomTile(addRandomTile(newGrid)),
@@ -112,6 +117,7 @@ class TimeAttackViewModel(application: Application) : AndroidViewModel(applicati
                 delay(100) // Update every 100ms for smooth countdown
 
                 if (!_gameState.value.isPaused) {
+                    elapsedActiveMillis += 100
                     val newTime = _gameState.value.timeRemainingMillis - 100
                     _gameState.value = _gameState.value.copy(timeRemainingMillis = max(0, newTime))
 
@@ -207,8 +213,9 @@ class TimeAttackViewModel(application: Application) : AndroidViewModel(applicati
                 _timeBonusEvent.tryEmit("+${timeBonus / 1000}s")
             }
 
-            // Calculate final score with multiplier
-            val finalScoreGained = (scoreGained * multiplier).toInt()
+            // Calculate final score using the capped multiplier (matches what the UI shows).
+            val cappedMultiplier = min(maxMultiplier, multiplier)
+            val finalScoreGained = (scoreGained * cappedMultiplier).toInt()
 
             // Add new random tile to grid
             val gridWithNewTile = addRandomTile(newGrid.map { it.toList() })
@@ -237,9 +244,11 @@ class TimeAttackViewModel(application: Application) : AndroidViewModel(applicati
                 grid = gridWithNewTile,
                 previousGrid = currentGrid,
                 previousScore = currentState.score,
+                previousTimeRemainingMillis = currentState.timeRemainingMillis,
+                previousMultiplier = currentState.multiplier,
                 score = currentState.score + finalScoreGained,
                 timeRemainingMillis = newTime,
-                multiplier = min(5.0f, multiplier), // Cap at 5x
+                multiplier = cappedMultiplier, // Cap at 5x
                 lastBonus = lastBonus,
                 isGameOver = gameOver,
                 tileAnimationInfo = animationInfoMap,
@@ -268,14 +277,17 @@ class TimeAttackViewModel(application: Application) : AndroidViewModel(applicati
 
     private fun endGame() {
         timerJob?.cancel()
-        _gameState.value = _gameState.value.copy(isGameOver = true)
+        // timeSurvived is the real (non-paused) elapsed play time, which stays correct even
+        // when bonus time pushes the clock above the initial 60s.
+        val survived = elapsedActiveMillis
+        _gameState.value = _gameState.value.copy(isGameOver = true, timeSurvivedMillis = survived)
 
-        // Save score to repository
+        // Save score to repository.
         viewModelScope.launch {
             repository.saveTimeAttackHighScore(
                 TimeAttackScore(
                     score = _gameState.value.score,
-                    timeSurvived = initialTimeMillis - _gameState.value.timeRemainingMillis
+                    timeSurvived = survived
                 )
             )
         }
@@ -464,13 +476,17 @@ class TimeAttackViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     fun undoMove() {
-        // Time Attack is fast-paced, undo might not be heavily used, but we should implement basic undo if needed.
-        // For simplicity and performance in Time Attack, we can restrict undo to just 1 previous state or disable it.
-        // Let's implement a single-step undo.
-        _gameState.value.previousGrid?.let { prevGrid ->
-            _gameState.value = _gameState.value.copy(
+        val state = _gameState.value
+        // Don't allow undo once the game is over (the timer is already cancelled).
+        if (state.isGameOver) return
+        // Single-step undo: restore grid, score, time and multiplier together, otherwise
+        // a merge->undo->merge loop would farm unlimited bonus time and multiplier.
+        state.previousGrid?.let { prevGrid ->
+            _gameState.value = state.copy(
                 grid = prevGrid,
-                score = _gameState.value.previousScore,
+                score = state.previousScore,
+                timeRemainingMillis = state.previousTimeRemainingMillis,
+                multiplier = state.previousMultiplier,
                 previousGrid = null // Can only undo once
             )
         }
