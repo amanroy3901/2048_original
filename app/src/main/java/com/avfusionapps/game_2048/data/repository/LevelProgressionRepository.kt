@@ -75,15 +75,31 @@ class LevelProgressionRepository(
 
         try {
             val documentRef = firestore.collection(COLLECTION_NAME).document(user.uid)
-            
-            // Update timestamps
-            val updatedProgression = progression.copy(
+
+            val incoming = progression.copy(
                 playerId = user.uid,
                 playerName = user.displayName ?: progression.playerName,
                 lastUpdated = com.google.firebase.Timestamp.now()
             )
 
-            documentRef.set(updatedProgression).await()
+            // Merge inside a transaction so a stale/older device can never regress the
+            // cloud high score, current level, or drop previously unlocked levels.
+            firestore.runTransaction { txn ->
+                val existing = txn.get(documentRef).toObject(LevelProgression::class.java)
+                val merged = if (existing == null) {
+                    incoming
+                } else {
+                    incoming.copy(
+                        highScore = maxOf(incoming.highScore, existing.highScore),
+                        currentLevel = maxOf(incoming.currentLevel, existing.currentLevel),
+                        unlockedLevels = (existing.unlockedLevels + incoming.unlockedLevels)
+                            .distinct().sorted(),
+                        levelUnlockTimes = existing.levelUnlockTimes + incoming.levelUnlockTimes,
+                        createdAt = existing.createdAt
+                    )
+                }
+                txn.set(documentRef, merged)
+            }.await()
             Log.d(TAG, "Level progression saved successfully")
         } catch (e: Exception) {
             Log.e(TAG, "Error saving level progression", e)

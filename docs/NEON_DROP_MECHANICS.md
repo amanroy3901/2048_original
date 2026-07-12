@@ -100,10 +100,14 @@ After a purge, gravity collapses and the merge cascade re-runs (purges can chain
      none of the column-end tiles (every possible shot would be fatal).
 - Firing into a full column whose end tile **matches** is legal — it merges in place.
 
-## 9. Undo
+## 9. Undo & Skip
 
-- One free undo per shot (single-step, like Time Attack): restores columns,
-  score, current + next tile from before the last shot. No currency attached.
+- **Undo:** one free undo per shot (single-step, like Time Attack): restores
+  columns, score, current + next tile from before the last shot.
+- **Skip:** once per turn the current tile can be skipped — it is replaced by
+  the next tile and a fresh next is generated. Resets after every shot, so it
+  helps planning without enabling endless rerolls. No currency attached to
+  either.
 
 ## 10. Flow & screens
 
@@ -119,11 +123,17 @@ After a purge, gravity collapses and the merge cascade re-runs (purges can chain
 | Shot | Tile travels launcher → slot, ease-out, squash on impact |
 | Merge | Consumed tiles fly/fade into target; target pops 1→1.25→1 with radial glow |
 | Collapse | Tiles slide to new rows (spring, slight overshoot) |
-| Combo | Floating "COMBO ×N" text rising over the board |
+| Combo | Floating "COMBO ×N" text rising over the board with scale-in |
 | Purge | Purged tiles flash then shrink-fade with glow |
 | Unlock | Banner sweep + tile glow celebration |
 | Danger | Infinite pulse on near-full column borders |
-| Launcher | Idle bob on the current tile; ghost slot soft-pulses |
+| Launcher | ONE slidable block that springs between columns, follows drags, idle-bobs, glows, and pops on reload |
+| Aim | Aimed column glows with a vertical gradient beam in the incoming tile's color; ghost landing slot pulses in the same color |
+| Next swap | Next-tile preview scales in when it changes (shot or skip) |
+| Game over | Board shake before the dialog appears |
+
+The screen is fully fraction-sized from its constraints and has dedicated
+portrait and landscape layouts (side control panels in landscape).
 
 All timings live in one place (`DropAnim`) so feel can be tuned centrally.
 

@@ -25,7 +25,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /** Feedback events the screen turns into sound/haptics. */
-enum class DropGameEvent { SHOOT, MERGE, COMBO, PURGE, UNLOCK, GAME_OVER }
+enum class DropGameEvent { SHOOT, SKIP, MERGE, COMBO, PURGE, UNLOCK, GAME_OVER }
 
 /** Central timing knobs for the mode's playback + UI animations (millis). */
 object DropAnim {
@@ -159,6 +159,7 @@ class DropMergeViewModel(application: Application) : AndroidViewModel(applicatio
             val settled = _gameState.value.copy(
                 isResolving = false,
                 canUndo = true,
+                canSkip = true, // fresh skip each turn
                 currentValue = newCurrent,
                 nextValue = newNext,
                 moveCount = _gameState.value.moveCount + 1,
@@ -175,6 +176,22 @@ class DropMergeViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    /**
+     * Skip the current tile: it becomes the next tile and a fresh next is
+     * generated. Free, but once per turn (resets after each shot) so it can't
+     * be used to endlessly reroll the launcher.
+     */
+    fun skipTile() {
+        val state = _gameState.value
+        if (state.isGameOver || state.isPaused || state.isResolving || !state.canSkip) return
+        _events.tryEmit(DropGameEvent.SKIP)
+        _gameState.value = state.copy(
+            currentValue = state.nextValue,
+            nextValue = engine.spawnValue(state.bestTileEver),
+            canSkip = false
+        )
+    }
+
     /** Single free undo of the last shot. */
     fun undo() {
         val snap = undoSnapshot ?: return
@@ -189,6 +206,7 @@ class DropMergeViewModel(application: Application) : AndroidViewModel(applicatio
             bestTileEver = snap.bestTileEver,
             unlockTarget = engine.unlockTarget(snap.bestTileEver),
             canUndo = false,
+            canSkip = true,
             lastStep = null,
             comboCount = 0
         )

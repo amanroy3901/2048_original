@@ -92,18 +92,12 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
      * Called when the app is paused or the ViewModel is cleared.
      */
     fun saveCurrentGameState() {
-        // Only save if there's an active game (not game over and has moves)
-        if (!gameState.isGameOver && gameState.moveCount > 0) {
-            viewModelScope.launch {
-                val moveId = gameMoveRepository.saveMove(
-                    gameState.grid,
-                    gameState.score,
-                    gameState.moveCount
-                )
-                println("Saved game state on pause: Move #${gameState.moveCount}, Grid size: ${gameState.gridSize}")
-
-                updateGameState(gameState.copy(hasSavedGame = true))
-            }
+        // The latest board is already persisted per-move by move(); re-inserting it here
+        // would create a duplicate row with the same moveNumber and corrupt undo.
+        // So just flag the current game as resumable (works synchronously, even from onCleared).
+        if (!gameState.isGameOver && gameState.moveCount > 0 && !gameState.hasSavedGame) {
+            gameState = gameState.copy(hasSavedGame = true)
+            _gameStateFlow.value = gameState
         }
     }
 
@@ -146,31 +140,36 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    // Signature of the last progression synced to Firestore, used to skip redundant writes.
+    private var lastSyncedSignature: String? = null
+
     /**
-     * Saves the complete game state to Firebase Firestore
+     * Saves level progression to Firebase Firestore.
+     * updateGameState() calls this on every state change, so we dedupe on the fields that
+     * actually live in Firestore (level, unlocked levels, high score) to avoid a network
+     * write on every single move. The high score is persisted to local settings by move().
      */
     private suspend fun saveGameStateToFirebase(state: GameState) {
         try {
-            val user = Firebase.auth.currentUser
-            if (user != null) {
-                // Save level progression
-                val progression = LevelProgression(
-                    playerId = user.uid,
-                    playerName = user.displayName ?: state.playerName,
-                    currentLevel = state.currentLevel,
-                    unlockedLevels = state.unlockedLevels.toList(),
-                    highScore = persistentHighScore.value,
-                    lastUpdated = com.google.firebase.Timestamp.now()
-                )
-                levelProgressionRepository.saveLevelProgression(progression)
-                
-                // Update high score in settings if it's higher
-                if (state.score > persistentHighScore.value) {
-                    settingsRepository.updateHighScoreIfHigher(state.score)
-                }
-                
-                Log.d("GameViewModel", "Game state saved to Firebase: Level ${state.currentLevel}, Score ${state.score}")
-            }
+            val user = Firebase.auth.currentUser ?: return
+            val highScore = persistentHighScore.value
+
+            val signature = "${state.currentLevel}|" +
+                    "${state.unlockedLevels.sorted().joinToString(",")}|$highScore"
+            if (signature == lastSyncedSignature) return
+            lastSyncedSignature = signature
+
+            val progression = LevelProgression(
+                playerId = user.uid,
+                playerName = user.displayName ?: state.playerName,
+                currentLevel = state.currentLevel,
+                unlockedLevels = state.unlockedLevels.toList(),
+                highScore = highScore,
+                lastUpdated = com.google.firebase.Timestamp.now()
+            )
+            levelProgressionRepository.saveLevelProgression(progression)
+
+            Log.d("GameViewModel", "Progression synced to Firebase: Level ${state.currentLevel}, High score $highScore")
         } catch (e: Exception) {
             Log.e("GameViewModel", "Error saving game state to Firebase", e)
         }
@@ -306,6 +305,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                         grid = lastMove.grid,
                         score = lastMove.score,
                         gridSize = lastMove.grid.size,
+                        moveCount = lastMove.moveNumber,
                         hasSavedGame = true
                     )
                 )
@@ -332,12 +332,17 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         if (hasTiles && !gameState.isGameOver) {
             updateGameState(gameState.copy(hasSavedGame = true))
             viewModelScope.launch {
-                gameMoveRepository.saveMove(
-                    gameState.grid,
-                    gameState.score,
-                    gameState.moveCount
-                )
-                updateCanUndoState()
+                // Only persist if nothing is saved yet (e.g. a freshly dealt board that was
+                // never moved). After any move() the current board is already the last saved
+                // row, so re-inserting it would duplicate a moveNumber and corrupt undo.
+                if (gameMoveRepository.getLastMove() == null) {
+                    gameMoveRepository.saveMove(
+                        gameState.grid,
+                        gameState.score,
+                        gameState.moveCount
+                    )
+                    updateCanUndoState()
+                }
             }
         }
     }
@@ -606,7 +611,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     )
                 )
 
-                gameMoveRepository.deleteMoveByNumber(latest.moveNumber)
+                gameMoveRepository.deleteMoveById(latest.id)
                 updateCanUndoState()
             } else {
                 Toast.makeText(context, "At least 2 move is required to use Undo", Toast.LENGTH_SHORT).show()
