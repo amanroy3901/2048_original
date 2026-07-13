@@ -27,6 +27,7 @@ class GameSettingsRepository(private val context: Context) {
         val VIBRATION_ENABLED_KEY = booleanPreferencesKey("vibration_enabled")
         val HAS_SEEN_CLASSIC_TUTORIAL_KEY = booleanPreferencesKey("has_seen_classic_tutorial")
         val HAS_SEEN_TIME_ATTACK_TUTORIAL_KEY = booleanPreferencesKey("has_seen_time_attack_tutorial")
+        val HAS_SEEN_NEON_DROP_TUTORIAL_KEY = booleanPreferencesKey("has_seen_neon_drop_tutorial")
         const val DEFAULT_PLAYER_NAME = "Player"
         const val DEFAULT_HIGH_SCORE = 0
     }
@@ -165,6 +166,26 @@ class GameSettingsRepository(private val context: Context) {
     suspend fun updateHasSeenTimeAttackTutorial(hasSeen: Boolean) {
         context.gameSettingsDataStore.edit { preferences ->
             preferences[HAS_SEEN_TIME_ATTACK_TUTORIAL_KEY] = hasSeen
+        }
+    }
+
+    // Flow to check if the Neon Drop guided tutorial has been seen
+    val hasSeenNeonDropTutorialFlow: Flow<Boolean> = context.gameSettingsDataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(androidx.datastore.preferences.core.emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preferences ->
+            preferences[HAS_SEEN_NEON_DROP_TUTORIAL_KEY] ?: false
+        }
+
+    // Suspending function to update the Neon Drop tutorial seen status
+    suspend fun updateHasSeenNeonDropTutorial(hasSeen: Boolean) {
+        context.gameSettingsDataStore.edit { preferences ->
+            preferences[HAS_SEEN_NEON_DROP_TUTORIAL_KEY] = hasSeen
         }
     }
 }

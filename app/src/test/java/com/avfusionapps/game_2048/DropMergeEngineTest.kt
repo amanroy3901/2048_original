@@ -164,15 +164,24 @@ class DropMergeEngineTest {
     }
 
     @Test
-    fun `spawn values stay inside the window`() {
+    fun `spawn values stay inside the window and never exceed the board max`() {
         val e = engine()
         repeat(500) {
-            val v = e.spawnValue(bestTileEver = 0)
+            val v = e.spawnValue(boardMax = 32, bestTileEver = 0)
             assertTrue("spawned $v", v in listOf(2, 4, 8, 16, 32))
         }
         repeat(500) {
-            val v = e.spawnValue(bestTileEver = 1024)
+            val v = e.spawnValue(boardMax = 128, bestTileEver = 1024)
             assertTrue("spawned $v", v in listOf(8, 16, 32, 64, 128))
+        }
+        // Never spawn a tile larger than the current board max.
+        repeat(500) {
+            val v = e.spawnValue(boardMax = 8, bestTileEver = 0)
+            assertTrue("spawned $v", v in listOf(2, 4, 8))
+        }
+        // An empty board bootstraps to the floor.
+        repeat(50) {
+            assertEquals(2, e.spawnValue(boardMax = 0, bestTileEver = 0))
         }
     }
 
