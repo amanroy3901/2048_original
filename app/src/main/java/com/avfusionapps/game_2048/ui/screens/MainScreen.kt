@@ -207,19 +207,18 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
             val theme = LocalGameTheme.current
             val textSecondary = theme.textColor.copy(alpha = 0.6f)
 
-            // All spacing and card heights derived from screen height fractions
-            val cardSpacing   = dims.screenH * 0.018f  // gap between cards
-            val largeCardH    = dims.screenH * 0.220f  // LastGame / StartJourney card
-            val bestScoreH    = dims.screenH * 0.105f  // Best score card
-            val gameHubH      = dims.screenH * 0.170f  // each game hub card (modes inside)
-            val dividerVPad   = dims.screenH * 0.010f  // vertical padding around divider
+            // Weight-based layout: the cards share the available height by ratio, so the
+            // whole menu always fits exactly — no overflow on short phones, no wasted
+            // space on tall ones — regardless of status/nav-bar insets.
+            val cardSpacing   = dims.screenH * 0.016f  // gap between cards
+            val dividerVPad   = dims.screenH * 0.008f  // vertical padding around divider
             val dividerFontSz = (dims.screenW * 0.032f).value.sp
             val dividerHPad   = dims.screenW * 0.043f
 
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(cardSpacing),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxSize()
             ) {
                 if (hasSaved) {
                     val maxTile = gameState.grid.flatten().maxOrNull() ?: 0
@@ -233,14 +232,16 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
                         },
                         modifier = Modifier
                             .testTag("MainScreen_Card_LastGame")
-                            .height(largeCardH)
+                            .weight(2.3f)
+                            .fillMaxWidth()
                     )
                 } else {
                     StartJourneyCard(
                         onNewGameClick = { showGridSizeDialogMain = true },
                         modifier = Modifier
                             .testTag("MainScreen_Card_StartJourney")
-                            .height(largeCardH)
+                            .weight(2.3f)
+                            .fillMaxWidth()
                     )
                 }
 
@@ -248,7 +249,8 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
                     score = persistentHighScore,
                     modifier = Modifier
                         .testTag("MainScreen_Card_BestScore")
-                        .height(bestScoreH),
+                        .weight(1.05f)
+                        .fillMaxWidth(),
                     accentColor = theme.primaryColor
                 )
 
@@ -305,7 +307,8 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
                     ),
                     modifier = Modifier
                         .testTag("MainScreen_Card_Merge2048")
-                        .height(gameHubH)
+                        .weight(1.75f)
+                        .fillMaxWidth()
                 )
 
                 GameHubCard(
@@ -324,7 +327,8 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
                     ),
                     modifier = Modifier
                         .testTag("MainScreen_Card_NeonDrop")
-                        .height(gameHubH)
+                        .weight(1.75f)
+                        .fillMaxWidth()
                 )
             }
         }
@@ -940,8 +944,8 @@ fun MainScreenContent(
                     }
                 }
 
-                // ── Actions / Game Content — fills the remaining space ──
-                Box(modifier = Modifier.fillMaxSize()) {
+                // ── Actions / Game Content — takes exactly the remaining height ──
+                Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                     actions(dims)
                 }
             }
