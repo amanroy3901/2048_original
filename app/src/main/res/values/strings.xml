@@ -26,6 +26,12 @@
     <string name="drop_unlocked">UNLOCKED!</string>
     <string name="drop_combo">COMBO ×%1$d</string>
     <string name="drop_skip">SKIP</string>
+    <string name="drop_hud_score">SCORE</string>
+    <string name="drop_hud_best">BEST</string>
+    <string name="drop_hud_combo">COMBO</string>
+    <string name="drop_hud_goal">NEXT GOAL</string>
+    <string name="drop_tap_to_shoot">TAP LANE TO SHOOT</string>
+    <string name="drop_shoot_to_merge">SHOOT SAME NUMBER TO MERGE</string>
     <string name="best_score">BEST SCORE</string>
     <string name="continue_game">Continue</string>
     <string name="continue_game_subtitle">Pick up where\nyou left off</string>

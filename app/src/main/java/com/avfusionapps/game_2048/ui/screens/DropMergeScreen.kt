@@ -36,11 +36,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.Undo
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
+import androidx.compose.material.icons.rounded.KeyboardDoubleArrowDown
+import androidx.compose.material.icons.rounded.KeyboardDoubleArrowUp
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.SkipNext
@@ -65,6 +67,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -87,9 +90,7 @@ import com.avfusionapps.game_2048.model.DropStepKind
 import com.avfusionapps.game_2048.model.DropTile
 import com.avfusionapps.game_2048.ui.components.GameOverDialog
 import com.avfusionapps.game_2048.ui.components.GamePauseDialog
-import com.avfusionapps.game_2048.ui.components.GameScoreBoard
 import com.avfusionapps.game_2048.ui.components.NeonCard
-import com.avfusionapps.game_2048.ui.components.SquareIconButton
 import com.avfusionapps.game_2048.ui.theme.GameTheme
 import com.avfusionapps.game_2048.ui.theme.LocalGameTheme
 import com.avfusionapps.game_2048.utils.SoundManager
@@ -205,14 +206,25 @@ fun DropMergeScreen(
                 viewModel = viewModel
             )
         } else {
-            DropMergePortrait(
-                screenW = screenW,
-                screenH = screenH,
-                gameState = gameState,
-                bestScore = bestScore,
-                shakeXProvider = { shakeX.value },
-                viewModel = viewModel
-            )
+            // On big/tablet portrait screens, cap the content width and center it so the
+            // board stays prominent and the HUD doesn't stretch sparse across the width.
+            val isTablet = minOf(screenW.value, screenH.value) >= 600f
+            val contentW = if (isTablet) 600.dp else screenW
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.TopCenter
+            ) {
+                Box(Modifier.width(contentW).fillMaxHeight()) {
+                    DropMergePortrait(
+                        screenW = contentW,
+                        screenH = screenH,
+                        gameState = gameState,
+                        bestScore = bestScore,
+                        shakeXProvider = { shakeX.value },
+                        viewModel = viewModel
+                    )
+                }
+            }
         }
 
         // ── Unlock banner ──
@@ -266,10 +278,10 @@ private fun DropMergePortrait(
     shakeXProvider: () -> Float,
     viewModel: DropMergeViewModel
 ) {
-    val theme = LocalGameTheme.current
     val hPad = screenW * 0.035f
-    val barH = screenH * 0.070f
-    val barSpacing = screenH * 0.014f
+    val hudH = screenH * 0.100f
+    val bottomH = screenH * 0.086f
+    val vGap = screenH * 0.012f
 
     Column(
         modifier = Modifier
@@ -277,33 +289,19 @@ private fun DropMergePortrait(
             .padding(horizontal = hPad),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(Modifier.height(barSpacing))
+        Spacer(Modifier.height(vGap))
 
-        // ── Top bar: back / score / next-unlock badge ──
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(barH),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            SquareIconButton(
-                icon = Icons.AutoMirrored.Rounded.ArrowBack,
-                contentDescription = stringResource(R.string.desc_back_button),
-                onClick = { viewModel.setPaused(true) },
-                size = barH * 0.85f,
-                modifier = Modifier.testTag("DropMerge_Button_Back")
-            )
-            Spacer(Modifier.width(hPad * 0.8f))
-            GameScoreBoard(
-                score = gameState.score,
-                highScore = maxOf(bestScore, gameState.score),
-                modifier = Modifier.weight(1f)
-            )
-            Spacer(Modifier.width(hPad * 0.8f))
-            UnlockBadge(target = gameState.unlockTarget, height = barH)
-        }
+        // ── Gamified HUD: pause + score / combo / next-goal ──
+        DropHud(
+            score = gameState.score,
+            best = maxOf(bestScore, gameState.score),
+            combo = gameState.comboCount,
+            goalTarget = gameState.unlockTarget,
+            height = hudH,
+            onPause = { viewModel.togglePause() }
+        )
 
-        Spacer(Modifier.height(barSpacing))
+        Spacer(Modifier.height(vGap))
 
         // ── Board + launcher ──
         DropBoard(
@@ -315,44 +313,19 @@ private fun DropMergePortrait(
             viewModel = viewModel
         )
 
-        Spacer(Modifier.height(barSpacing))
+        Spacer(Modifier.height(vGap))
 
-        // ── Bottom bar: undo / skip + next / pause ──
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(barH)
-                .padding(bottom = barSpacing * 0.5f),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            SquareIconButton(
-                icon = Icons.AutoMirrored.Rounded.Undo,
-                contentDescription = stringResource(R.string.undo),
-                onClick = { viewModel.undo() },
-                tint = if (gameState.canUndo) theme.textColor else theme.textColor.copy(alpha = 0.3f),
-                size = barH * 0.85f,
-                modifier = Modifier.testTag("DropMerge_Button_Undo")
-            )
+        // ── Bottom action bar: undo · instruction · next + skip ──
+        DropBottomBar(
+            canUndo = gameState.canUndo && !gameState.isResolving && !gameState.isGameOver,
+            canSkip = gameState.canSkip && !gameState.isResolving && !gameState.isGameOver,
+            nextValue = gameState.nextValue,
+            height = bottomH,
+            onUndo = { viewModel.undo() },
+            onSkip = { viewModel.skipTile() }
+        )
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                NextTileChip(nextValue = gameState.nextValue, height = barH * 0.62f)
-                Spacer(Modifier.width(hPad * 0.9f))
-                SkipTileButton(
-                    enabled = gameState.canSkip && !gameState.isResolving && !gameState.isGameOver,
-                    height = barH * 0.72f,
-                    onClick = { viewModel.skipTile() }
-                )
-            }
-
-            SquareIconButton(
-                icon = Icons.Rounded.Pause,
-                contentDescription = stringResource(R.string.desc_pause_button),
-                onClick = { viewModel.togglePause() },
-                size = barH * 0.85f,
-                modifier = Modifier.testTag("DropMerge_Button_Pause")
-            )
-        }
+        Spacer(Modifier.height(vGap * 0.5f))
     }
 }
 
@@ -366,39 +339,44 @@ private fun DropMergeLandscape(
     viewModel: DropMergeViewModel
 ) {
     val theme = LocalGameTheme.current
-    val pad = screenH * 0.03f
-    val sideW = screenW * 0.24f
-    val btnSize = screenH * 0.115f
+    val pad = (screenH * 0.03f).coerceIn(10.dp, 20.dp)
+    val colW = (screenW * 0.19f).coerceIn(116.dp, 220.dp)
+    val cardH = (screenH * 0.19f).coerceIn(74.dp, 150.dp)
 
     Row(
         modifier = Modifier
             .fillMaxSize()
-            .padding(pad)
+            .padding(horizontal = pad, vertical = pad * 0.7f),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        // ── Left panel: back, score, unlock badge ──
+        // ── Left: pause + vertical stat HUD (score / combo / next-goal) ──
         Column(
-            modifier = Modifier
-                .width(sideW)
-                .fillMaxHeight(),
-            verticalArrangement = Arrangement.spacedBy(pad),
-            horizontalAlignment = Alignment.Start
+            modifier = Modifier.width(colW).fillMaxHeight(),
+            verticalArrangement = Arrangement.spacedBy(pad * 0.7f),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            SquareIconButton(
-                icon = Icons.AutoMirrored.Rounded.ArrowBack,
-                contentDescription = stringResource(R.string.desc_back_button),
-                onClick = { viewModel.setPaused(true) },
-                size = btnSize,
-                modifier = Modifier.testTag("DropMerge_Button_Back")
-            )
-            GameScoreBoard(
-                score = gameState.score,
-                highScore = maxOf(bestScore, gameState.score),
-                modifier = Modifier.fillMaxWidth()
-            )
-            UnlockBadge(target = gameState.unlockTarget, height = screenH * 0.16f)
+            HudPauseButton(size = cardH * 0.5f, onClick = { viewModel.togglePause() })
+            HudCard(modifier = Modifier.fillMaxWidth(), accent = theme.primaryColor, height = cardH) {
+                HudScoreContent(gameState.score, maxOf(bestScore, gameState.score), cardH)
+            }
+            HudCard(
+                modifier = Modifier.fillMaxWidth(),
+                accent = theme.accentColor, height = cardH, active = gameState.comboCount >= 2
+            ) {
+                HudComboContent(gameState.comboCount, cardH)
+            }
+            HudCard(
+                modifier = Modifier.fillMaxWidth(),
+                accent = dropTileColor(theme, gameState.unlockTarget), height = cardH
+            ) {
+                HudGoalContent(gameState.unlockTarget, cardH)
+            }
+            Spacer(Modifier.weight(1f))
         }
 
-        // ── Center: board + launcher ──
+        Spacer(Modifier.width(pad))
+
+        // ── Center: big board + launcher ──
         DropBoard(
             modifier = Modifier
                 .weight(1f)
@@ -408,36 +386,36 @@ private fun DropMergeLandscape(
             viewModel = viewModel
         )
 
-        // ── Right panel: controls ──
+        Spacer(Modifier.width(pad))
+
+        // ── Right: vertical controls (next · undo · skip) ──
         Column(
-            modifier = Modifier
-                .width(sideW)
-                .fillMaxHeight(),
-            verticalArrangement = Arrangement.spacedBy(pad),
-            horizontalAlignment = Alignment.End
+            modifier = Modifier.width(colW).fillMaxHeight(),
+            verticalArrangement = Arrangement.spacedBy(pad * 0.7f),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            SquareIconButton(
-                icon = Icons.Rounded.Pause,
-                contentDescription = stringResource(R.string.desc_pause_button),
-                onClick = { viewModel.togglePause() },
-                size = btnSize,
-                modifier = Modifier.testTag("DropMerge_Button_Pause")
-            )
-            SquareIconButton(
-                icon = Icons.AutoMirrored.Rounded.Undo,
-                contentDescription = stringResource(R.string.undo),
-                onClick = { viewModel.undo() },
-                tint = if (gameState.canUndo) theme.textColor else theme.textColor.copy(alpha = 0.3f),
-                size = btnSize,
-                modifier = Modifier.testTag("DropMerge_Button_Undo")
-            )
             Spacer(Modifier.weight(1f))
-            NextTileChip(nextValue = gameState.nextValue, height = screenH * 0.085f)
-            SkipTileButton(
+            NextTileChip(nextValue = gameState.nextValue, height = cardH * 0.34f)
+            Spacer(Modifier.height(pad * 0.4f))
+            BottomActionPill(
+                icon = Icons.AutoMirrored.Rounded.Undo,
+                label = stringResource(R.string.undo),
+                enabled = gameState.canUndo && !gameState.isResolving && !gameState.isGameOver,
+                accent = theme.textColor,
+                height = cardH * 0.66f,
+                testTag = "DropMerge_Button_Undo",
+                onClick = { viewModel.undo() }
+            )
+            BottomActionPill(
+                icon = Icons.Rounded.SkipNext,
+                label = stringResource(R.string.drop_skip),
                 enabled = gameState.canSkip && !gameState.isResolving && !gameState.isGameOver,
-                height = screenH * 0.095f,
+                accent = theme.accentColor,
+                height = cardH * 0.66f,
+                testTag = "DropMerge_Button_Skip",
                 onClick = { viewModel.skipTile() }
             )
+            Spacer(Modifier.weight(1f))
         }
     }
 }
@@ -461,11 +439,12 @@ private fun DropBoard(
     ) {
         // Geometry — everything derived from the available constraints.
         val gap = (min(maxWidth.value, maxHeight.value) * 0.010f).dp.coerceIn(3.dp, 7.dp)
-        val launcherGap = gap * 2.5f
+        val laneHeaderH = (min(maxWidth.value, maxHeight.value) * 0.032f).dp.coerceIn(12.dp, 20.dp)
+        val launcherGap = gap * 3.0f
         val launcherExtra = 8.dp
         val cell: Dp = min(
             ((maxWidth - gap * (COLS + 1)) / COLS).value,
-            ((maxHeight - gap * (ROWS + 1) - launcherGap - launcherExtra) / (ROWS + 1)).value
+            ((maxHeight - gap * (ROWS + 1) - launcherGap - launcherExtra - laneHeaderH - gap) / (ROWS + 1)).value
         ).dp
         val boardW = cell * COLS + gap * (COLS + 1)
         val boardH = cell * ROWS + gap * (ROWS + 1)
@@ -489,6 +468,28 @@ private fun DropBoard(
         }
 
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            // ── Lane header arrows (aimed lane lights up) ──
+            Box(modifier = Modifier.width(boardW).height(laneHeaderH)) {
+                for (c in 0 until COLS) {
+                    val aimed = launcherCol == c
+                    Box(
+                        modifier = Modifier
+                            .offset(x = with(density) { xOf(c).toDp() })
+                            .width(cell)
+                            .fillMaxHeight(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.KeyboardDoubleArrowDown,
+                            contentDescription = null,
+                            tint = if (aimed) currentColor else theme.textColor.copy(alpha = 0.16f),
+                            modifier = Modifier.size(laneHeaderH * 0.95f)
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.height(gap))
+
             // ── The board ──
             Box(
                 modifier = Modifier
@@ -579,7 +580,29 @@ private fun DropBoard(
                 }
             }
 
-            Spacer(Modifier.height(launcherGap))
+            // ── Aim chevrons above the launcher's active lane ──
+            Box(modifier = Modifier.width(boardW).height(launcherGap)) {
+                val chevPulse = rememberInfiniteTransition(label = "chev")
+                val chevAlpha by chevPulse.animateFloat(
+                    initialValue = 0.35f, targetValue = 0.95f,
+                    animationSpec = infiniteRepeatable(tween(620), RepeatMode.Reverse),
+                    label = "chevAlpha"
+                )
+                Box(
+                    modifier = Modifier
+                        .offset(x = with(density) { xOf(launcherCol).toDp() })
+                        .width(cell)
+                        .fillMaxHeight(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.KeyboardDoubleArrowUp,
+                        contentDescription = null,
+                        tint = currentColor.copy(alpha = chevAlpha),
+                        modifier = Modifier.size(launcherGap.coerceAtMost(cell * 0.6f))
+                    )
+                }
+            }
 
             // ── Launcher ──
             Launcher(
@@ -729,16 +752,8 @@ private fun BoardTileView(
                     )
                 }
             }
-            .clip(RoundedCornerShape(10.dp))
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(color, color.copy(alpha = 0.82f))
-                )
-            )
-            .border(1.dp, Color.White.copy(alpha = 0.18f), RoundedCornerShape(10.dp)),
-        contentAlignment = Alignment.Center
     ) {
-        TileNumber(value = tile.value, cell = size, background = color)
+        TileFace(value = tile.value, size = size, color = color)
     }
 }
 
@@ -946,106 +961,15 @@ private fun Launcher(
                             center = center
                         )
                     }
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(
-                        Brush.verticalGradient(listOf(color, color.copy(alpha = 0.85f)))
-                    )
-                    .border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(10.dp))
-                    .alpha(if (enabled) 1f else 0.45f),
-                contentAlignment = Alignment.Center
+                    .alpha(if (enabled) 1f else 0.45f)
             ) {
-                TileNumber(value = currentValue, cell = cell, background = color)
+                TileFace(value = currentValue, size = cell * 0.92f, color = color)
             }
         }
     }
 }
 
 // ───────────────────────────── Controls & badges ────────────────────────────
-
-@Composable
-private fun SkipTileButton(
-    enabled: Boolean,
-    height: Dp,
-    onClick: () -> Unit
-) {
-    val theme = LocalGameTheme.current
-    val shape = RoundedCornerShape(50)
-    Row(
-        modifier = Modifier
-            .height(height)
-            .clip(shape)
-            .background(theme.surfaceColor.copy(alpha = 0.8f))
-            .border(1.dp, theme.accentColor.copy(alpha = if (enabled) 0.55f else 0.2f), shape)
-            .testTag("DropMerge_Button_Skip")
-            .let { if (enabled) it.pointerInput(Unit) { detectTapGestures { onClick() } } else it }
-            .padding(horizontal = height * 0.4f)
-            .alpha(if (enabled) 1f else 0.45f),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = Icons.Rounded.SkipNext,
-            contentDescription = stringResource(R.string.drop_skip),
-            tint = theme.accentColor,
-            modifier = Modifier.size(height * 0.55f)
-        )
-        Spacer(Modifier.width(height * 0.15f))
-        Text(
-            text = stringResource(R.string.drop_skip),
-            color = theme.accentColor,
-            fontSize = (height.value * 0.34f).sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 1.sp
-        )
-    }
-}
-
-@Composable
-private fun UnlockBadge(target: Int, height: Dp) {
-    val theme = LocalGameTheme.current
-    val color = dropTileColor(theme, target)
-    NeonCard(
-        accentColor = color,
-        isSelected = false,
-        onClick = null,
-        cornerRadius = height * 0.18f
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(horizontal = height * 0.16f, vertical = height * 0.08f)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(height * 0.52f)
-                    .clip(RoundedCornerShape(height * 0.12f))
-                    .background(color.copy(alpha = 0.45f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = target.toString(),
-                    color = Color.White.copy(alpha = 0.9f),
-                    fontSize = (height.value * if (target >= 1000) 0.14f else 0.18f).sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            Spacer(Modifier.height(height * 0.03f))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Rounded.Lock,
-                    contentDescription = null,
-                    tint = theme.textColor.copy(alpha = 0.6f),
-                    modifier = Modifier.size(height * 0.14f)
-                )
-                Spacer(Modifier.width(2.dp))
-                Text(
-                    text = stringResource(R.string.drop_locked),
-                    color = theme.textColor.copy(alpha = 0.6f),
-                    fontSize = (height.value * 0.13f).sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-        }
-    }
-}
 
 @Composable
 private fun UnlockBanner(value: Int) {
@@ -1110,19 +1034,275 @@ private fun NextTileChip(nextValue: Int, height: Dp) {
                 modifier = Modifier
                     .size(height)
                     .scale(appear.value)
-                    .clip(RoundedCornerShape(height * 0.24f))
-                    .background(Brush.verticalGradient(listOf(color, color.copy(alpha = 0.85f))))
-                    .border(1.dp, Color.White.copy(alpha = 0.18f), RoundedCornerShape(height * 0.24f)),
-                contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = nextValue.toString(),
-                    color = if (color.luminance() > 0.55f) Color(0xFF1E1E2E) else Color.White,
-                    fontSize = (height.value * if (nextValue >= 100) 0.30f else 0.38f).sp,
-                    fontWeight = FontWeight.Bold
+                TileFace(value = nextValue, size = height, color = color, corner = height * 0.24f)
+            }
+        }
+    }
+}
+
+// ─────────────────────────────── Neon HUD ───────────────────────────────────
+
+private fun formatNum(n: Int): String = "%,d".format(n)
+private fun lighten(c: Color, f: Float): Color = lerp(c, Color.White, f)
+private fun darken(c: Color, f: Float): Color = lerp(c, Color.Black, f)
+
+/** Glossy, beveled tile face used across the board, launcher and chips. */
+@Composable
+private fun TileFace(value: Int, size: Dp, color: Color, corner: Dp = size * 0.22f) {
+    val shape = RoundedCornerShape(corner)
+    Box(
+        modifier = Modifier
+            .size(size)
+            .clip(shape)
+            .background(Brush.verticalGradient(listOf(lighten(color, 0.26f), color, darken(color, 0.16f))))
+            .border(1.5.dp, lighten(color, 0.5f).copy(alpha = 0.55f), shape),
+        contentAlignment = Alignment.Center
+    ) {
+        // Top gloss highlight for the glassy bevel.
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.5f)
+                .align(Alignment.TopCenter)
+                .padding(horizontal = corner * 0.45f, vertical = 1.5.dp)
+                .clip(
+                    RoundedCornerShape(
+                        topStart = corner * 0.8f, topEnd = corner * 0.8f,
+                        bottomStart = corner * 0.5f, bottomEnd = corner * 0.5f
+                    )
+                )
+                .background(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.34f), Color.Transparent)))
+        )
+        TileNumber(value = value, cell = size, background = color)
+    }
+}
+
+@Composable
+private fun DropHud(
+    score: Int,
+    best: Int,
+    combo: Int,
+    goalTarget: Int,
+    height: Dp,
+    onPause: () -> Unit
+) {
+    val theme = LocalGameTheme.current
+    Row(
+        modifier = Modifier.fillMaxWidth().height(height),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(height * 0.12f)
+    ) {
+        HudPauseButton(size = height * 0.82f, onClick = onPause)
+        HudCard(modifier = Modifier.weight(1.7f), accent = theme.primaryColor, height = height) {
+            HudScoreContent(score = score, best = best, height = height)
+        }
+        HudCard(modifier = Modifier.weight(1f), accent = theme.accentColor, height = height, active = combo >= 2) {
+            HudComboContent(combo = combo, height = height)
+        }
+        HudCard(modifier = Modifier.weight(1.2f), accent = dropTileColor(theme, goalTarget), height = height) {
+            HudGoalContent(target = goalTarget, height = height)
+        }
+    }
+}
+
+@Composable
+private fun HudPauseButton(size: Dp, onClick: () -> Unit) {
+    val theme = LocalGameTheme.current
+    val shape = RoundedCornerShape(size * 0.30f)
+    Box(
+        modifier = Modifier
+            .size(size)
+            .clip(shape)
+            .background(theme.surfaceColor.copy(alpha = 0.85f))
+            .border(1.5.dp, theme.primaryColor.copy(alpha = 0.45f), shape)
+            .pointerInput(Unit) { detectTapGestures { onClick() } }
+            .testTag("DropMerge_Button_Pause"),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.Pause,
+            contentDescription = stringResource(R.string.desc_pause_button),
+            tint = theme.textColor,
+            modifier = Modifier.size(size * 0.5f)
+        )
+    }
+}
+
+@Composable
+private fun HudCard(
+    modifier: Modifier = Modifier,
+    accent: Color,
+    height: Dp,
+    active: Boolean = false,
+    content: @Composable () -> Unit
+) {
+    val theme = LocalGameTheme.current
+    val shape = RoundedCornerShape(height * 0.26f)
+    Box(
+        modifier = modifier
+            .height(height)
+            .clip(shape)
+            .background(
+                Brush.verticalGradient(
+                    listOf(theme.surfaceColor.copy(alpha = 0.9f), theme.surfaceColor.copy(alpha = 0.5f))
+                )
+            )
+            .border(1.5.dp, accent.copy(alpha = if (active) 0.9f else 0.4f), shape),
+        contentAlignment = Alignment.Center
+    ) {
+        content()
+    }
+}
+
+@Composable
+private fun HudScoreContent(score: Int, best: Int, height: Dp) {
+    val theme = LocalGameTheme.current
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            stringResource(R.string.drop_hud_score), color = theme.textColor.copy(alpha = 0.5f),
+            fontSize = (height.value * 0.135f).sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp
+        )
+        Text(
+            formatNum(score), color = theme.textColor,
+            fontSize = (height.value * 0.30f).sp, fontWeight = FontWeight.ExtraBold, maxLines = 1
+        )
+        Text(
+            "♛ ${formatNum(best)}", color = theme.accentColor.copy(alpha = 0.9f),
+            fontSize = (height.value * 0.135f).sp, fontWeight = FontWeight.SemiBold, maxLines = 1
+        )
+    }
+}
+
+@Composable
+private fun HudComboContent(combo: Int, height: Dp) {
+    val theme = LocalGameTheme.current
+    val active = combo >= 2
+    val comboColor = if (active) theme.accentColor else theme.textColor.copy(alpha = 0.45f)
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            stringResource(R.string.drop_hud_combo), color = theme.textColor.copy(alpha = 0.5f),
+            fontSize = (height.value * 0.135f).sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp
+        )
+        Text(
+            "×${maxOf(combo, 1)}", color = comboColor,
+            fontSize = (height.value * 0.30f).sp, fontWeight = FontWeight.ExtraBold, maxLines = 1
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(height * 0.028f)) {
+            repeat(5) { i ->
+                Box(
+                    Modifier.size(height * 0.05f).clip(CircleShape)
+                        .background(if (i < combo) theme.accentColor else theme.textColor.copy(alpha = 0.2f))
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun HudGoalContent(target: Int, height: Dp) {
+    val theme = LocalGameTheme.current
+    val color = dropTileColor(theme, target)
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            stringResource(R.string.drop_hud_goal), color = theme.textColor.copy(alpha = 0.5f),
+            fontSize = (height.value * 0.125f).sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, maxLines = 1
+        )
+        Spacer(Modifier.height(height * 0.04f))
+        TileFace(value = target, size = height * 0.36f, color = color, corner = height * 0.10f)
+        Spacer(Modifier.height(height * 0.03f))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Rounded.Lock, null, tint = theme.textColor.copy(alpha = 0.5f), modifier = Modifier.size(height * 0.12f))
+            Spacer(Modifier.width(2.dp))
+            Text(
+                stringResource(R.string.drop_locked), color = theme.textColor.copy(alpha = 0.5f),
+                fontSize = (height.value * 0.11f).sp, fontWeight = FontWeight.SemiBold, maxLines = 1
+            )
+        }
+    }
+}
+
+@Composable
+private fun DropBottomBar(
+    canUndo: Boolean,
+    canSkip: Boolean,
+    nextValue: Int,
+    height: Dp,
+    onUndo: () -> Unit,
+    onSkip: () -> Unit
+) {
+    val theme = LocalGameTheme.current
+    Row(
+        modifier = Modifier.fillMaxWidth().height(height),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(height * 0.10f)
+    ) {
+        BottomActionPill(
+            icon = Icons.AutoMirrored.Rounded.Undo,
+            label = stringResource(R.string.undo),
+            enabled = canUndo,
+            accent = theme.textColor,
+            height = height,
+            testTag = "DropMerge_Button_Undo",
+            onClick = onUndo
+        )
+        Column(
+            modifier = Modifier.weight(1f),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                stringResource(R.string.drop_tap_to_shoot), color = theme.primaryColor,
+                fontSize = (height.value * 0.20f).sp, fontWeight = FontWeight.ExtraBold,
+                letterSpacing = 0.8.sp, maxLines = 1
+            )
+            Text(
+                stringResource(R.string.drop_shoot_to_merge), color = theme.textColor.copy(alpha = 0.5f),
+                fontSize = (height.value * 0.125f).sp, fontWeight = FontWeight.Medium, maxLines = 1
+            )
+        }
+        NextTileChip(nextValue = nextValue, height = height * 0.46f)
+        BottomActionPill(
+            icon = Icons.Rounded.SkipNext,
+            label = stringResource(R.string.drop_skip),
+            enabled = canSkip,
+            accent = theme.accentColor,
+            height = height,
+            testTag = "DropMerge_Button_Skip",
+            onClick = onSkip
+        )
+    }
+}
+
+@Composable
+private fun BottomActionPill(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    enabled: Boolean,
+    accent: Color,
+    height: Dp,
+    testTag: String,
+    onClick: () -> Unit
+) {
+    val theme = LocalGameTheme.current
+    val shape = RoundedCornerShape(height * 0.30f)
+    Column(
+        modifier = Modifier
+            .height(height)
+            .clip(shape)
+            .background(theme.surfaceColor.copy(alpha = 0.8f))
+            .border(1.5.dp, accent.copy(alpha = if (enabled) 0.5f else 0.18f), shape)
+            .let { if (enabled) it.pointerInput(Unit) { detectTapGestures { onClick() } } else it }
+            .alpha(if (enabled) 1f else 0.45f)
+            .padding(horizontal = height * 0.26f)
+            .testTag(testTag),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(icon, label, tint = accent, modifier = Modifier.size(height * 0.34f))
+        Text(
+            label, color = accent, fontSize = (height.value * 0.14f).sp,
+            fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp, maxLines = 1
+        )
     }
 }
 
