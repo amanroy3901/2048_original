@@ -57,6 +57,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -77,6 +78,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -118,6 +120,27 @@ fun DropMergeScreen(
     val bestScore by viewModel.bestScore.collectAsState(initial = 0)
     val vibrationEnabled by viewModel.vibrationEnabled.collectAsState()
     val soundEnabled by viewModel.soundEnabled.collectAsState()
+
+    // First-play guided tutorial: tips advance as the player takes their first shots.
+    val hasSeenTutorial by viewModel.hasSeenTutorial.collectAsState()
+    var tutorialDismissed by rememberSaveable { mutableStateOf(false) }
+    val tutorialTips = listOf(
+        stringResource(R.string.drop_tut_1),
+        stringResource(R.string.drop_tut_2),
+        stringResource(R.string.drop_tut_3),
+        stringResource(R.string.drop_tut_4),
+        stringResource(R.string.drop_tut_5),
+        stringResource(R.string.drop_tut_6)
+    )
+    val showTutorial = hasSeenTutorial == false && !tutorialDismissed && !gameState.isGameOver
+    val tutorialStep = gameState.moveCount.coerceAtMost(tutorialTips.lastIndex)
+
+    // Mark complete once the player shoots past the last tip.
+    LaunchedEffect(gameState.moveCount, hasSeenTutorial) {
+        if (hasSeenTutorial == false && gameState.moveCount > tutorialTips.lastIndex) {
+            viewModel.setTutorialSeen()
+        }
+    }
 
     val haptics = LocalHapticFeedback.current
     val context = LocalContext.current
@@ -238,6 +261,23 @@ fun DropMergeScreen(
         ) {
             val unlockedValue = gameState.justUnlockedValue ?: 0
             UnlockBanner(value = unlockedValue)
+        }
+
+        // ── First-play guided tutorial coach (advances with the first shots) ──
+        if (showTutorial) {
+            NeonDropTutorial(
+                step = tutorialStep,
+                total = tutorialTips.size,
+                text = tutorialTips[tutorialStep],
+                isLast = tutorialStep == tutorialTips.lastIndex,
+                onFinish = {
+                    tutorialDismissed = true
+                    viewModel.setTutorialSeen()
+                },
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = screenH * 0.135f, start = screenW * 0.06f, end = screenW * 0.06f)
+            )
         }
     }
 
@@ -1303,6 +1343,93 @@ private fun BottomActionPill(
             label, color = accent, fontSize = (height.value * 0.14f).sp,
             fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp, maxLines = 1
         )
+    }
+}
+
+// ──────────────────────────── First-play tutorial ───────────────────────────
+
+/**
+ * Non-blocking coach card shown to first-time players. The tip advances with the
+ * player's own first shots (driven by moveCount), so they learn by doing. A Skip
+ * button (or the final "Got it!") dismisses it.
+ */
+@Composable
+private fun NeonDropTutorial(
+    step: Int,
+    total: Int,
+    text: String,
+    isLast: Boolean,
+    onFinish: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val theme = LocalGameTheme.current
+    val shape = RoundedCornerShape(18.dp)
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(
+                Brush.verticalGradient(
+                    listOf(theme.surfaceColor.copy(alpha = 0.97f), theme.surfaceColor.copy(alpha = 0.88f))
+                )
+            )
+            .border(1.5.dp, theme.accentColor.copy(alpha = 0.6f), shape)
+            .padding(horizontal = 18.dp, vertical = 14.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = stringResource(R.string.drop_how_to_play),
+                color = theme.accentColor,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = 1.5.sp,
+                modifier = Modifier.weight(1f)
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                repeat(total) { i ->
+                    Box(
+                        Modifier
+                            .size(if (i == step) 8.dp else 6.dp)
+                            .clip(CircleShape)
+                            .background(if (i <= step) theme.accentColor else theme.textColor.copy(alpha = 0.25f))
+                    )
+                }
+            }
+        }
+        Spacer(Modifier.height(9.dp))
+        Text(
+            text = text,
+            color = theme.textColor,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.Center,
+            lineHeight = 20.sp
+        )
+        Spacer(Modifier.height(11.dp))
+        val btnShape = RoundedCornerShape(50)
+        Box(
+            modifier = Modifier
+                .clip(btnShape)
+                .then(
+                    if (isLast) Modifier.background(theme.accentColor)
+                    else Modifier.border(1.dp, theme.accentColor.copy(alpha = 0.5f), btnShape)
+                )
+                .pointerInput(Unit) { detectTapGestures { onFinish() } }
+                .padding(horizontal = 20.dp, vertical = 7.dp)
+        ) {
+            Text(
+                text = if (isLast) stringResource(R.string.drop_tut_got_it) else stringResource(R.string.drop_tut_skip),
+                color = if (isLast) {
+                    if (theme.accentColor.luminance() > 0.55f) Color(0xFF1E1E2E) else Color.White
+                } else theme.accentColor,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
     }
 }
 

@@ -32,6 +32,16 @@
     <string name="drop_hud_goal">NEXT GOAL</string>
     <string name="drop_tap_to_shoot">TAP LANE TO SHOOT</string>
     <string name="drop_shoot_to_merge">SHOOT SAME NUMBER TO MERGE</string>
+    <!-- Neon Drop guided tutorial (first play) -->
+    <string name="drop_tut_1">👆 Tap any lane to shoot the tile upward</string>
+    <string name="drop_tut_2">Same numbers that touch MERGE and double — line them up!</string>
+    <string name="drop_tut_3">One shot can chain several merges — that\'s a COMBO!</string>
+    <string name="drop_tut_4">Grow tiles up toward the glowing NEXT-GOAL badge</string>
+    <string name="drop_tut_5">Stuck? UNDO your last shot, or SKIP to swap the tile</string>
+    <string name="drop_tut_6">You\'ve got it — keep chaining merges! 🎉</string>
+    <string name="drop_tut_skip">Skip</string>
+    <string name="drop_tut_got_it">Got it!</string>
+    <string name="drop_how_to_play">HOW TO PLAY</string>
     <string name="best_score">BEST SCORE</string>
     <string name="continue_game">Continue</string>
     <string name="continue_game_subtitle">Pick up where\nyou left off</string>
