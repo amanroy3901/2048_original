@@ -88,6 +88,7 @@ import com.avfusionapps.game_2048.ui.theme.LocalGameTheme
 import com.avfusionapps.game_2048.ui.theme._2048OriginalTheme
 import com.avfusionapps.game_2048.ui.components.AnimatedLevelUnlockDialog
 import com.avfusionapps.game_2048.viewmodel.Direction
+import com.avfusionapps.game_2048.utils.SoundManager
 import com.avfusionapps.game_2048.viewmodel.GameViewModel
 import com.avfusionapps.game_2048.viewmodel.GameState
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -136,6 +137,18 @@ fun GameScreen(
     val canUndo by viewModel.canUndo.collectAsState()
     val context = LocalContext.current
     var showExitDialog by remember { mutableStateOf(false) }
+
+    // Classic-mode sound effects: one cue per move (slide / merge / milestone / game over),
+    // gated by the sound setting.
+    val soundManager = remember { SoundManager(context) }
+    DisposableEffect(Unit) {
+        onDispose { soundManager.release() }
+    }
+    LaunchedEffect(viewModel, soundEnabled) {
+        viewModel.soundEvent.collect { soundId ->
+            if (soundEnabled) soundManager.playSound(soundId)
+        }
+    }
 
     LaunchedEffect(key1 = viewModel, key2 = vibrationEnabled) {
         viewModel.mergeEvent.collectLatest {

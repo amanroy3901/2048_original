@@ -67,6 +67,7 @@ import com.avfusionapps.game_2048.ui.components.NeonCard
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -99,6 +100,7 @@ import com.avfusionapps.game_2048.ui.components.GameBoard
 import com.avfusionapps.game_2048.ui.components.TimeAttackGameOverDialog
 import com.avfusionapps.game_2048.ui.theme.LocalGameTheme
 import com.avfusionapps.game_2048.model.TimeAttackState
+import com.avfusionapps.game_2048.utils.SoundManager
 import com.avfusionapps.game_2048.viewmodel.TimeAttackViewModel
 import androidx.activity.compose.BackHandler
 import kotlin.math.abs
@@ -114,8 +116,20 @@ fun TimeAttackScreen(
     val hasSeenTimeAttackTutorial by viewModel.hasSeenTimeAttackTutorial.collectAsState()
     var forceShowTutorial by remember { mutableStateOf(false) }
     val vibrationEnabled by viewModel.vibrationEnabled.collectAsState(initial = true)
+    val soundEnabled by viewModel.soundEnabled.collectAsState(initial = true)
     var floatingBonuses by remember { mutableStateOf(listOf<FloatingBonus>()) }
     val context = LocalContext.current
+
+    // Sound effects: one cue per swipe (slide / merge / game over), gated by the sound setting.
+    val soundManager = remember { SoundManager(context) }
+    DisposableEffect(Unit) {
+        onDispose { soundManager.release() }
+    }
+    LaunchedEffect(viewModel, soundEnabled) {
+        viewModel.soundEvent.collect { soundId ->
+            if (soundEnabled) soundManager.playSound(soundId)
+        }
+    }
 
     val theme = LocalGameTheme.current
 
