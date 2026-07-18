@@ -87,14 +87,16 @@ def main():
         {"freq": 340, "dur": 0.035, "decay": 6.0, "harmonics": [(1, 1.0), (2, 0.3)]},
     ], gain=0.55)
 
-    # Level up / unlock: bright ascending major arpeggio C5-E5-G5-C6 with a final octave sparkle.
-    up_harm = [(1, 1.0), (2, 0.4), (3, 0.12)]
+    # Level up / goal reached: bright triumphant ascending fanfare
+    # C5-E5-G5-C6 rising, landing on a sustained, shimmering E6 finish.
+    up_harm = [(1, 1.0), (2, 0.5), (3, 0.22), (4, 0.1)]
     level_up = synth([
-        {"freq": 523, "dur": 0.10, "decay": 2.0, "harmonics": up_harm},
-        {"freq": 659, "dur": 0.10, "decay": 2.0, "harmonics": up_harm},
-        {"freq": 784, "dur": 0.10, "decay": 2.0, "harmonics": up_harm},
-        {"freq": 1047, "dur": 0.28, "decay": 1.6, "harmonics": up_harm},
-    ], gain=0.8)
+        {"freq": 523, "dur": 0.085, "decay": 1.6, "harmonics": up_harm},   # C5
+        {"freq": 659, "dur": 0.085, "decay": 1.6, "harmonics": up_harm},   # E5
+        {"freq": 784, "dur": 0.085, "decay": 1.6, "harmonics": up_harm},   # G5
+        {"freq": 1047, "dur": 0.11, "decay": 1.4, "harmonics": up_harm},   # C6
+        {"freq": 1319, "dur": 0.40, "decay": 0.9, "harmonics": up_harm},   # E6 bright sustained finish
+    ], gain=0.85)
 
     # Game over: descending minor arpeggio A4 -> F4 -> C4, slightly gritty.
     go_harm = [(1, 1.0), (2, 0.35), (3, 0.15)]

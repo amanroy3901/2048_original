@@ -36,6 +36,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -56,16 +57,23 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.composed
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
@@ -81,6 +89,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -208,6 +217,13 @@ fun DropMergeScreen(
 
     BackHandler { viewModel.togglePause() }
 
+    // On-screen bounds of anchorable controls (launcher/goal/undo/skip), captured by
+    // the layout so the tutorial coach can point at the real element in any orientation.
+    val anchorBounds = remember { mutableStateMapOf<TutorialAnchor, Rect>() }
+    val registerAnchor = remember {
+        { anchor: TutorialAnchor, rect: Rect -> anchorBounds[anchor] = rect }
+    }
+
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
@@ -219,33 +235,35 @@ fun DropMergeScreen(
         val screenH = maxHeight
         val isLandscape = screenW > screenH
 
-        if (isLandscape) {
-            DropMergeLandscape(
-                screenW = screenW,
-                screenH = screenH,
-                gameState = gameState,
-                bestScore = bestScore,
-                shakeXProvider = { shakeX.value },
-                viewModel = viewModel
-            )
-        } else {
-            // On big/tablet portrait screens, cap the content width and center it so the
-            // board stays prominent and the HUD doesn't stretch sparse across the width.
-            val isTablet = minOf(screenW.value, screenH.value) >= 600f
-            val contentW = if (isTablet) 600.dp else screenW
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.TopCenter
-            ) {
-                Box(Modifier.width(contentW).fillMaxHeight()) {
-                    DropMergePortrait(
-                        screenW = contentW,
-                        screenH = screenH,
-                        gameState = gameState,
-                        bestScore = bestScore,
-                        shakeXProvider = { shakeX.value },
-                        viewModel = viewModel
-                    )
+        CompositionLocalProvider(LocalTutorialRegister provides registerAnchor) {
+            if (isLandscape) {
+                DropMergeLandscape(
+                    screenW = screenW,
+                    screenH = screenH,
+                    gameState = gameState,
+                    bestScore = bestScore,
+                    shakeXProvider = { shakeX.value },
+                    viewModel = viewModel
+                )
+            } else {
+                // On big/tablet portrait screens, cap the content width and center it so the
+                // board stays prominent and the HUD doesn't stretch sparse across the width.
+                val isTablet = minOf(screenW.value, screenH.value) >= 600f
+                val contentW = if (isTablet) 600.dp else screenW
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.TopCenter
+                ) {
+                    Box(Modifier.width(contentW).fillMaxHeight()) {
+                        DropMergePortrait(
+                            screenW = contentW,
+                            screenH = screenH,
+                            gameState = gameState,
+                            bestScore = bestScore,
+                            shakeXProvider = { shakeX.value },
+                            viewModel = viewModel
+                        )
+                    }
                 }
             }
         }
@@ -263,9 +281,10 @@ fun DropMergeScreen(
             UnlockBanner(value = unlockedValue)
         }
 
-        // ── First-play guided tutorial coach (advances with the first shots) ──
+        // ── First-play guided tutorial coach — points at the real control per step ──
         if (showTutorial) {
-            NeonDropTutorial(
+            TutorialCoach(
+                targetRect = anchorForStep(tutorialStep)?.let { anchorBounds[it] },
                 step = tutorialStep,
                 total = tutorialTips.size,
                 text = tutorialTips[tutorialStep],
@@ -273,10 +292,7 @@ fun DropMergeScreen(
                 onFinish = {
                     tutorialDismissed = true
                     viewModel.setTutorialSeen()
-                },
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = screenH * 0.135f, start = screenW * 0.06f, end = screenW * 0.06f)
+                }
             )
         }
     }
@@ -406,7 +422,7 @@ private fun DropMergeLandscape(
                 HudComboContent(gameState.comboCount, cardH)
             }
             HudCard(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().tutorialAnchor(TutorialAnchor.GOAL),
                 accent = dropTileColor(theme, gameState.unlockTarget), height = cardH
             ) {
                 HudGoalContent(gameState.unlockTarget, cardH)
@@ -444,7 +460,8 @@ private fun DropMergeLandscape(
                 accent = theme.textColor,
                 height = cardH * 0.66f,
                 testTag = "DropMerge_Button_Undo",
-                onClick = { viewModel.undo() }
+                onClick = { viewModel.undo() },
+                modifier = Modifier.tutorialAnchor(TutorialAnchor.UNDO)
             )
             BottomActionPill(
                 icon = Icons.Rounded.SkipNext,
@@ -453,7 +470,8 @@ private fun DropMergeLandscape(
                 accent = theme.accentColor,
                 height = cardH * 0.66f,
                 testTag = "DropMerge_Button_Skip",
-                onClick = { viewModel.skipTile() }
+                onClick = { viewModel.skipTile() },
+                modifier = Modifier.tutorialAnchor(TutorialAnchor.SKIP)
             )
             Spacer(Modifier.weight(1f))
         }
@@ -585,7 +603,8 @@ private fun DropBoard(
                                 tile = tile,
                                 target = Offset(xOf(c), yOf(r)),
                                 spawn = Offset(xOf(c), boardHPx + cellPx * 0.4f),
-                                size = cell
+                                size = cell,
+                                appearFromBottom = !gameState.justUndid
                             )
                         }
                     }
@@ -646,6 +665,7 @@ private fun DropBoard(
 
             // ── Launcher ──
             Launcher(
+                modifier = Modifier.tutorialAnchor(TutorialAnchor.LAUNCHER),
                 boardW = boardW,
                 cell = cell,
                 gap = gap,
@@ -744,13 +764,23 @@ private fun BoardTileView(
     tile: DropTile,
     target: Offset,
     spawn: Offset,
-    size: Dp
+    size: Dp,
+    appearFromBottom: Boolean = true
 ) {
     val theme = LocalGameTheme.current
-    val position = remember { Animatable(spawn, Offset.VectorConverter) }
+    // Normal play: new tiles fly up from the launcher (spawn). On undo, a tile that
+    // was merged away reappears in place and "splits" out with a quick scale-in.
+    val position = remember { Animatable(if (appearFromBottom) spawn else target, Offset.VectorConverter) }
     val popScale = remember { Animatable(1f) }
+    val splitScale = remember { Animatable(if (appearFromBottom) 1f else 0.45f) }
     val glowAlpha = remember { Animatable(0f) }
     var lastValue by remember { mutableIntStateOf(tile.value) }
+
+    LaunchedEffect(Unit) {
+        if (!appearFromBottom) {
+            splitScale.animateTo(1f, spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMedium))
+        }
+    }
 
     LaunchedEffect(target) {
         position.animateTo(
@@ -780,7 +810,7 @@ private fun BoardTileView(
         modifier = Modifier
             .offset { IntOffset(position.value.x.roundToInt(), position.value.y.roundToInt()) }
             .size(size)
-            .scale(popScale.value)
+            .scale(popScale.value * splitScale.value)
             .drawBehind {
                 if (glowAlpha.value > 0f) {
                     drawCircle(
@@ -891,6 +921,7 @@ private fun ComboText(
  */
 @Composable
 private fun Launcher(
+    modifier: Modifier = Modifier,
     boardW: Dp,
     cell: Dp,
     gap: Dp,
@@ -935,7 +966,7 @@ private fun Launcher(
     val color = dropTileColor(theme, currentValue)
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .width(boardW)
             .height(cell + extra)
             .pointerInput(enabled) {
@@ -1140,7 +1171,10 @@ private fun DropHud(
         HudCard(modifier = Modifier.weight(1f), accent = theme.accentColor, height = height, active = combo >= 2) {
             HudComboContent(combo = combo, height = height)
         }
-        HudCard(modifier = Modifier.weight(1.2f), accent = dropTileColor(theme, goalTarget), height = height) {
+        HudCard(
+            modifier = Modifier.weight(1.2f).tutorialAnchor(TutorialAnchor.GOAL),
+            accent = dropTileColor(theme, goalTarget), height = height
+        ) {
             HudGoalContent(target = goalTarget, height = height)
         }
     }
@@ -1284,7 +1318,8 @@ private fun DropBottomBar(
             accent = theme.textColor,
             height = height,
             testTag = "DropMerge_Button_Undo",
-            onClick = onUndo
+            onClick = onUndo,
+            modifier = Modifier.tutorialAnchor(TutorialAnchor.UNDO)
         )
         Column(
             modifier = Modifier.weight(1f),
@@ -1308,7 +1343,8 @@ private fun DropBottomBar(
             accent = theme.accentColor,
             height = height,
             testTag = "DropMerge_Button_Skip",
-            onClick = onSkip
+            onClick = onSkip,
+            modifier = Modifier.tutorialAnchor(TutorialAnchor.SKIP)
         )
     }
 }
@@ -1321,12 +1357,13 @@ private fun BottomActionPill(
     accent: Color,
     height: Dp,
     testTag: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val theme = LocalGameTheme.current
     val shape = RoundedCornerShape(height * 0.30f)
     Column(
-        modifier = Modifier
+        modifier = modifier
             .height(height)
             .clip(shape)
             .background(theme.surfaceColor.copy(alpha = 0.8f))
@@ -1348,13 +1385,124 @@ private fun BottomActionPill(
 
 // ──────────────────────────── First-play tutorial ───────────────────────────
 
+/** Elements a tutorial tip can point at; resolved to on-screen bounds at layout time. */
+private enum class TutorialAnchor { LAUNCHER, GOAL, UNDO, SKIP }
+
+/** Provided by the screen so anchored controls can report their on-screen bounds. */
+private val LocalTutorialRegister =
+    staticCompositionLocalOf<((TutorialAnchor, Rect) -> Unit)?> { null }
+
+/** Reports this element's bounds (root coords) so the coach can point at it. */
+private fun Modifier.tutorialAnchor(anchor: TutorialAnchor): Modifier = composed {
+    val register = LocalTutorialRegister.current
+    if (register != null) {
+        this.onGloballyPositioned { register(anchor, it.boundsInRoot()) }
+    } else {
+        this
+    }
+}
+
+/** Which control each tutorial step points at (null = centered over the board). */
+private fun anchorForStep(step: Int): TutorialAnchor? = when (step) {
+    0 -> TutorialAnchor.LAUNCHER
+    2 -> TutorialAnchor.GOAL
+    3 -> TutorialAnchor.UNDO
+    4 -> TutorialAnchor.SKIP
+    else -> null // merge (1) and the finish (5) sit centered over the board
+}
+
 /**
- * Non-blocking coach card shown to first-time players. The tip advances with the
- * player's own first shots (driven by moveCount), so they learn by doing. A Skip
- * button (or the final "Got it!") dismisses it.
+ * Non-blocking coach for first-time players. Positions the tip card next to the
+ * [targetRect] control (root coordinates) with a pointer aimed at it, flipping
+ * above/below based on available space. Because it follows the real element
+ * bounds, it stays correct in any orientation and on tablets. Advances with the
+ * player's own first shots.
  */
 @Composable
-private fun NeonDropTutorial(
+private fun TutorialCoach(
+    targetRect: Rect?,
+    step: Int,
+    total: Int,
+    text: String,
+    isLast: Boolean,
+    onFinish: () -> Unit
+) {
+    val density = LocalDensity.current
+    var cardSize by remember { mutableStateOf(IntSize.Zero) }
+    var overlayOrigin by remember { mutableStateOf(Offset.Zero) }
+    val bob = rememberInfiniteTransition(label = "coachBob")
+    val bobY by bob.animateFloat(
+        initialValue = 0f, targetValue = 6f,
+        animationSpec = infiniteRepeatable(tween(640), RepeatMode.Reverse),
+        label = "coachBobY"
+    )
+
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxSize()
+            .onGloballyPositioned { overlayOrigin = it.localToRoot(Offset.Zero) }
+    ) {
+        val wPx = with(density) { maxWidth.toPx() }
+        val hPx = with(density) { maxHeight.toPx() }
+        val margin = with(density) { 14.dp.toPx() }
+        val gapPx = with(density) { 8.dp.toPx() }
+        val pointerPx = with(density) { 26.dp.toPx() }
+
+        // Convert the target into this overlay's local coordinate space.
+        val localTop = targetRect?.let { it.top - overlayOrigin.y }
+        val localBottom = targetRect?.let { it.bottom - overlayOrigin.y }
+        val localCx = targetRect?.let { it.center.x - overlayOrigin.x } ?: (wPx / 2f)
+
+        val hasTarget = targetRect != null
+        val placeAbove = hasTarget && ((localTop!! + localBottom!!) / 2f) > hPx * 0.52f
+
+        val cardW = cardSize.width.toFloat()
+        val cardH = cardSize.height.toFloat()
+        val blockH = cardH + if (hasTarget) pointerPx else 0f
+
+        var x = localCx - cardW / 2f
+        x = x.coerceIn(margin, (wPx - cardW - margin).coerceAtLeast(margin))
+        var y = when {
+            !hasTarget -> hPx * 0.40f
+            placeAbove -> localTop!! - blockH - gapPx
+            else -> localBottom!! + gapPx
+        }
+        y = y.coerceIn(margin, (hPx - blockH - margin).coerceAtLeast(margin))
+
+        // Keep the pointer aimed at the target even if the card was clamped to an edge.
+        val pointerDx = localCx - (x + cardW / 2f)
+
+        Column(
+            modifier = Modifier
+                .offset { IntOffset(x.roundToInt(), y.roundToInt()) }
+                .widthIn(max = 340.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            if (hasTarget && !placeAbove) CoachPointer(up = true, dx = pointerDx, bobY = -bobY)
+            CoachCard(
+                step = step, total = total, text = text, isLast = isLast, onFinish = onFinish,
+                modifier = Modifier.onGloballyPositioned { cardSize = it.size }
+            )
+            if (hasTarget && placeAbove) CoachPointer(up = false, dx = pointerDx, bobY = bobY)
+        }
+    }
+}
+
+@Composable
+private fun CoachPointer(up: Boolean, dx: Float, bobY: Float) {
+    val theme = LocalGameTheme.current
+    Icon(
+        imageVector = if (up) Icons.Rounded.KeyboardDoubleArrowUp else Icons.Rounded.KeyboardDoubleArrowDown,
+        contentDescription = null,
+        tint = theme.accentColor,
+        modifier = Modifier
+            .offset { IntOffset(dx.roundToInt(), bobY.roundToInt()) }
+            .size(26.dp)
+    )
+}
+
+@Composable
+private fun CoachCard(
     step: Int,
     total: Int,
     text: String,
@@ -1370,46 +1518,34 @@ private fun NeonDropTutorial(
             .clip(shape)
             .background(
                 Brush.verticalGradient(
-                    listOf(theme.surfaceColor.copy(alpha = 0.97f), theme.surfaceColor.copy(alpha = 0.88f))
+                    listOf(theme.surfaceColor.copy(alpha = 0.98f), theme.surfaceColor.copy(alpha = 0.9f))
                 )
             )
             .border(1.5.dp, theme.accentColor.copy(alpha = 0.6f), shape)
-            .padding(horizontal = 18.dp, vertical = 14.dp),
+            .padding(horizontal = 18.dp, vertical = 13.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = stringResource(R.string.drop_how_to_play),
-                color = theme.accentColor,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.ExtraBold,
-                letterSpacing = 1.5.sp,
-                modifier = Modifier.weight(1f)
+                color = theme.accentColor, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold,
+                letterSpacing = 1.5.sp, modifier = Modifier.weight(1f)
             )
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
                 repeat(total) { i ->
                     Box(
-                        Modifier
-                            .size(if (i == step) 8.dp else 6.dp)
-                            .clip(CircleShape)
+                        Modifier.size(if (i == step) 8.dp else 6.dp).clip(CircleShape)
                             .background(if (i <= step) theme.accentColor else theme.textColor.copy(alpha = 0.25f))
                     )
                 }
             }
         }
-        Spacer(Modifier.height(9.dp))
+        Spacer(Modifier.height(8.dp))
         Text(
-            text = text,
-            color = theme.textColor,
-            fontSize = 15.sp,
-            fontWeight = FontWeight.SemiBold,
-            textAlign = TextAlign.Center,
-            lineHeight = 20.sp
+            text = text, color = theme.textColor, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.Center, lineHeight = 20.sp
         )
-        Spacer(Modifier.height(11.dp))
+        Spacer(Modifier.height(10.dp))
         val btnShape = RoundedCornerShape(50)
         Box(
             modifier = Modifier
@@ -1426,8 +1562,7 @@ private fun NeonDropTutorial(
                 color = if (isLast) {
                     if (theme.accentColor.luminance() > 0.55f) Color(0xFF1E1E2E) else Color.White
                 } else theme.accentColor,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold
+                fontSize = 13.sp, fontWeight = FontWeight.Bold
             )
         }
     }

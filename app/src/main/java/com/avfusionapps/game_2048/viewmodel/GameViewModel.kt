@@ -15,6 +15,7 @@ import com.avfusionapps.game_2048.notification.ReminderManager
 import com.avfusionapps.game_2048.data.model.LevelProgression
 import com.avfusionapps.game_2048.data.repository.LevelProgressionRepository
 import com.avfusionapps.game_2048.data.room.GameMoveRepository
+import com.avfusionapps.game_2048.utils.SoundManager
 import com.google.firebase.Firebase
 import com.google.firebase.analytics.analytics
 import com.google.firebase.auth.auth
@@ -198,6 +199,15 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
     val mergeEvent: SharedFlow<Unit> = _mergeEvent.asSharedFlow()
+
+    // One-shot sound cue per move (a SoundManager.SOUND_* id); the UI plays it, gated by the
+    // sound setting, so exactly one sound fires per move (slide / merge / milestone / game over).
+    private val _soundEvent = MutableSharedFlow<Int>(
+        replay = 0,
+        extraBufferCapacity = 4,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
+    val soundEvent: SharedFlow<Int> = _soundEvent.asSharedFlow()
 
     val hasSavedGameFlow: StateFlow<Boolean> = gameStateFlow
         .map { it.hasSavedGame }
@@ -438,6 +448,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         val size = gameState.gridSize
         val newGrid = MutableList(size) { MutableList(size) { 0 } }
         var boardMoved = false
+        var mergedThisTurn = false
         var scoreIncreaseThisTurn = 0
         val animationInfoMap = mutableMapOf<Pair<Int, Int>, TileAnimationInfo>()
 
@@ -473,6 +484,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     }
 
                     if (didMerge) {
+                        mergedThisTurn = true
                         _mergeEvent.tryEmit(Unit)
                     }
                 }
@@ -514,8 +526,17 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
             val previousHighestTile = gameState.grid.flatten().maxOrNull() ?: 0
             val currentHighestTile = newGrid.flatten().maxOrNull() ?: 0
-            if (currentHighestTile >= 128 && currentHighestTile > previousHighestTile) {
+            val reachedGoal = currentHighestTile >= 128 && currentHighestTile > previousHighestTile
+            if (reachedGoal) {
                 _newlyUnlockedTileValue.value = currentHighestTile
+            }
+
+            // One sound per move: celebration on a new milestone tile, else merge / slide / game over.
+            when {
+                gameOver -> _soundEvent.tryEmit(SoundManager.SOUND_GAME_OVER)
+                reachedGoal -> _soundEvent.tryEmit(SoundManager.SOUND_LEVEL_UP)
+                mergedThisTurn -> _soundEvent.tryEmit(SoundManager.SOUND_MERGE)
+                else -> _soundEvent.tryEmit(SoundManager.SOUND_MOVE)
             }
 
             val newMoveCount = gameState.moveCount + 1

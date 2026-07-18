@@ -90,7 +90,10 @@ data class DropMergeState(
     /* ---- transient, animation-facing fields (cleared as steps advance) ---- */
     val lastStep: DropStep? = null,
     val comboCount: Int = 0,
-    val justUnlockedValue: Int? = null
+    val justUnlockedValue: Int? = null,
+    /** True on the frame an undo restores the board, so tiles split back in place
+     *  instead of animating up from the launcher. Cleared on the next shot. */
+    val justUndid: Boolean = false
 )
 
 object DropMergeConfig {

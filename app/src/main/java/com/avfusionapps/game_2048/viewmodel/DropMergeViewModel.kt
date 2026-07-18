@@ -130,7 +130,7 @@ class DropMergeViewModel(application: Application) : AndroidViewModel(applicatio
 
         resolveJob = viewModelScope.launch {
             _events.tryEmit(DropGameEvent.SHOOT)
-            _gameState.value = state.copy(isResolving = true, canUndo = false, comboCount = 0)
+            _gameState.value = state.copy(isResolving = true, canUndo = false, comboCount = 0, justUndid = false)
 
             var runningBest = state.bestTileEver
             for (step in result.steps) {
@@ -224,7 +224,8 @@ class DropMergeViewModel(application: Application) : AndroidViewModel(applicatio
             canUndo = false,
             canSkip = true,
             lastStep = null,
-            comboCount = 0
+            comboCount = 0,
+            justUndid = true // tiles split back in place instead of shooting up
         )
     }
 
