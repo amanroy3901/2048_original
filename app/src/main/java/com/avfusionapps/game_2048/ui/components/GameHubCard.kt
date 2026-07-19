@@ -73,8 +73,8 @@ fun GameHubCard(
             val cardH = maxHeight
             val hPad = cardH * 0.10f
             val vPad = cardH * 0.09f
-            val iconBoxSize = cardH * 0.42f
-            val iconInnerSize = cardH * 0.26f
+            val iconBoxSize = cardH * 0.6f
+            val iconInnerSize = cardH * 0.5f
             val chipH = cardH * 0.27f
             val titleFontSize = (cardH * 0.135f).value.sp
             val subtitleFontSize = (cardH * 0.095f).value.sp
