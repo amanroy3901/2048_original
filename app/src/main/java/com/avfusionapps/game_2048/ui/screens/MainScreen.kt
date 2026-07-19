@@ -4,6 +4,7 @@ import android.content.res.Configuration
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -16,6 +17,7 @@ import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.KeyboardDoubleArrowUp
 import androidx.compose.material.icons.rounded.SwipeUp
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.Star
@@ -42,6 +44,7 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
@@ -285,7 +288,7 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
                     subtitle = stringResource(R.string.merge_2048_hub_subtitle),
                     tagText = stringResource(R.string.merge_2048_hub_tag),
                     accentColor = theme.primaryColor,
-                    graphic = { size -> MainModeIcon(mode = MainModeIconType.Classic, tint = theme.primaryColor, size = size) },
+                    graphic = { size -> MergeTilesIllustration(accent = theme.primaryColor, size = size) },
                     modes = listOf(
                         GameHubMode(
                             label = stringResource(R.string.mode_classic),
@@ -312,7 +315,7 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
                     subtitle = stringResource(R.string.neon_drop_subtitle),
                     tagText = stringResource(R.string.neon_drop_tag),
                     accentColor = theme.accentColor,
-                    graphic = { size -> MainModeIcon(mode = MainModeIconType.NeonDrop, tint = theme.accentColor, size = size) },
+                    graphic = { size -> ShooterIllustration(accent = theme.accentColor, size = size) },
                     modes = listOf(
                         GameHubMode(
                             label = stringResource(R.string.mode_play),
@@ -1008,6 +1011,94 @@ private fun MainModeIcon(
     )
 }
 
+/** Mini 2×2 board of merging number tiles — conveys the "slide & merge numbers" idea. */
+@Composable
+private fun MergeTilesIllustration(accent: Color, size: Dp) {
+    val theme = LocalGameTheme.current
+    val gap = size * 0.08f
+    val tile = (size - gap) / 2f
+    val nums = listOf(2, 4, 8, 16)
+    Column(verticalArrangement = Arrangement.spacedBy(gap)) {
+        repeat(2) { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                repeat(2) { col ->
+                    val n = nums[row * 2 + col]
+                    val c = theme.tileColors[n] ?: accent
+                    Box(
+                        modifier = Modifier
+                            .size(tile)
+                            .clip(RoundedCornerShape(tile * 0.24f))
+                            .background(Brush.verticalGradient(listOf(c, c.copy(alpha = 0.8f))))
+                            .border(1.dp, Color.White.copy(alpha = 0.22f), RoundedCornerShape(tile * 0.24f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = n.toString(),
+                            color = if (c.luminance() > 0.6f) Color(0xFF1E1E2E) else Color.White,
+                            fontSize = (tile.value * if (n >= 10) 0.4f else 0.5f).sp,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Mini lanes with stacked tiles, an aim chevron and a launcher — conveys the "shoot up" idea. */
+@Composable
+private fun ShooterIllustration(accent: Color, size: Dp) {
+    val theme = LocalGameTheme.current
+    val laneGap = size * 0.09f
+    val laneW = (size - laneGap * 2) / 3f
+    val tileH = laneW * 0.7f
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(laneGap),
+            modifier = Modifier.height(size * 0.56f)
+        ) {
+            ShooterLane(laneW, tileH, listOf(theme.tileColors[16] ?: accent, theme.tileColors[8] ?: accent))
+            ShooterLane(laneW, tileH, listOf(theme.tileColors[4] ?: accent))
+            ShooterLane(laneW, tileH, emptyList())
+        }
+        Icon(
+            imageVector = Icons.Rounded.KeyboardDoubleArrowUp,
+            contentDescription = null,
+            tint = accent,
+            modifier = Modifier.size(size * 0.2f)
+        )
+        Box(
+            modifier = Modifier
+                .size(laneW, tileH)
+                .clip(RoundedCornerShape(laneW * 0.2f))
+                .background(Brush.verticalGradient(listOf(accent, accent.copy(alpha = 0.8f))))
+                .border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(laneW * 0.2f))
+        )
+    }
+}
+
+@Composable
+private fun ShooterLane(width: Dp, tileH: Dp, tiles: List<Color>) {
+    val theme = LocalGameTheme.current
+    Column(
+        modifier = Modifier
+            .width(width)
+            .fillMaxHeight()
+            .clip(RoundedCornerShape(width * 0.22f))
+            .background(theme.textColor.copy(alpha = 0.07f)),
+        verticalArrangement = Arrangement.spacedBy(width * 0.06f)
+    ) {
+        tiles.forEach { c ->
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(tileH)
+                    .clip(RoundedCornerShape(width * 0.18f))
+                    .background(Brush.verticalGradient(listOf(c, c.copy(alpha = 0.8f))))
+            )
+        }
+    }
+}
 
 
 val lilitaOneFontFamily = FontFamily(Font(R.font.lilitaone_regular))

@@ -13,9 +13,9 @@
     <string name="time_attack">TIME ATTACK</string>
     <string name="time_attack_subtitle">Beat the clock, chase high scores</string>
     <string name="time_attack_tag">⏱ 60 Seconds</string>
-    <string name="neon_drop">NEON DROP</string>
-    <string name="neon_drop_subtitle">Shoot tiles up, merge &amp; chain</string>
-    <string name="neon_drop_tag">⬆ Merge Shooter</string>
+    <string name="neon_drop">NEON SHOOTER</string>
+    <string name="neon_drop_subtitle">Shoot tiles up to merge &amp; chain</string>
+    <string name="neon_drop_tag">⬆ Tile Shooter</string>
     <string name="merge_2048_hub">2048 MERGE</string>
     <string name="merge_2048_hub_subtitle">Slide &amp; merge the number tiles</string>
     <string name="merge_2048_hub_tag">3×3 · 4×4 · 5×5 grids</string>
