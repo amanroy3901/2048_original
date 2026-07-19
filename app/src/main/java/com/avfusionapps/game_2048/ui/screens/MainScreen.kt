@@ -136,10 +136,6 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
         }
     }
 
-    LaunchedEffect(persistentPlayerName) {
-        viewModel.enableNotification()
-    }
-
     if (showGridSizeDialogMain) {
         GridSizeBottomSheet(
             currentSize = gameState.gridSize,
