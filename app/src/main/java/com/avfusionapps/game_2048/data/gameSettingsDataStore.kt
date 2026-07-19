@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
@@ -28,6 +29,8 @@ class GameSettingsRepository(private val context: Context) {
         val HAS_SEEN_CLASSIC_TUTORIAL_KEY = booleanPreferencesKey("has_seen_classic_tutorial")
         val HAS_SEEN_TIME_ATTACK_TUTORIAL_KEY = booleanPreferencesKey("has_seen_time_attack_tutorial")
         val HAS_SEEN_NEON_DROP_TUTORIAL_KEY = booleanPreferencesKey("has_seen_neon_drop_tutorial")
+        val REMINDERS_ENABLED_KEY = booleanPreferencesKey("reminders_enabled")
+        val LAST_PLAYED_AT_KEY = longPreferencesKey("last_played_at")
         const val DEFAULT_PLAYER_NAME = "Player"
         const val DEFAULT_HIGH_SCORE = 0
     }
@@ -186,6 +189,36 @@ class GameSettingsRepository(private val context: Context) {
     suspend fun updateHasSeenNeonDropTutorial(hasSeen: Boolean) {
         context.gameSettingsDataStore.edit { preferences ->
             preferences[HAS_SEEN_NEON_DROP_TUTORIAL_KEY] = hasSeen
+        }
+    }
+
+    // ── Re-engagement reminders ──────────────────────────────────────────────
+
+    /** Whether play-reminder notifications are enabled (default on). */
+    val remindersEnabledFlow: Flow<Boolean> = context.gameSettingsDataStore.data
+        .catch { exception ->
+            if (exception is IOException) emit(androidx.datastore.preferences.core.emptyPreferences())
+            else throw exception
+        }
+        .map { preferences -> preferences[REMINDERS_ENABLED_KEY] ?: true }
+
+    suspend fun updateRemindersEnabled(enabled: Boolean) {
+        context.gameSettingsDataStore.edit { preferences ->
+            preferences[REMINDERS_ENABLED_KEY] = enabled
+        }
+    }
+
+    /** Epoch millis of the player's last active session; drives reminder inactivity checks. */
+    val lastPlayedAtFlow: Flow<Long> = context.gameSettingsDataStore.data
+        .catch { exception ->
+            if (exception is IOException) emit(androidx.datastore.preferences.core.emptyPreferences())
+            else throw exception
+        }
+        .map { preferences -> preferences[LAST_PLAYED_AT_KEY] ?: 0L }
+
+    suspend fun updateLastPlayedAt(timestamp: Long) {
+        context.gameSettingsDataStore.edit { preferences ->
+            preferences[LAST_PLAYED_AT_KEY] = timestamp
         }
     }
 }

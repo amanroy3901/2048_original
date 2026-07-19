@@ -227,6 +227,9 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     val vibrationEnabled: StateFlow<Boolean> = settingsRepository.vibrationEnabledFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
+    val remindersEnabled: StateFlow<Boolean> = settingsRepository.remindersEnabledFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
     val hasSeenClassicTutorial: StateFlow<Boolean?> = settingsRepository.hasSeenClassicTutorialFlow
         .stateIn(
             scope = viewModelScope,
@@ -249,6 +252,14 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     fun updateVibrationEnabled(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.updateVibrationEnabled(enabled)
+        }
+    }
+
+    /** Toggle re-engagement reminders and (re)arm or cancel the reminder chain. */
+    fun updateRemindersEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.updateRemindersEnabled(enabled)
+            if (enabled) reminderManager.scheduleReminders() else reminderManager.cancelReminders()
         }
     }
 
