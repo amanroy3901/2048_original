@@ -733,13 +733,7 @@ fun MainScreenContent(
                             subtitle = stringResource(R.string.merge_2048_hub_subtitle),
                             tagText = stringResource(R.string.merge_2048_hub_tag),
                             accentColor = theme.primaryColor,
-                            graphic = {
-                                IsometricTile2048Graphic(
-                                    primaryColor = theme.primaryColor,
-                                    secondaryColor = theme.secondaryColor,
-                                    modifier = Modifier.fillMaxSize(0.85f)
-                                )
-                            },
+                            graphic = { size -> MergeTilesIllustration(accent = theme.primaryColor, size = size) },
                             modes = listOf(
                                 GameHubMode(
                                     label = stringResource(R.string.mode_classic),
@@ -765,14 +759,7 @@ fun MainScreenContent(
                             subtitle = stringResource(R.string.neon_drop_subtitle),
                             tagText = stringResource(R.string.neon_drop_tag),
                             accentColor = theme.accentColor,
-                            graphic = {
-                                Icon(
-                                    imageVector = Icons.Rounded.SwipeUp,
-                                    contentDescription = null,
-                                    tint = theme.accentColor,
-                                    modifier = Modifier.fillMaxSize(0.7f)
-                                )
-                            },
+                            graphic = { size -> ShooterIllustration(accent = theme.accentColor, size = size) },
                             modes = listOf(
                                 GameHubMode(
                                     label = stringResource(R.string.mode_play),
