@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -73,8 +74,6 @@ fun GameHubCard(
             val cardH = maxHeight
             val hPad = cardH * 0.10f
             val vPad = cardH * 0.09f
-            val iconBoxSize = cardH * 0.6f
-            val iconInnerSize = cardH * 0.5f
             val chipH = cardH * 0.27f
             val titleFontSize = (cardH * 0.135f).value.sp
             val subtitleFontSize = (cardH * 0.095f).value.sp
@@ -87,23 +86,26 @@ fun GameHubCard(
             ) {
                 // ── Header: graphic + name/subtitle/tag ──
                 Row(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box(
+                    // A square panel that fills the header height, so the illustration is as
+                    // large as fits without ever clipping. The graphic is inset a little.
+                    BoxWithConstraints(
                         modifier = Modifier
-                            .size(iconBoxSize)
-                            .clip(RoundedCornerShape(cardH * 0.10f))
-                            .background(accentColor.copy(alpha = 0.15f))
-                            .border(1.dp, accentColor.copy(alpha = 0.3f), RoundedCornerShape(cardH * 0.10f)),
+                            .fillMaxHeight()
+                            .aspectRatio(1f)
+                            .clip(RoundedCornerShape(cardH * 0.14f))
+                            .background(accentColor.copy(alpha = 0.12f))
+                            .border(1.dp, accentColor.copy(alpha = 0.25f), RoundedCornerShape(cardH * 0.14f)),
                         contentAlignment = Alignment.Center
                     ) {
-                        graphic(iconInnerSize)
+                        graphic(maxHeight * 0.82f)
                     }
 
                     Spacer(Modifier.width(cardH * 0.10f))
 
-                    Column(verticalArrangement = Arrangement.Center) {
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
                         Text(
                             text = title,
                             fontSize = titleFontSize,
