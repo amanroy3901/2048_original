@@ -9,14 +9,14 @@ plugins {
 
 android {
     namespace = "com.avfusionapps.game_2048"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.avfusionapps.game_2048"
         minSdk = 27
-        targetSdk = 35
-        versionCode = 7
-        versionName = "2.0.0"
+        targetSdk = 36
+        versionCode = 8
+        versionName = "2.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
