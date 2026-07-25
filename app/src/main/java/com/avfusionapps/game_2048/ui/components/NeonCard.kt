@@ -22,25 +22,35 @@ fun NeonCard(
     modifier: Modifier = Modifier,
     cornerRadius: Dp = 18.dp,
     borderWidth: Dp = 1.4.dp,
+    /** Optional neon sweep for the outline; falls back to a flat [accentColor] border. */
+    borderBrush: Brush? = null,
     content: @Composable () -> Unit
 ) {
     val theme = LocalGameTheme.current
     val cardShape = RoundedCornerShape(cornerRadius)
     val borderColor = if (isSelected) accentColor else accentColor.copy(alpha = 0.35f)
-    val glowColor = accentColor.copy(alpha = if (isSelected) 0.22f else 0.08f)
+    // A whisper of accent along the top edge only — enough to catch the light, not
+    // enough to tint the card. The body settles onto the page colour so the card
+    // reads as part of the screen rather than a coloured panel sitting on it.
+    val glowColor = accentColor.copy(alpha = if (isSelected) 0.09f else 0.04f)
+    val bodyColor = theme.backgroundColor.copy(alpha = 0.92f)
 
     Box(
         modifier = modifier
             .clip(cardShape)
             .background(
                 brush = Brush.verticalGradient(
-                    colors = listOf(
-                        glowColor,
-                        theme.backgroundColor.copy(alpha = 0.92f)
+                    colorStops = arrayOf(
+                        0f to glowColor,
+                        0.45f to bodyColor,
+                        1f to bodyColor
                     )
                 )
             )
-            .border(borderWidth, borderColor, cardShape)
+            .then(
+                if (borderBrush != null) Modifier.border(borderWidth, borderBrush, cardShape)
+                else Modifier.border(borderWidth, borderColor, cardShape)
+            )
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
     ) {
         content()

@@ -43,6 +43,10 @@ fun LastGameCard(
         onClick = null,
         cornerRadius = 20.dp,
         borderWidth = 1.dp,
+        // Outline sweeps blue → purple → pink across the card, as in the mockup.
+        borderBrush = Brush.horizontalGradient(
+            colors = listOf(theme.gradientEndColor, theme.secondaryColor, primary)
+        ),
         modifier = modifier.fillMaxWidth()
     ) {
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
@@ -92,7 +96,9 @@ fun LastGameCard(
                             text = stringResource(R.string.last_game),
                             fontSize = labelFontSize,
                             fontWeight = FontWeight.Bold,
-                            color = primary,
+                            // Blue-violet in the mockup — the pink is reserved for Best Tile.
+                            color = theme.secondaryColor,
+                            letterSpacing = 0.5.sp,
                             maxLines = 1
                         )
                         Spacer(modifier = Modifier.height(spacerSmall))
@@ -143,13 +149,11 @@ fun LastGameCard(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(btnHeight)
-                            .clip(RoundedCornerShape(12.dp))
-                            // Neon sweep (accent → theme secondary) like the hero buttons.
-                            .background(
-                                Brush.horizontalGradient(listOf(primary, theme.secondaryColor))
-                            )
+                            .clip(RoundedCornerShape(14.dp))
+                            // Full hero sweep (pink → purple → blue) like the wordmark.
+                            .background(Brush.horizontalGradient(theme.heroGradient))
                             .testTag("LastGameCard_Button_Resume"),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(14.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color.Transparent,
                             contentColor = buttonContentColor

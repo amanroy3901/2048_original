@@ -34,7 +34,7 @@ fun BestScoreCard(
         accentColor = iconColor,
         isSelected = false,
         onClick = null,
-        cornerRadius = 16.dp,
+        cornerRadius = 20.dp,
         borderWidth = 1.dp,
         modifier = modifier.fillMaxWidth()
     ) {
@@ -60,7 +60,9 @@ fun BestScoreCard(
                     modifier = Modifier
                         .size(badgeSizeDp)
                         .clip(RoundedCornerShape(badgeSizeDp / 2))
+                        // Faint accent wash inside the ring, as the mockup's glowing badge.
                         .background(theme.backgroundColor)
+                        .background(iconColor.copy(alpha = 0.12f))
                         .border(
                             width = 1.dp,
                             color = iconColor.copy(alpha = 0.5f),

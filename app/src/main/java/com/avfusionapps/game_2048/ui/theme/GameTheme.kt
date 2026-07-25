@@ -12,9 +12,22 @@ sealed class GameTheme(val name: String) {
     abstract val accentColor: Color
     abstract val isDark: Boolean
 
+    /**
+     * Right-hand stop of the hero neon sweep (title, CTAs, card borders). Themes that
+     * only have a two-tone identity leave this as the secondary, which collapses
+     * [heroGradient] back to the original two stops.
+     */
+    open val gradientEndColor: Color get() = secondaryColor
+
+    /** The signature sweep used by the wordmark, the primary CTAs and card borders. */
+    val heroGradient: List<Color>
+        get() = listOf(primaryColor, secondaryColor, gradientEndColor).distinct()
+
     object NeonPink : GameTheme("Neon Pink") {
         override val primaryColor = Color(0xFFFF006E)
         override val secondaryColor = Color(0xFF8338EC)
+        // The wordmark and CTAs land on blue, not purple, in the neon mockup.
+        override val gradientEndColor = Color(0xFF3D5AFE)
         override val backgroundColor = Color(0xFF03020A)
         override val surfaceColor = Color(0xFF0C081A)
         override val textColor = Color.White

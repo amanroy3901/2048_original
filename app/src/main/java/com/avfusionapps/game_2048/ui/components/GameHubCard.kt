@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -59,7 +60,9 @@ fun GameHubCard(
     accentColor: Color,
     graphic: @Composable (Dp) -> Unit,
     modes: List<GameHubMode>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** When set, the tag line fades from [accentColor] to this colour (as in the mockup). */
+    tagGradientEnd: Color? = null
 ) {
     val theme = LocalGameTheme.current
     val textSecondary = theme.textColor.copy(alpha = 0.6f)
@@ -68,6 +71,16 @@ fun GameHubCard(
         accentColor = accentColor,
         isSelected = false,
         onClick = null,
+        cornerRadius = 20.dp,
+        borderWidth = 1.dp,
+        // Faint neon outline that picks up the accent on the left and the blue end on the right.
+        borderBrush = Brush.horizontalGradient(
+            colors = listOf(
+                accentColor.copy(alpha = 0.45f),
+                theme.secondaryColor.copy(alpha = 0.35f),
+                theme.gradientEndColor.copy(alpha = 0.45f)
+            )
+        ),
         modifier = modifier.fillMaxWidth()
     ) {
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
@@ -106,9 +119,12 @@ fun GameHubCard(
                     Spacer(Modifier.width(cardH * 0.10f))
 
                     Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
+                        // Line heights are pinned just above the glyph box; the default 1.5×
+                        // leading pushes the tag line out of the header and clips it.
                         Text(
                             text = title,
                             fontSize = titleFontSize,
+                            lineHeight = titleFontSize * 1.15f,
                             fontWeight = FontWeight.Bold,
                             color = theme.textColor,
                             letterSpacing = 0.5.sp,
@@ -119,19 +135,38 @@ fun GameHubCard(
                         Text(
                             text = subtitle,
                             fontSize = subtitleFontSize,
+                            lineHeight = subtitleFontSize * 1.2f,
                             color = textSecondary,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                         Spacer(Modifier.height(cardH * 0.02f))
-                        Text(
-                            text = tagText,
-                            fontSize = tagFontSize,
-                            fontWeight = FontWeight.SemiBold,
-                            color = accentColor,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                        if (tagGradientEnd != null) {
+                            Text(
+                                text = tagText,
+                                fontSize = tagFontSize,
+                                lineHeight = tagFontSize * 1.2f,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.Unspecified,
+                                style = LocalTextStyle.current.copy(
+                                    brush = Brush.horizontalGradient(
+                                        colors = listOf(accentColor, tagGradientEnd)
+                                    )
+                                ),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        } else {
+                            Text(
+                                text = tagText,
+                                fontSize = tagFontSize,
+                                lineHeight = tagFontSize * 1.2f,
+                                fontWeight = FontWeight.SemiBold,
+                                color = accentColor,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
                 }
 
@@ -148,6 +183,9 @@ fun GameHubCard(
                         GameHubModeChip(
                             mode = mode,
                             accentColor = accentColor,
+                            // A lone chip spans the card, so it carries the full pink→blue
+                            // sweep; paired chips are half as wide and stop at the violet.
+                            fullSweep = modes.size == 1,
                             fontSize = (chipH * 0.38f).value.sp,
                             iconSize = chipH * 0.52f,
                             modifier = Modifier
@@ -165,6 +203,7 @@ fun GameHubCard(
 private fun GameHubModeChip(
     mode: GameHubMode,
     accentColor: Color,
+    fullSweep: Boolean,
     fontSize: androidx.compose.ui.unit.TextUnit,
     iconSize: Dp,
     modifier: Modifier = Modifier
@@ -173,20 +212,31 @@ private fun GameHubModeChip(
     val shape = RoundedCornerShape(50)
 
     val background = if (mode.filled) {
-        // Two-tone neon sweep (accent → theme secondary), matching the hero buttons.
-        Modifier.background(
-            brush = Brush.horizontalGradient(
-                colors = listOf(accentColor, theme.secondaryColor)
-            )
-        )
+        val sweep = if (fullSweep) {
+            listOf(accentColor, theme.secondaryColor, theme.gradientEndColor)
+        } else {
+            listOf(accentColor, theme.secondaryColor)
+        }
+        Modifier.background(brush = Brush.horizontalGradient(sweep.distinct()))
     } else {
+        // Secondary chips read blue-violet in the mockup, not pink.
         Modifier
             .background(theme.backgroundColor.copy(alpha = 0.4f))
-            .border(1.dp, accentColor.copy(alpha = 0.55f), shape)
+            .border(
+                width = 1.dp,
+                brush = Brush.horizontalGradient(
+                    colors = listOf(
+                        theme.secondaryColor.copy(alpha = 0.6f),
+                        theme.gradientEndColor.copy(alpha = 0.6f)
+                    )
+                ),
+                shape = shape
+            )
     }
 
     val contentColor = when {
-        !mode.filled -> accentColor
+        // Light themes keep their darker accent so the label stays legible on a pale surface.
+        !mode.filled -> if (theme.isDark) theme.gradientEndColor else accentColor
         accentColor.luminance() > 0.55f -> Color(0xFF1E1E2E)
         else -> Color.White
     }

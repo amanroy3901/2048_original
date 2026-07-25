@@ -46,6 +46,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -307,7 +308,9 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
                     modifier = Modifier
                         .testTag("MainScreen_Card_Merge2048")
                         .weight(1.75f)
-                        .fillMaxWidth()
+                        .fillMaxWidth(),
+                    // "3×3 • 4×4 • 5×5 Grids" fades pink → violet in the mockup.
+                    tagGradientEnd = theme.secondaryColor
                 )
 
                 GameHubCard(
@@ -433,9 +436,7 @@ fun MainScreenContent(
                             fontStyle = FontStyle.Italic,
                             color = Color.Transparent,
                             style = LocalTextStyle.current.copy(
-                                brush = Brush.horizontalGradient(
-                                    listOf(theme.primaryColor, theme.secondaryColor)
-                                )
+                                brush = Brush.horizontalGradient(theme.heroGradient)
                             ),
                             letterSpacing = 4.sp
                         )
@@ -902,24 +903,18 @@ fun MainScreenContent(
                             fontStyle = FontStyle.Italic,
                             color = Color.Transparent,
                             style = LocalTextStyle.current.copy(
-                                brush = Brush.horizontalGradient(
-                                    listOf(theme.primaryColor, theme.secondaryColor)
-                                )
+                                // Pink → purple → blue across the wordmark.
+                                brush = Brush.horizontalGradient(theme.heroGradient)
                             ),
                             letterSpacing = 4.sp
                         )
                         Spacer(modifier = Modifier.height(spacerSmall))
-                        // "N E O N  R U S H" flanked by fading neon rules.
+                        // "N E O N  R U S H" flanked by tapered neon speed streaks.
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .width(screenW * 0.11f)
-                                    .height(1.5.dp)
-                                    .background(
-                                        Brush.horizontalGradient(
-                                            listOf(Color.Transparent, theme.primaryColor.copy(alpha = 0.8f))
-                                        )
-                                    )
+                            NeonSpeedStreaks(
+                                color = theme.primaryColor,
+                                width = screenW * 0.11f,
+                                pointingRight = true
                             )
                             Text(
                                 text = "N E O N   R U S H",
@@ -930,15 +925,10 @@ fun MainScreenContent(
                                 fontStyle = FontStyle.Italic,
                                 modifier = Modifier.padding(horizontal = screenW * 0.025f)
                             )
-                            Box(
-                                modifier = Modifier
-                                    .width(screenW * 0.11f)
-                                    .height(1.5.dp)
-                                    .background(
-                                        Brush.horizontalGradient(
-                                            listOf(theme.primaryColor.copy(alpha = 0.8f), Color.Transparent)
-                                        )
-                                    )
+                            NeonSpeedStreaks(
+                                color = theme.primaryColor,
+                                width = screenW * 0.11f,
+                                pointingRight = false
                             )
                         }
                     }
@@ -950,6 +940,39 @@ fun MainScreenContent(
                     actions(dims)
                 }
             }
+        }
+    }
+}
+
+/**
+ * The tapered triple rules that flank "N E O N   R U S H" — a long middle line with a
+ * shorter one above and below, each fading out away from the wordmark.
+ */
+@Composable
+private fun NeonSpeedStreaks(
+    color: Color,
+    width: Dp,
+    pointingRight: Boolean,
+    modifier: Modifier = Modifier
+) {
+    // Outer streaks are shorter, so the group tapers towards the text.
+    val lines = listOf(0.55f to 1.dp, 1f to 1.5.dp, 0.55f to 1.dp)
+
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(width * 0.03f),
+        horizontalAlignment = if (pointingRight) Alignment.End else Alignment.Start
+    ) {
+        lines.forEach { (lengthFraction, thickness) ->
+            val fade = listOf(Color.Transparent, color.copy(alpha = 0.85f))
+            Box(
+                modifier = Modifier
+                    .width(width * lengthFraction)
+                    .height(thickness)
+                    .background(
+                        Brush.horizontalGradient(if (pointingRight) fade else fade.reversed())
+                    )
+            )
         }
     }
 }
@@ -1013,19 +1036,34 @@ private fun MainModeIcon(
     )
 }
 
+/**
+ * The pink → purple → blue ramp the mockup uses for the hub illustrations. It is
+ * independent of [GameTheme.tileColors] so the artwork always reads as the brand sweep,
+ * whatever palette the board itself is on.
+ */
+@Composable
+private fun neonRamp(steps: Int): List<Color> {
+    val theme = LocalGameTheme.current
+    return List(steps) { i ->
+        val t = if (steps <= 1) 0f else i / (steps - 1f)
+        lerp(theme.primaryColor, theme.gradientEndColor, t)
+    }
+}
+
 /** Mini 2×2 board of merging number tiles — conveys the "slide & merge numbers" idea. */
 @Composable
 private fun MergeTilesIllustration(accent: Color, size: Dp) {
-    val theme = LocalGameTheme.current
     val gap = size * 0.08f
     val tile = (size - gap) / 2f
     val nums = listOf(2, 4, 8, 16)
+    val ramp = neonRamp(nums.size)
     Column(verticalArrangement = Arrangement.spacedBy(gap)) {
         repeat(2) { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
                 repeat(2) { col ->
-                    val n = nums[row * 2 + col]
-                    val c = theme.tileColors[n] ?: accent
+                    val idx = row * 2 + col
+                    val n = nums[idx]
+                    val c = ramp[idx]
                     Box(
                         modifier = Modifier
                             .size(tile)
@@ -1050,18 +1088,19 @@ private fun MergeTilesIllustration(accent: Color, size: Dp) {
 /** Mini lanes with stacked tiles, an aim chevron and a launcher — conveys the "shoot up" idea. */
 @Composable
 private fun ShooterIllustration(accent: Color, size: Dp) {
-    val theme = LocalGameTheme.current
     val laneGap = size * 0.09f
     val laneW = (size - laneGap * 2) / 3f
     val tileH = laneW * 0.7f
+    // Left lane stacks pink → violet, middle lane the blue end — the mockup's lane colouring.
+    val ramp = neonRamp(4)
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(laneGap),
             modifier = Modifier.height(size * 0.56f)
         ) {
-            ShooterLane(laneW, tileH, listOf(theme.tileColors[16] ?: accent, theme.tileColors[8] ?: accent))
-            ShooterLane(laneW, tileH, listOf(theme.tileColors[4] ?: accent))
-            ShooterLane(laneW, tileH, emptyList())
+            ShooterLane(laneW, tileH, listOf(ramp[0]))
+            ShooterLane(laneW, tileH, listOf(ramp[1]))
+            ShooterLane(laneW, tileH, listOf(ramp[2], ramp[3]))
         }
         Icon(
             imageVector = Icons.Rounded.KeyboardDoubleArrowUp,
