@@ -173,9 +173,10 @@ private fun GameHubModeChip(
     val shape = RoundedCornerShape(50)
 
     val background = if (mode.filled) {
+        // Two-tone neon sweep (accent → theme secondary), matching the hero buttons.
         Modifier.background(
             brush = Brush.horizontalGradient(
-                colors = listOf(accentColor, accentColor.copy(alpha = 0.65f))
+                colors = listOf(accentColor, theme.secondaryColor)
             )
         )
     } else {

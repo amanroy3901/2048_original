@@ -812,13 +812,84 @@ fun MainScreenContent(
                     .padding(horizontal = hPadding, vertical = vPadding)
                     .safeDrawingPadding()
             ) {
-                // ── Top Bar ──
+                // ── Top row: settings (left) · profile pill (right) ──
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(iconBtnSize * 0.82f)
+                            .clip(CircleShape)
+                            .background(theme.surfaceColor.copy(alpha = 0.55f))
+                            .border(1.dp, theme.textColor.copy(alpha = 0.18f), CircleShape)
+                            .clickable { onSettingsClick() }
+                            .testTag("MainScreen_Button_Settings"),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Settings,
+                            contentDescription = null,
+                            tint = theme.textColor.copy(alpha = 0.75f),
+                            modifier = Modifier.size(iconSize)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    // Profile pill: avatar + player name
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(theme.surfaceColor.copy(alpha = 0.55f))
+                            .border(
+                                width = 1.dp,
+                                brush = Brush.linearGradient(
+                                    colors = listOf(
+                                        theme.primaryColor.copy(alpha = 0.7f),
+                                        theme.secondaryColor.copy(alpha = 0.7f)
+                                    )
+                                ),
+                                shape = RoundedCornerShape(50)
+                            )
+                            .clickable { navController.navigate("profile") }
+                            .padding(start = 5.dp, end = 14.dp, top = 5.dp, bottom = 5.dp)
+                            .testTag("MainScreen_Button_Profile"),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(iconBtnSize * 0.6f)
+                                .clip(CircleShape)
+                                .border(1.dp, theme.textColor.copy(alpha = 0.35f), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.AccountCircle,
+                                contentDescription = null,
+                                tint = theme.textColor.copy(alpha = 0.85f),
+                                modifier = Modifier.size(iconBtnSize * 0.42f)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = playerName,
+                            color = theme.textColor,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = (iconLabelSize.value + 2f).sp,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            modifier = Modifier.widthIn(max = screenW * 0.30f)
+                        )
+                    }
+                }
+
+                // ── Title ──
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = topBarBottomPad)
                 ) {
-                    // Title (centered)
                     Column(
                         modifier = Modifier.align(Alignment.TopCenter),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -838,96 +909,40 @@ fun MainScreenContent(
                             letterSpacing = 4.sp
                         )
                         Spacer(modifier = Modifier.height(spacerSmall))
-                        Text(
-                            text = "N E O N   R U S H",
-                            color = theme.primaryColor,
-                            fontSize = subtitleFontSize,
-                            letterSpacing = 4.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            fontStyle = FontStyle.Italic
-                        )
-                    }
-
-                    // Profile button displaying user name (top-right)
-                    Box(
-                        modifier = Modifier.align(Alignment.TopEnd)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .widthIn(min = 72.dp, max = screenW * 0.28f)
-                                .clip(RoundedCornerShape(iconBtnCorner))
-                                .background(
-                                    brush = Brush.verticalGradient(
-                                        colors = listOf(
-                                            theme.surfaceColor,
-                                            theme.backgroundColor.copy(alpha = 0.6f)
-                                        )
-                                    )
-                                )
-                                .drawWithContent {
-                                    drawContent()
-                                    drawNeonGlow(theme.primaryColor.copy(alpha = 0.3f), 6.dp)
-                                }
-                                .border(
-                                    width = 1.dp,
-                                    brush = Brush.linearGradient(
-                                        colors = listOf(
-                                            theme.primaryColor.copy(alpha = 0.6f),
-                                            theme.secondaryColor.copy(alpha = 0.6f)
-                                        )
-                                    ),
-                                    shape = RoundedCornerShape(iconBtnCorner)
-                                )
-                                .clickable { navController.navigate("profile") }
-                                .padding(horizontal = 8.dp, vertical = 6.dp)
-                                .testTag("MainScreen_Button_Profile"),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            // Circular glowing icon container
+                        // "N E O N  R U S H" flanked by fading neon rules.
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(
                                 modifier = Modifier
-                                    .size(32.dp)
-                                    .clip(CircleShape)
+                                    .width(screenW * 0.11f)
+                                    .height(1.5.dp)
                                     .background(
-                                        brush = Brush.radialGradient(
-                                            colors = listOf(
-                                                theme.secondaryColor.copy(alpha = 0.25f),
-                                                Color.Transparent
-                                            )
+                                        Brush.horizontalGradient(
+                                            listOf(Color.Transparent, theme.primaryColor.copy(alpha = 0.8f))
                                         )
                                     )
-                                    .border(
-                                        width = 1.dp,
-                                        color = theme.secondaryColor.copy(alpha = 0.5f),
-                                        shape = CircleShape
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.AccountCircle,
-                                    contentDescription = null,
-                                    tint = theme.secondaryColor,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(4.dp))
+                            )
                             Text(
-                                text = playerName,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = lilitaOneFontFamily,
-                                fontSize = (iconLabelSize.value + 1f).sp,
-                                maxLines = 1,
-                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                                style = LocalTextStyle.current.copy(
-                                    brush = Brush.horizontalGradient(
-                                        colors = listOf(theme.primaryColor, theme.secondaryColor)
+                                text = "N E O N   R U S H",
+                                color = theme.primaryColor,
+                                fontSize = subtitleFontSize,
+                                letterSpacing = 4.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                fontStyle = FontStyle.Italic,
+                                modifier = Modifier.padding(horizontal = screenW * 0.025f)
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .width(screenW * 0.11f)
+                                    .height(1.5.dp)
+                                    .background(
+                                        Brush.horizontalGradient(
+                                            listOf(theme.primaryColor.copy(alpha = 0.8f), Color.Transparent)
+                                        )
                                     )
-                                ),
-                                letterSpacing = 0.5.sp
                             )
                         }
                     }
+
                 }
 
                 // ── Actions / Game Content — takes exactly the remaining height ──
