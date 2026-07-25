@@ -2,6 +2,7 @@ package com.avfusionapps.game_2048
 
 // Removed deprecated Google Sign-In imports - now using Credential Manager
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -18,6 +19,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -32,6 +34,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.avfusionapps.game_2048.data.GameSettingsRepository
+import com.avfusionapps.game_2048.notification.GameReminderWorker
 import com.avfusionapps.game_2048.notification.ReminderManager
 import com.avfusionapps.game_2048.ui.screens.DropMergeScreen
 import com.avfusionapps.game_2048.ui.screens.GameScreen
@@ -53,8 +57,10 @@ import com.google.android.play.core.install.model.AppUpdateType
 import com.google.android.play.core.install.model.InstallStatus
 import com.google.android.play.core.install.model.UpdateAvailability
 import com.google.firebase.Firebase
+import com.google.firebase.analytics.analytics
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.auth
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 
@@ -65,8 +71,12 @@ class MainActivity : ComponentActivity() {
     private lateinit var appUpdateManager: AppUpdateManager
     private lateinit var snackbarHostState: SnackbarHostState
     private lateinit var reminderManager: ReminderManager
+    private lateinit var settingsRepository: GameSettingsRepository
     private lateinit var firebaseAuth: FirebaseAuth
     private var keepSplashScreen = true
+
+    // Deep-link target from a reminder notification, consumed by the NavHost once composed.
+    private val pendingNavDestination = mutableStateOf<String?>(null)
 
     private val updateResultLauncher =
         registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
@@ -152,6 +162,8 @@ class MainActivity : ComponentActivity() {
         
         appUpdateManager = AppUpdateManagerFactory.create(this)
         reminderManager = ReminderManager(this)
+        settingsRepository = GameSettingsRepository(this)
+        pendingNavDestination.value = intent?.getStringExtra(GameReminderWorker.EXTRA_DESTINATION)
         firebaseAuth = Firebase.auth
         
         initializeFirebaseAuth()
@@ -182,6 +194,25 @@ class MainActivity : ComponentActivity() {
                             keepSplashScreen = false
                             firebaseAuth.signOut()
                         }
+                    }
+                }
+
+                // Handle a tap from a reminder notification once the NavHost is ready.
+                val pendingDest by pendingNavDestination
+                LaunchedEffect(pendingDest) {
+                    val dest = pendingDest ?: return@LaunchedEffect
+                    pendingNavDestination.value = null
+                    runCatching {
+                        Firebase.analytics.logEvent(
+                            "notification_opened",
+                            Bundle().apply { putString("dest", dest) }
+                        )
+                    }
+                    when (dest) {
+                        GameReminderWorker.DEST_RESUME ->
+                            navController.navigate("game?resume=true&newGame=false")
+                        else ->
+                            navController.navigate("main") { launchSingleTop = true }
                     }
                 }
 
@@ -279,6 +310,27 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         super.onDestroy()
         appUpdateManager.unregisterListener(installStateUpdatedListener)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // Record this as the last active moment and (re)arm the reminder chain, so reminders
+        // only ever fire after a real gap in play. A fresh session cancels the stale reminder.
+        val now = System.currentTimeMillis()
+        lifecycleScope.launch {
+            settingsRepository.updateLastPlayedAt(now)
+            if (settingsRepository.remindersEnabledFlow.first()) {
+                reminderManager.scheduleReminders()
+            } else {
+                reminderManager.cancelReminders()
+            }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        pendingNavDestination.value = intent.getStringExtra(GameReminderWorker.EXTRA_DESTINATION)
     }
 
     private fun checkForUpdates() {

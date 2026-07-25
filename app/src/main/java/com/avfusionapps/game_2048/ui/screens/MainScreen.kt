@@ -4,6 +4,7 @@ import android.content.res.Configuration
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -16,6 +17,7 @@ import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.KeyboardDoubleArrowUp
 import androidx.compose.material.icons.rounded.SwipeUp
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.Star
@@ -42,6 +44,7 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
@@ -136,10 +139,6 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
         }
     }
 
-    LaunchedEffect(persistentPlayerName) {
-        viewModel.enableNotification()
-    }
-
     if (showGridSizeDialogMain) {
         GridSizeBottomSheet(
             currentSize = gameState.gridSize,
@@ -207,19 +206,18 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
             val theme = LocalGameTheme.current
             val textSecondary = theme.textColor.copy(alpha = 0.6f)
 
-            // All spacing and card heights derived from screen height fractions
-            val cardSpacing   = dims.screenH * 0.018f  // gap between cards
-            val largeCardH    = dims.screenH * 0.220f  // LastGame / StartJourney card
-            val bestScoreH    = dims.screenH * 0.105f  // Best score card
-            val gameHubH      = dims.screenH * 0.170f  // each game hub card (modes inside)
-            val dividerVPad   = dims.screenH * 0.010f  // vertical padding around divider
+            // Weight-based layout: the cards share the available height by ratio, so the
+            // whole menu always fits exactly — no overflow on short phones, no wasted
+            // space on tall ones — regardless of status/nav-bar insets.
+            val cardSpacing   = dims.screenH * 0.016f  // gap between cards
+            val dividerVPad   = dims.screenH * 0.008f  // vertical padding around divider
             val dividerFontSz = (dims.screenW * 0.032f).value.sp
             val dividerHPad   = dims.screenW * 0.043f
 
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(cardSpacing),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxSize()
             ) {
                 if (hasSaved) {
                     val maxTile = gameState.grid.flatten().maxOrNull() ?: 0
@@ -233,14 +231,16 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
                         },
                         modifier = Modifier
                             .testTag("MainScreen_Card_LastGame")
-                            .height(largeCardH)
+                            .weight(2.3f)
+                            .fillMaxWidth()
                     )
                 } else {
                     StartJourneyCard(
                         onNewGameClick = { showGridSizeDialogMain = true },
                         modifier = Modifier
                             .testTag("MainScreen_Card_StartJourney")
-                            .height(largeCardH)
+                            .weight(2.3f)
+                            .fillMaxWidth()
                     )
                 }
 
@@ -248,7 +248,8 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
                     score = persistentHighScore,
                     modifier = Modifier
                         .testTag("MainScreen_Card_BestScore")
-                        .height(bestScoreH),
+                        .weight(1.05f)
+                        .fillMaxWidth(),
                     accentColor = theme.primaryColor
                 )
 
@@ -287,7 +288,7 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
                     subtitle = stringResource(R.string.merge_2048_hub_subtitle),
                     tagText = stringResource(R.string.merge_2048_hub_tag),
                     accentColor = theme.primaryColor,
-                    graphic = { size -> MainModeIcon(mode = MainModeIconType.Classic, tint = theme.primaryColor, size = size) },
+                    graphic = { size -> MergeTilesIllustration(accent = theme.primaryColor, size = size) },
                     modes = listOf(
                         GameHubMode(
                             label = stringResource(R.string.mode_classic),
@@ -305,7 +306,8 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
                     ),
                     modifier = Modifier
                         .testTag("MainScreen_Card_Merge2048")
-                        .height(gameHubH)
+                        .weight(1.75f)
+                        .fillMaxWidth()
                 )
 
                 GameHubCard(
@@ -313,7 +315,7 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
                     subtitle = stringResource(R.string.neon_drop_subtitle),
                     tagText = stringResource(R.string.neon_drop_tag),
                     accentColor = theme.accentColor,
-                    graphic = { size -> MainModeIcon(mode = MainModeIconType.NeonDrop, tint = theme.accentColor, size = size) },
+                    graphic = { size -> ShooterIllustration(accent = theme.accentColor, size = size) },
                     modes = listOf(
                         GameHubMode(
                             label = stringResource(R.string.mode_play),
@@ -324,7 +326,8 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
                     ),
                     modifier = Modifier
                         .testTag("MainScreen_Card_NeonDrop")
-                        .height(gameHubH)
+                        .weight(1.75f)
+                        .fillMaxWidth()
                 )
             }
         }
@@ -730,13 +733,7 @@ fun MainScreenContent(
                             subtitle = stringResource(R.string.merge_2048_hub_subtitle),
                             tagText = stringResource(R.string.merge_2048_hub_tag),
                             accentColor = theme.primaryColor,
-                            graphic = {
-                                IsometricTile2048Graphic(
-                                    primaryColor = theme.primaryColor,
-                                    secondaryColor = theme.secondaryColor,
-                                    modifier = Modifier.fillMaxSize(0.85f)
-                                )
-                            },
+                            graphic = { size -> MergeTilesIllustration(accent = theme.primaryColor, size = size) },
                             modes = listOf(
                                 GameHubMode(
                                     label = stringResource(R.string.mode_classic),
@@ -762,14 +759,7 @@ fun MainScreenContent(
                             subtitle = stringResource(R.string.neon_drop_subtitle),
                             tagText = stringResource(R.string.neon_drop_tag),
                             accentColor = theme.accentColor,
-                            graphic = {
-                                Icon(
-                                    imageVector = Icons.Rounded.SwipeUp,
-                                    contentDescription = null,
-                                    tint = theme.accentColor,
-                                    modifier = Modifier.fillMaxSize(0.7f)
-                                )
-                            },
+                            graphic = { size -> ShooterIllustration(accent = theme.accentColor, size = size) },
                             modes = listOf(
                                 GameHubMode(
                                     label = stringResource(R.string.mode_play),
@@ -822,13 +812,84 @@ fun MainScreenContent(
                     .padding(horizontal = hPadding, vertical = vPadding)
                     .safeDrawingPadding()
             ) {
-                // ── Top Bar ──
+                // ── Top row: settings (left) · profile pill (right) ──
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(iconBtnSize * 0.82f)
+                            .clip(CircleShape)
+                            .background(theme.surfaceColor.copy(alpha = 0.55f))
+                            .border(1.dp, theme.textColor.copy(alpha = 0.18f), CircleShape)
+                            .clickable { onSettingsClick() }
+                            .testTag("MainScreen_Button_Settings"),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Settings,
+                            contentDescription = null,
+                            tint = theme.textColor.copy(alpha = 0.75f),
+                            modifier = Modifier.size(iconSize)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    // Profile pill: avatar + player name
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(theme.surfaceColor.copy(alpha = 0.55f))
+                            .border(
+                                width = 1.dp,
+                                brush = Brush.linearGradient(
+                                    colors = listOf(
+                                        theme.primaryColor.copy(alpha = 0.7f),
+                                        theme.secondaryColor.copy(alpha = 0.7f)
+                                    )
+                                ),
+                                shape = RoundedCornerShape(50)
+                            )
+                            .clickable { navController.navigate("profile") }
+                            .padding(start = 5.dp, end = 14.dp, top = 5.dp, bottom = 5.dp)
+                            .testTag("MainScreen_Button_Profile"),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(iconBtnSize * 0.6f)
+                                .clip(CircleShape)
+                                .border(1.dp, theme.textColor.copy(alpha = 0.35f), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.AccountCircle,
+                                contentDescription = null,
+                                tint = theme.textColor.copy(alpha = 0.85f),
+                                modifier = Modifier.size(iconBtnSize * 0.42f)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = playerName,
+                            color = theme.textColor,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = (iconLabelSize.value + 2f).sp,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            modifier = Modifier.widthIn(max = screenW * 0.30f)
+                        )
+                    }
+                }
+
+                // ── Title ──
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = topBarBottomPad)
                 ) {
-                    // Title (centered)
                     Column(
                         modifier = Modifier.align(Alignment.TopCenter),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -848,100 +909,44 @@ fun MainScreenContent(
                             letterSpacing = 4.sp
                         )
                         Spacer(modifier = Modifier.height(spacerSmall))
-                        Text(
-                            text = "N E O N   R U S H",
-                            color = theme.primaryColor,
-                            fontSize = subtitleFontSize,
-                            letterSpacing = 4.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            fontStyle = FontStyle.Italic
-                        )
-                    }
-
-                    // Profile button displaying user name (top-right)
-                    Box(
-                        modifier = Modifier.align(Alignment.TopEnd)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .widthIn(min = 72.dp, max = screenW * 0.28f)
-                                .clip(RoundedCornerShape(iconBtnCorner))
-                                .background(
-                                    brush = Brush.verticalGradient(
-                                        colors = listOf(
-                                            theme.surfaceColor,
-                                            theme.backgroundColor.copy(alpha = 0.6f)
-                                        )
-                                    )
-                                )
-                                .drawWithContent {
-                                    drawContent()
-                                    drawNeonGlow(theme.primaryColor.copy(alpha = 0.3f), 6.dp)
-                                }
-                                .border(
-                                    width = 1.dp,
-                                    brush = Brush.linearGradient(
-                                        colors = listOf(
-                                            theme.primaryColor.copy(alpha = 0.6f),
-                                            theme.secondaryColor.copy(alpha = 0.6f)
-                                        )
-                                    ),
-                                    shape = RoundedCornerShape(iconBtnCorner)
-                                )
-                                .clickable { navController.navigate("profile") }
-                                .padding(horizontal = 8.dp, vertical = 6.dp)
-                                .testTag("MainScreen_Button_Profile"),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            // Circular glowing icon container
+                        // "N E O N  R U S H" flanked by fading neon rules.
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(
                                 modifier = Modifier
-                                    .size(32.dp)
-                                    .clip(CircleShape)
+                                    .width(screenW * 0.11f)
+                                    .height(1.5.dp)
                                     .background(
-                                        brush = Brush.radialGradient(
-                                            colors = listOf(
-                                                theme.secondaryColor.copy(alpha = 0.25f),
-                                                Color.Transparent
-                                            )
+                                        Brush.horizontalGradient(
+                                            listOf(Color.Transparent, theme.primaryColor.copy(alpha = 0.8f))
                                         )
                                     )
-                                    .border(
-                                        width = 1.dp,
-                                        color = theme.secondaryColor.copy(alpha = 0.5f),
-                                        shape = CircleShape
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.AccountCircle,
-                                    contentDescription = null,
-                                    tint = theme.secondaryColor,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(4.dp))
+                            )
                             Text(
-                                text = playerName,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = lilitaOneFontFamily,
-                                fontSize = (iconLabelSize.value + 1f).sp,
-                                maxLines = 1,
-                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                                style = LocalTextStyle.current.copy(
-                                    brush = Brush.horizontalGradient(
-                                        colors = listOf(theme.primaryColor, theme.secondaryColor)
+                                text = "N E O N   R U S H",
+                                color = theme.primaryColor,
+                                fontSize = subtitleFontSize,
+                                letterSpacing = 4.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                fontStyle = FontStyle.Italic,
+                                modifier = Modifier.padding(horizontal = screenW * 0.025f)
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .width(screenW * 0.11f)
+                                    .height(1.5.dp)
+                                    .background(
+                                        Brush.horizontalGradient(
+                                            listOf(theme.primaryColor.copy(alpha = 0.8f), Color.Transparent)
+                                        )
                                     )
-                                ),
-                                letterSpacing = 0.5.sp
                             )
                         }
                     }
+
                 }
 
-                // ── Actions / Game Content — fills the remaining space ──
-                Box(modifier = Modifier.fillMaxSize()) {
+                // ── Actions / Game Content — takes exactly the remaining height ──
+                Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                     actions(dims)
                 }
             }
@@ -1008,6 +1013,94 @@ private fun MainModeIcon(
     )
 }
 
+/** Mini 2×2 board of merging number tiles — conveys the "slide & merge numbers" idea. */
+@Composable
+private fun MergeTilesIllustration(accent: Color, size: Dp) {
+    val theme = LocalGameTheme.current
+    val gap = size * 0.08f
+    val tile = (size - gap) / 2f
+    val nums = listOf(2, 4, 8, 16)
+    Column(verticalArrangement = Arrangement.spacedBy(gap)) {
+        repeat(2) { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                repeat(2) { col ->
+                    val n = nums[row * 2 + col]
+                    val c = theme.tileColors[n] ?: accent
+                    Box(
+                        modifier = Modifier
+                            .size(tile)
+                            .clip(RoundedCornerShape(tile * 0.24f))
+                            .background(Brush.verticalGradient(listOf(c, c.copy(alpha = 0.8f))))
+                            .border(1.dp, Color.White.copy(alpha = 0.22f), RoundedCornerShape(tile * 0.24f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = n.toString(),
+                            color = if (c.luminance() > 0.6f) Color(0xFF1E1E2E) else Color.White,
+                            fontSize = (tile.value * if (n >= 10) 0.4f else 0.5f).sp,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Mini lanes with stacked tiles, an aim chevron and a launcher — conveys the "shoot up" idea. */
+@Composable
+private fun ShooterIllustration(accent: Color, size: Dp) {
+    val theme = LocalGameTheme.current
+    val laneGap = size * 0.09f
+    val laneW = (size - laneGap * 2) / 3f
+    val tileH = laneW * 0.7f
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(laneGap),
+            modifier = Modifier.height(size * 0.56f)
+        ) {
+            ShooterLane(laneW, tileH, listOf(theme.tileColors[16] ?: accent, theme.tileColors[8] ?: accent))
+            ShooterLane(laneW, tileH, listOf(theme.tileColors[4] ?: accent))
+            ShooterLane(laneW, tileH, emptyList())
+        }
+        Icon(
+            imageVector = Icons.Rounded.KeyboardDoubleArrowUp,
+            contentDescription = null,
+            tint = accent,
+            modifier = Modifier.size(size * 0.2f)
+        )
+        Box(
+            modifier = Modifier
+                .size(laneW, tileH)
+                .clip(RoundedCornerShape(laneW * 0.2f))
+                .background(Brush.verticalGradient(listOf(accent, accent.copy(alpha = 0.8f))))
+                .border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(laneW * 0.2f))
+        )
+    }
+}
+
+@Composable
+private fun ShooterLane(width: Dp, tileH: Dp, tiles: List<Color>) {
+    val theme = LocalGameTheme.current
+    Column(
+        modifier = Modifier
+            .width(width)
+            .fillMaxHeight()
+            .clip(RoundedCornerShape(width * 0.22f))
+            .background(theme.textColor.copy(alpha = 0.07f)),
+        verticalArrangement = Arrangement.spacedBy(width * 0.06f)
+    ) {
+        tiles.forEach { c ->
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(tileH)
+                    .clip(RoundedCornerShape(width * 0.18f))
+                    .background(Brush.verticalGradient(listOf(c, c.copy(alpha = 0.8f))))
+            )
+        }
+    }
+}
 
 
 val lilitaOneFontFamily = FontFamily(Font(R.font.lilitaone_regular))

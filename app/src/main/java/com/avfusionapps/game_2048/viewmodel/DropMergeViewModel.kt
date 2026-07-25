@@ -55,6 +55,14 @@ class DropMergeViewModel(application: Application) : AndroidViewModel(applicatio
     val soundEnabled: StateFlow<Boolean> = settingsRepository.soundEnabledFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
+    // null = not yet loaded (avoids flashing the tutorial before we know).
+    val hasSeenTutorial: StateFlow<Boolean?> = settingsRepository.hasSeenNeonDropTutorialFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    fun setTutorialSeen() {
+        viewModelScope.launch { settingsRepository.updateHasSeenNeonDropTutorial(true) }
+    }
+
     private val _events = MutableSharedFlow<DropGameEvent>(
         replay = 0,
         extraBufferCapacity = 8,
@@ -76,8 +84,9 @@ class DropMergeViewModel(application: Application) : AndroidViewModel(applicatio
         resolveJob?.cancel()
         undoSnapshot = null
         val best = persistedBestTile ?: _gameState.value.bestTileEver
-        val current = engine.spawnValue(best)
-        val next = engine.spawnValue(best)
+        // Fresh board is empty (boardMax 0) → both bootstrap to the small floor.
+        val current = engine.spawnValue(boardMax = 0, bestTileEver = best)
+        val next = engine.spawnValue(boardMax = 0, bestTileEver = best)
         _gameState.value = DropMergeState(
             currentValue = current,
             nextValue = next,
@@ -121,7 +130,7 @@ class DropMergeViewModel(application: Application) : AndroidViewModel(applicatio
 
         resolveJob = viewModelScope.launch {
             _events.tryEmit(DropGameEvent.SHOOT)
-            _gameState.value = state.copy(isResolving = true, canUndo = false, comboCount = 0)
+            _gameState.value = state.copy(isResolving = true, canUndo = false, comboCount = 0, justUndid = false)
 
             var runningBest = state.bestTileEver
             for (step in result.steps) {
@@ -153,9 +162,13 @@ class DropMergeViewModel(application: Application) : AndroidViewModel(applicatio
                 }
             }
 
-            // Reload the launcher and settle the turn.
+            // Reload the launcher and settle the turn. Cap the next tile at the
+            // just-settled board's max so it's always mergeable.
             val newCurrent = _gameState.value.nextValue
-            val newNext = engine.spawnValue(runningBest)
+            val newNext = engine.spawnValue(
+                boardMax = engine.boardMax(_gameState.value.columns),
+                bestTileEver = runningBest
+            )
             val settled = _gameState.value.copy(
                 isResolving = false,
                 canUndo = true,
@@ -187,7 +200,10 @@ class DropMergeViewModel(application: Application) : AndroidViewModel(applicatio
         _events.tryEmit(DropGameEvent.SKIP)
         _gameState.value = state.copy(
             currentValue = state.nextValue,
-            nextValue = engine.spawnValue(state.bestTileEver),
+            nextValue = engine.spawnValue(
+                boardMax = engine.boardMax(state.columns),
+                bestTileEver = state.bestTileEver
+            ),
             canSkip = false
         )
     }
@@ -208,7 +224,8 @@ class DropMergeViewModel(application: Application) : AndroidViewModel(applicatio
             canUndo = false,
             canSkip = true,
             lastStep = null,
-            comboCount = 0
+            comboCount = 0,
+            justUndid = true // tiles split back in place instead of shooting up
         )
     }
 

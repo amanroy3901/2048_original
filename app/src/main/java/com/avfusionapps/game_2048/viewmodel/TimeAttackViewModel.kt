@@ -11,6 +11,7 @@ import com.avfusionapps.game_2048.model.TimeAttackScore
 import com.avfusionapps.game_2048.model.TimeAttackState
 import com.avfusionapps.game_2048.model.TileAnimationInfo
 import com.avfusionapps.game_2048.data.GameSettingsRepository
+import com.avfusionapps.game_2048.utils.SoundManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.channels.BufferOverflow
@@ -64,12 +65,23 @@ class TimeAttackViewModel(application: Application) : AndroidViewModel(applicati
     val vibrationEnabled: StateFlow<Boolean> = settingsRepository.vibrationEnabledFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
+    val soundEnabled: StateFlow<Boolean> = settingsRepository.soundEnabledFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
     private val _mergeEvent = MutableSharedFlow<Unit>(
         replay = 0,
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
     val mergeEvent: SharedFlow<Unit> = _mergeEvent.asSharedFlow()
+
+    // One-shot sound cue per swipe (a SoundManager.SOUND_* id), played by the UI.
+    private val _soundEvent = MutableSharedFlow<Int>(
+        replay = 0,
+        extraBufferCapacity = 4,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
+    val soundEvent: SharedFlow<Int> = _soundEvent.asSharedFlow()
 
     private val _timeBonusEvent = MutableSharedFlow<String>(
         replay = 0,
@@ -240,6 +252,13 @@ class TimeAttackViewModel(application: Application) : AndroidViewModel(applicati
 
             val gameOver = isGameOver(gridWithNewTile)
 
+            // Merge/slide sound for normal swipes; the game-over sound is played in endGame().
+            if (!gameOver) {
+                _soundEvent.tryEmit(
+                    if (mergedTiles.isNotEmpty()) SoundManager.SOUND_MERGE else SoundManager.SOUND_MOVE
+                )
+            }
+
             _gameState.value = currentState.copy(
                 grid = gridWithNewTile,
                 previousGrid = currentGrid,
@@ -277,6 +296,7 @@ class TimeAttackViewModel(application: Application) : AndroidViewModel(applicati
 
     private fun endGame() {
         timerJob?.cancel()
+        _soundEvent.tryEmit(SoundManager.SOUND_GAME_OVER)
         // timeSurvived is the real (non-paused) elapsed play time, which stays correct even
         // when bonus time pushes the clock above the initial 60s.
         val survived = elapsedActiveMillis

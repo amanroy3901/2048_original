@@ -25,6 +25,7 @@ import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
+import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Vibration
 import androidx.compose.material.icons.rounded.ExitToApp
 import androidx.compose.material.icons.rounded.Lightbulb
@@ -95,6 +96,7 @@ fun ProfileScreen(
     val context = LocalContext.current
     val soundEnabled by gameViewModel.soundEnabled.collectAsState()
     val vibrationEnabled by gameViewModel.vibrationEnabled.collectAsState()
+    val remindersEnabled by gameViewModel.remindersEnabled.collectAsState()
 
     val packageInfo = remember {
         try {
@@ -458,9 +460,29 @@ fun ProfileScreen(
                                 }
                             }
                             Switch(
-                                checked = vibrationEnabled, 
+                                checked = vibrationEnabled,
                                 onCheckedChange = { gameViewModel.updateVibrationEnabled(it) },
                                 modifier = Modifier.testTag("ProfileScreen_Switch_Vibration"),
+                                colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = theme.primaryColor)
+                            )
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Rounded.Notifications, null, tint = theme.primaryColor)
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Column {
+                                    Text("Play reminders", color = theme.textColor, fontWeight = FontWeight.Bold)
+                                    Text("Get a friendly nudge to come back and play", color = theme.textColor.copy(alpha = 0.5f), fontSize = 12.sp)
+                                }
+                            }
+                            Switch(
+                                checked = remindersEnabled,
+                                onCheckedChange = { gameViewModel.updateRemindersEnabled(it) },
+                                modifier = Modifier.testTag("ProfileScreen_Switch_Reminders"),
                                 colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = theme.primaryColor)
                             )
                         }

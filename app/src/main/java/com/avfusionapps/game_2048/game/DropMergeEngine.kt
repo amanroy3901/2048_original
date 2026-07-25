@@ -37,17 +37,39 @@ class DropMergeEngine(
             1 shl (log2(bestTileEver) - 7)
         } else 2
 
-    /** Weighted random spawn from a window of consecutive powers of two. */
-    fun spawnValue(bestTileEver: Int): Int {
-        val minExp = log2(minSpawnValue(bestTileEver))
-        val weights = DropMergeConfig.SPAWN_WEIGHTS
-        val total = weights.sum()
+    /** Highest tile value currently on the board (0 if the board is empty). */
+    fun boardMax(columns: DropColumns): Int =
+        columns.maxOfOrNull { col -> col.maxOfOrNull { it.value } ?: 0 } ?: 0
+
+    /**
+     * Weighted random spawn, **capped so the launcher never offers a tile bigger
+     * than the largest tile currently on the board** — every spawned tile stays
+     * mergeable instead of wasting a lane.
+     *
+     * The window is up to [DropMergeConfig.SPAWN_WINDOW] consecutive powers of two
+     * ending at the board max (so it slides up as the board grows), floored at the
+     * purge floor from the best tile ever. An empty board bootstraps to the floor.
+     *
+     * @param boardMax     highest tile currently on the board (see [boardMax]); 0 if empty
+     * @param bestTileEver drives the purge floor (smallest value worth spawning)
+     */
+    fun spawnValue(boardMax: Int, bestTileEver: Int): Int {
+        val floor = minSpawnValue(bestTileEver)
+        // Never below the floor; empty/low board bootstraps up to the floor.
+        val ceiling = maxOf(floor, boardMax)
+        val topExp = log2(ceiling)
+        val minExp = log2(floor)
+        val botExp = maxOf(minExp, topExp - (DropMergeConfig.SPAWN_WINDOW - 1))
+        val n = topExp - botExp + 1 // number of candidate powers of two (1..SPAWN_WINDOW)
+
+        val weights = DropMergeConfig.SPAWN_WEIGHTS // smallest value weighted heaviest
+        val total = (0 until n).sumOf { weights[it] }
         var pick = random.nextInt(total)
-        for (i in 0 until DropMergeConfig.SPAWN_WINDOW) {
+        for (i in 0 until n) {
             pick -= weights[i]
-            if (pick < 0) return 1 shl (minExp + i)
+            if (pick < 0) return 1 shl (botExp + i)
         }
-        return 1 shl minExp
+        return 1 shl botExp
     }
 
     /** Next milestone shown on the locked badge. */

@@ -96,10 +96,8 @@ fun LevelUnlockDialog(
     soundEnabled: Boolean = true,
     onDismiss: () -> Unit
 ) {
-    val context = LocalContext.current
-    val isPreview = LocalInspectionMode.current
-    val mediaPlayer = remember { if (isPreview) null else MediaPlayer() }
-    val assetFileName = "next_level_sound.mp3"
+    // Celebration sound is played by the game screen via SoundManager (SOUND_LEVEL_UP),
+    // so this dialog is purely visual now.
 
     // ── Staggered element visibility triggers ──
     var showCrown by remember { mutableStateOf(false) }
@@ -116,19 +114,6 @@ fun LevelUnlockDialog(
 
     // ── Staggered reveal sequence ──
     LaunchedEffect(Unit) {
-        // Play sound
-        if (soundEnabled && mediaPlayer != null) {
-            try {
-                val afd = context.assets.openFd(assetFileName)
-                mediaPlayer.reset()
-                mediaPlayer.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
-                mediaPlayer.prepare()
-                mediaPlayer.start()
-            } catch (e: Exception) {
-                // handle error if needed
-            }
-        }
-
         // Staggered reveal timing
         showCrown = true
         delay(120)
@@ -197,21 +182,6 @@ fun LevelUnlockDialog(
         ),
         label = "starTwinkle"
     )
-
-    androidx.compose.runtime.DisposableEffect(Unit) {
-        onDispose {
-            mediaPlayer?.let {
-                try {
-                    if (it.isPlaying) {
-                        it.stop()
-                    }
-                } catch (e: Exception) {
-                    // ignore
-                }
-                it.release()
-            }
-        }
-    }
 
     val theme = LocalGameTheme.current
     val primary = theme.primaryColor

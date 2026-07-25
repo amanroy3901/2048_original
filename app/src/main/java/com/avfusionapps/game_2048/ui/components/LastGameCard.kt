@@ -143,10 +143,15 @@ fun LastGameCard(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(btnHeight)
+                            .clip(RoundedCornerShape(12.dp))
+                            // Neon sweep (accent → theme secondary) like the hero buttons.
+                            .background(
+                                Brush.horizontalGradient(listOf(primary, theme.secondaryColor))
+                            )
                             .testTag("LastGameCard_Button_Resume"),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = primary,
+                            containerColor = Color.Transparent,
                             contentColor = buttonContentColor
                         ),
                         contentPadding = PaddingValues(0.dp)

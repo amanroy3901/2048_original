@@ -13,9 +13,9 @@
     <string name="time_attack">TIME ATTACK</string>
     <string name="time_attack_subtitle">Beat the clock, chase high scores</string>
     <string name="time_attack_tag">⏱ 60 Seconds</string>
-    <string name="neon_drop">NEON DROP</string>
-    <string name="neon_drop_subtitle">Shoot tiles up, merge &amp; chain</string>
-    <string name="neon_drop_tag">⬆ Merge Shooter</string>
+    <string name="neon_drop">NEON SHOOTER</string>
+    <string name="neon_drop_subtitle">Shoot tiles up to merge &amp; chain</string>
+    <string name="neon_drop_tag">⬆ Tile Shooter</string>
     <string name="merge_2048_hub">2048 MERGE</string>
     <string name="merge_2048_hub_subtitle">Slide &amp; merge the number tiles</string>
     <string name="merge_2048_hub_tag">3×3 · 4×4 · 5×5 grids</string>
@@ -26,6 +26,45 @@
     <string name="drop_unlocked">UNLOCKED!</string>
     <string name="drop_combo">COMBO ×%1$d</string>
     <string name="drop_skip">SKIP</string>
+    <string name="drop_hud_score">SCORE</string>
+    <string name="drop_hud_best">BEST</string>
+    <string name="drop_hud_combo">COMBO</string>
+    <string name="drop_hud_goal">NEXT GOAL</string>
+    <string name="drop_tap_to_shoot">TAP LANE TO SHOOT</string>
+    <string name="drop_shoot_to_merge">SHOOT SAME NUMBER TO MERGE</string>
+    <!-- Neon Drop guided tutorial (first play) -->
+    <string name="drop_tut_1">Tap a lane — your tile shoots straight up</string>
+    <string name="drop_tut_2">Land the SAME number on top: they merge, double &amp; chain for a COMBO!</string>
+    <string name="drop_tut_3">Grow your tiles up to reach this goal tile</string>
+    <string name="drop_tut_4">UNDO takes back your last shot</string>
+    <string name="drop_tut_5">SKIP swaps the tile you\'re about to shoot</string>
+    <string name="drop_tut_6">You\'ve got it! Keep chaining merges 🎉</string>
+    <string name="drop_tut_skip">Skip</string>
+    <string name="drop_tut_got_it">Got it!</string>
+    <string name="drop_how_to_play">HOW TO PLAY</string>
+
+    <!-- Re-engagement notifications -->
+    <string name="notif_channel_name">Play reminders</string>
+    <string name="notif_channel_desc">Gentle nudges to come back and play</string>
+    <string name="notif_title">2048 Neon Rush</string>
+    <string name="notif_action_resume">Resume ▶</string>
+    <string name="notif_action_play">Play ▶</string>
+    <!-- Saved-game nudges: %1$s = "Name, " (or empty), %2$s = best tile, %3$s = score -->
+    <string name="notif_saved_1">%1$syour run\'s still live — tile %2$s, score %3$s. One more? 🎮</string>
+    <string name="notif_saved_2">%1$syour neon board is paused at %3$s. Jump back in ⚡</string>
+    <string name="notif_saved_3">%1$sdon\'t let that %2$s tile go to waste — finish your game!</string>
+    <!-- Best-score nudges: %1$s = "Name, " (or empty), %2$s = best score -->
+    <string name="notif_best_1">Think you can beat %2$s? Your neon tiles are waiting ⚡</string>
+    <string name="notif_best_2">%1$syour best is %2$s. Think you can top it? 🏆</string>
+    <string name="notif_best_3">A fresh neon run is calling — go beat %2$s!</string>
+    <!-- First-time / no-save nudges: %1$s = "Name, " (or empty) -->
+    <string name="notif_new_1">%1$sready to merge some tiles? 🎮</string>
+    <string name="notif_new_2">Your 2048 Neon Rush challenge awaits ⚡</string>
+    <string name="notif_new_3">Quick game? Swipe, merge, glow ✨</string>
+
+    <!-- Settings -->
+    <string name="settings_reminders_title">Play reminders</string>
+    <string name="settings_reminders_subtitle">Get a friendly nudge to come back and play</string>
     <string name="best_score">BEST SCORE</string>
     <string name="continue_game">Continue</string>
     <string name="continue_game_subtitle">Pick up where\nyou left off</string>
