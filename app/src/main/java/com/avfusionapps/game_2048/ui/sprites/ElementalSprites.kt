@@ -8,11 +8,22 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.runtime.key
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -56,7 +67,7 @@ import kotlin.random.Random
 /** What a sprite is feeling. The board picks one from the game state; merges and spawns override it briefly. */
 enum class SpriteEmotion { IDLE, HAPPY, EXCITED, THINKING, SURPRISED, SLEEPY, SAD, WORRIED, DIZZY, GRUMPY, LOVE, PROUD }
 
-enum class SpriteElement { WATER, LEAF, SUN, ICE, COSMIC, FIRE, FLOWER, WAVE, STAR, CRYSTAL, KING }
+enum class SpriteElement { WATER, LEAF, SUN, ICE, COSMIC, FIRE, FLOWER, WAVE, STAR, CRYSTAL, KING, ROCK }
 
 /** One character in the 2 → 2048 chain: body gradient (c1 light → c3 dark), tile card colours and glow. */
 data class SpriteSpec(
@@ -86,11 +97,14 @@ object ElementalSprites {
         SpriteSpec("Ember King", SpriteElement.KING, Color(0xFFFFF3A6), Color(0xFFFF8A2A), Color(0xFFD72A16), Color(0xFFF2A01A), Color(0xFFB5361A), Color(0xFFFFD050), Color(0xFFFFC94D))
     )
 
+    /** The Shadow Rock penalty tile (grid value -1). */
+    val rock = SpriteSpec("Shadow Rock", SpriteElement.ROCK, Color(0xFF9A90B8), Color(0xFF5B5470), Color(0xFF2E2840), Color(0xFF3E3560), Color(0xFF1C1736), Color(0xFF8A5BFF), Color(0xFF8A80A8))
+
     /** 2 → 0 … 2048 → 10; anything bigger stays the Ember King. */
     fun indexFor(value: Int): Int =
         if (value <= 1) 0 else (log2(value.toFloat()) - 1f).roundToInt().coerceIn(0, all.lastIndex)
 
-    fun specFor(value: Int): SpriteSpec = all[indexFor(value)]
+    fun specFor(value: Int): SpriteSpec = if (value < 0) rock else all[indexFor(value)]
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -148,6 +162,8 @@ private object Shapes {
     val sweat by lazy { parse("M76 38 Q81 46 78 50 Q74 52.5 72.5 48.5 Q72 44 76 38 Z") }
     val tear by lazy { parse("M0 0 Q3 5 0.5 7 Q-2 5 0 0 Z") }
     val vein by lazy { parse("M-5 -1 Q-1 -1 -1 -5 M1 -5 Q1 -1 5 -1 M5 1 Q1 1 1 5 M-1 5 Q-1 1 -5 1") }
+    val rock by lazy { parse("M18 88 Q10 70 20 56 Q21 38 38 35 Q49 25 63 32 Q80 35 83 54 Q92 70 83 88 Z") }
+    val rockCracks by lazy { parse("M33 46 L40 54 L36 61 M64 60 L71 66 L68 74 M50 36 L53 43") }
     val spiral by lazy { parse("M0 0 m-1 0 a1 1 0 1 1 2 0 a2 2 0 1 1 -4 0 a3 3 0 1 1 6 0 a4 4 0 1 1 -8 0") }
 
     fun body(e: SpriteElement): Path = when (e) {
@@ -156,7 +172,25 @@ private object Shapes {
         SpriteElement.COSMIC -> orb
         SpriteElement.FIRE, SpriteElement.KING -> flame
         SpriteElement.STAR -> star
+        SpriteElement.ROCK -> rock
         else -> blob
+    }
+}
+
+/**
+ * Brushes are rebuilt on every frame otherwise (each tile animates continuously). Character brushes live in
+ * the fixed 100-unit box, so one per sprite is enough; card brushes are keyed by tile width. Main thread only.
+ */
+private object BrushCache {
+    private val map = HashMap<String, Brush>()
+    fun get(key: String, make: () -> Brush): Brush = map.getOrPut(key, make)
+}
+
+private val labelPaint by lazy {
+    android.graphics.Paint().apply {
+        isAntiAlias = true
+        typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        textAlign = android.graphics.Paint.Align.CENTER
     }
 }
 
@@ -195,10 +229,17 @@ fun SpriteTile(
     showCard: Boolean = true,
     showNumber: Boolean = true,
     fontSizeMultiplier: Float = 1f,
-    breaking: Boolean = false
+    breaking: Boolean = false,
+    /** A new non-null value is a poke: squish, giggle, and a name tag. Four quick pokes make it grumpy. */
+    pokeKey: Int? = null,
+    /** Collection silhouette for a sprite not found yet. */
+    locked: Boolean = false,
+    /** Replaces the number on the badge (the rock shows its countdown). */
+    badgeText: String? = null
 ) {
+    val rock = value < 0
     val spec = ElementalSprites.specFor(value)
-    val index = ElementalSprites.indexFor(value)
+    val index = if (rock) 5 else ElementalSprites.indexFor(value)
     val transition = rememberInfiniteTransition(label = "sprite")
     val phase = transition.animateFloat(
         initialValue = 0f,
@@ -212,6 +253,9 @@ fun SpriteTile(
     val spawnFx = remember { Animatable(1f) }
     val wings = remember { Animatable(0f) }
     val breakFx = remember { Animatable(1f) }
+    val pokeFx = remember { Animatable(1f) }
+    var nameTag by remember { mutableStateOf<String?>(null) }
+    val pokeTimes = remember { ArrayList<Long>() }
     var override by remember { mutableStateOf<SpriteEmotion?>(null) }
     val scope = rememberCoroutineScope()
 
@@ -248,6 +292,32 @@ fun SpriteTile(
         delay(160)
         breakFx.animateTo(1f, tween(520, easing = LinearOutSlowInEasing))
     }
+    LaunchedEffect(pokeKey) {
+        if (pokeKey == null) return@LaunchedEffect
+        val now = System.currentTimeMillis()
+        pokeTimes.removeAll { now - it > 2600 }
+        pokeTimes.add(now)
+        val annoyed = pokeTimes.size >= 4
+        scope.launch {
+            override = when {
+                rock || annoyed -> SpriteEmotion.GRUMPY
+                pokeTimes.size == 1 -> SpriteEmotion.HAPPY
+                else -> SpriteEmotion.LOVE
+            }
+            nameTag = when {
+                rock -> "Shadow Rock"
+                annoyed -> "Hey! Stop poking!"
+                else -> "No.${(index + 1).toString().padStart(2, '0')} · ${spec.name}"
+            }
+            delay(if (annoyed) 2000 else 1200)
+            override = null
+            nameTag = null
+        }
+        scope.launch {
+            pokeFx.snapTo(0f)
+            pokeFx.animateTo(1f, tween(460))
+        }
+    }
     LaunchedEffect(spawnKey) {
         if (spawnKey == null) return@LaunchedEffect
         scope.launch {
@@ -264,34 +334,77 @@ fun SpriteTile(
     val particleSeed = (mergeKey ?: 0) * 31 + index
     BoxWithConstraints(modifier = modifier) {
         val sizeDp = maxWidth
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val w = size.width
-            val h = size.height
-            val t = (phase.value + phaseOffset) % 4f
-            val emo = override ?: emotion
-            val m = mergeFx.value
-            val sp = spawnFx.value
+        // The card and the sprite's body never change shape, so each is drawn once into a bitmap;
+        // only the face, sparkles and effects are drawn per frame.
+        key(value, locked, showCard) {
+            Spacer(modifier = Modifier.fillMaxSize().drawWithCache {
+                val w = size.width
+                val h = size.height
+                val left = if (showCard) w * 0.05f else 0f
+                val top = if (showCard) -h * 0.06f else 0f
+                val u = if (showCard) w * 0.009f else w / 100f
+                val legend = index == 10 && !rock && !locked
+                val cardBitmap = if (showCard) renderBitmap((w * 1.28f).toInt(), (h * 1.28f).toInt(), this) {
+                    withTransform({ translate(w * 0.14f, h * 0.14f) }) { drawCardStatic(spec, legend, locked, w, h) }
+                } else null
+                val bodyPx = (120f * u).toInt().coerceAtLeast(1)
+                val bodyBitmap = renderBitmap(bodyPx, bodyPx, this) {
+                    withTransform({
+                        scale(bodyPx / 120f, bodyPx / 120f, pivot = Offset.Zero)
+                        translate(10f, 10f)
+                    }) { drawSpriteBody(spec) }
+                    if (locked) drawRect(Color(0xFF0A0420).copy(alpha = 0.75f), blendMode = androidx.compose.ui.graphics.BlendMode.SrcIn)
+                }
+                val drawBody: DrawScope.() -> Unit = {
+                    drawImage(bodyBitmap, dstOffset = IntOffset(-10, -10), dstSize = IntSize(120, 120))
+                }
+                onDrawBehind {
+                    val t = (phase.value + phaseOffset) % 4f
+                    val emo = if (rock) SpriteEmotion.GRUMPY else (override ?: emotion)
+                    val pk = pokeFx.value
+                    val (pokeX, pokeY) = if (pk < 1f) pokeSquash(pk) else (1f to 1f)
+                    val m = mergeFx.value
+                    val sp = spawnFx.value
 
-            if (showCard) drawCard(spec, index == 10, t, if (m < 0.3f) (1f - m / 0.3f) else 0f)
-            if (sp < 1f) drawPortal(spec.glow, sp)
-
-            // Character box: inset inside the card, a little taller than wide so crowns can poke out.
-            val left = if (showCard) w * 0.05f else 0f
-            val top = if (showCard) -h * 0.06f else 0f
-            val u = if (showCard) w * 0.009f else w / 100f
-            withTransform({
-                translate(left, top)
-                scale(u, u, pivot = Offset.Zero)
-            }) {
-                drawCharacter(spec, index, emo, t, blink.value, lookX, lookY, charScaleX, charScaleY, wings.value)
-            }
-
-            if (m < 1f) drawMergeBurst(spec, m, particleSeed)
-            if (breakFx.value < 1f) drawShards(spec, breakFx.value)
+                    if (cardBitmap != null) {
+                        drawImage(cardBitmap, topLeft = Offset(-w * 0.14f, -h * 0.14f))
+                        drawCardLive(legend, t, if (m < 0.3f) (1f - m / 0.3f) else 0f)
+                    }
+                    if (sp < 1f) drawPortal(spec.glow, sp)
+                    withTransform({
+                        translate(left, top)
+                        scale(u, u, pivot = Offset.Zero)
+                    }) {
+                        if (locked) {
+                            drawCharacter(spec, index, SpriteEmotion.IDLE, t, 1f, 0f, 0f, 1f, 1f, 0f, drawBody, faceless = true)
+                        } else {
+                            drawCharacter(spec, index, emo, t, blink.value, lookX, lookY, charScaleX * pokeX, charScaleY * pokeY, wings.value, drawBody)
+                        }
+                    }
+                    if (m < 1f) drawMergeBurst(spec, m, particleSeed)
+                    if (breakFx.value < 1f) drawShards(spec, breakFx.value)
+                }
+            })
+        }
+        if (nameTag != null) {
+            Text(
+                text = nameTag!!,
+                color = Color(0xFF2A0F4A),
+                style = TextStyle(fontSize = with(LocalDensity.current) { (maxWidth.toPx() * 0.13f).coerceAtLeast(22f).toSp() }, fontWeight = FontWeight.Bold),
+                maxLines = 1,
+                softWrap = false,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .offset(y = (-14).dp)
+                    .wrapContentWidth(unbounded = true)
+                    .background(Color.White, androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
+                    .padding(horizontal = 8.dp, vertical = 2.dp)
+            )
         }
         if (showNumber && showCard) {
             NumberBadge(
                 value = value,
+                text = badgeText ?: if (locked) "?" else value.toString(),
                 tileWidthPx = with(LocalDensity.current) { sizeDp.toPx() },
                 fontSizeMultiplier = fontSizeMultiplier,
                 modifier = Modifier.align(Alignment.BottomCenter)
@@ -301,9 +414,9 @@ fun SpriteTile(
 }
 
 @Composable
-private fun NumberBadge(value: Int, tileWidthPx: Float, fontSizeMultiplier: Float, modifier: Modifier) {
+private fun NumberBadge(value: Int, text: String, tileWidthPx: Float, fontSizeMultiplier: Float, modifier: Modifier) {
     val density = LocalDensity.current
-    val digits = value.toString().length
+    val digits = text.length
     val factor = when {
         digits >= 5 -> 0.2f
         digits == 4 -> 0.245f
@@ -315,14 +428,14 @@ private fun NumberBadge(value: Int, tileWidthPx: Float, fontSizeMultiplier: Floa
     val base = TextStyle(fontSize = fontSize, fontWeight = FontWeight.Black, lineHeight = fontSize)
     Box(modifier = modifier.offset(y = 1.dp)) {
         Text(
-            text = value.toString(),
+            text = text,
             color = Color(0xFF2A0F4A),
             style = base.copy(
                 drawStyle = Stroke(width = outline, join = StrokeJoin.Round),
                 shadow = Shadow(Color.Black.copy(alpha = 0.45f), Offset(0f, outline * 0.9f), 0f)
             )
         )
-        Text(text = value.toString(), color = Color.White, style = base)
+        Text(text = text, color = if (value < 0) Color(0xFFE9DDFF) else Color.White, style = base)
     }
 }
 
@@ -330,30 +443,42 @@ private fun NumberBadge(value: Int, tileWidthPx: Float, fontSizeMultiplier: Floa
 // Drawing
 // ---------------------------------------------------------------------------------------------
 
-private fun DrawScope.drawCard(spec: SpriteSpec, legend: Boolean, t: Float, flash: Float) {
-    val w = size.width
-    val h = size.height
+/** Quick squish when poked: flat and wide, then tall, then settle. */
+private fun pokeSquash(p: Float): Pair<Float, Float> {
+    val keys = listOf(0f to (1f to 1f), 0.2f to (1.22f to 0.76f), 0.5f to (0.88f to 1.14f), 0.75f to (1.05f to 0.96f), 1f to (1f to 1f))
+    val k = keys.indexOfLast { it.first <= p }.coerceIn(0, keys.size - 2)
+    val (p0, a) = keys[k]
+    val (p1, b) = keys[k + 1]
+    val f = ((p - p0) / (p1 - p0)).coerceIn(0f, 1f)
+    return (a.first + (b.first - a.first) * f) to (a.second + (b.second - a.second) * f)
+}
+
+/** Draws the whole tile card into an image once: [w]×[h] is the card, the glow spills 14% past it. */
+private fun DrawScope.drawCardStatic(spec: SpriteSpec, legend: Boolean, locked: Boolean, w: Float, h: Float) {
     val radius = CornerRadius(w * 0.2f)
-    // soft outer glow
+    val cardSize = Size(w, h)
     drawRoundRect(
         brush = Brush.radialGradient(
-            0f to spec.glow.copy(alpha = if (legend) 0.7f else 0.42f),
+            0f to spec.glow.copy(alpha = if (locked) 0f else if (legend) 0.7f else 0.42f),
             1f to Color.Transparent,
-            center = center,
+            center = Offset(w / 2, h / 2),
             radius = w * 0.72f
         ),
         topLeft = Offset(-w * 0.14f, -h * 0.14f),
         size = Size(w * 1.28f, h * 1.28f),
         cornerRadius = CornerRadius(w * 0.36f)
     )
+    val t0 = if (locked) Color(0xFF3A2E5C) else spec.t0
+    val t1 = if (locked) Color(0xFF1C1436) else spec.t1
     drawRoundRect(
         brush = Brush.radialGradient(
-            0f to lerp(spec.t0, Color.White, 0.38f),
-            0.52f to spec.t0,
-            1f to spec.t1,
+            0f to lerp(t0, Color.White, 0.25f),
+            0.52f to t0,
+            1f to t1,
             center = Offset(w * 0.32f, h * 0.18f),
             radius = w * 1.1f
         ),
+        size = cardSize,
         cornerRadius = radius
     )
     drawRoundRect(
@@ -364,10 +489,23 @@ private fun DrawScope.drawCard(spec: SpriteSpec, legend: Boolean, t: Float, flas
     )
     drawRoundRect(
         brush = Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.26f)), startY = h * 0.6f, endY = h),
+        size = cardSize,
         cornerRadius = radius
     )
+    drawRoundRect(
+        color = if (legend) Color(0xFFFFE27A) else Color.White.copy(alpha = 0.4f),
+        size = cardSize,
+        style = Stroke(width = (w * 0.022f).coerceAtLeast(1.5f)),
+        cornerRadius = radius
+    )
+}
+
+/** The moving parts of the card: the 2048 shine band and the merge flash. */
+private fun DrawScope.drawCardLive(legend: Boolean, t: Float, flash: Float) {
+    val w = size.width
+    val h = size.height
+    val radius = CornerRadius(w * 0.2f)
     if (legend) {
-        // a light band sweeping across the 2048 card
         val x = (t / 4f) * w * 2.6f - w * 0.8f
         drawRoundRect(
             brush = Brush.linearGradient(
@@ -377,12 +515,19 @@ private fun DrawScope.drawCard(spec: SpriteSpec, legend: Boolean, t: Float, flas
             cornerRadius = radius
         )
     }
-    drawRoundRect(
-        color = if (legend) Color(0xFFFFE27A) else Color.White.copy(alpha = 0.4f),
-        style = Stroke(width = (w * 0.022f).coerceAtLeast(1.5f)),
-        cornerRadius = radius
-    )
     if (flash > 0f) drawRoundRect(color = Color.White.copy(alpha = flash * 0.6f), cornerRadius = radius)
+}
+
+private fun renderBitmap(widthPx: Int, heightPx: Int, density: Density, block: DrawScope.() -> Unit): ImageBitmap {
+    val bitmap = ImageBitmap(widthPx.coerceAtLeast(1), heightPx.coerceAtLeast(1))
+    CanvasDrawScope().draw(
+        density = density,
+        layoutDirection = LayoutDirection.Ltr,
+        canvas = androidx.compose.ui.graphics.Canvas(bitmap),
+        size = Size(bitmap.width.toFloat(), bitmap.height.toFloat()),
+        block = block
+    )
+    return bitmap
 }
 
 private fun DrawScope.drawPortal(glow: Color, p: Float) {
@@ -473,12 +618,8 @@ private fun DrawScope.at(x: Float, y: Float, scale: Float = 1f, rotate: Float = 
 
 private fun DrawScope.label(text: String, x: Float, y: Float, sizeU: Float, fill: Color, stroke: Color?) {
     val canvas = drawContext.canvas.nativeCanvas
-    val paint = android.graphics.Paint().apply {
-        isAntiAlias = true
-        textSize = sizeU
-        typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-        textAlign = android.graphics.Paint.Align.CENTER
-    }
+    val paint = labelPaint
+    paint.textSize = sizeU
     if (stroke != null) {
         paint.style = android.graphics.Paint.Style.STROKE
         paint.strokeWidth = sizeU * 0.14f
@@ -500,7 +641,9 @@ private fun DrawScope.drawCharacter(
     lookY: Float,
     squashX: Float,
     squashY: Float,
-    wings: Float
+    wings: Float,
+    body: DrawScope.() -> Unit,
+    faceless: Boolean = false
 ) {
     val e = spec.element
     val fiery = e == SpriteElement.FIRE || e == SpriteElement.KING
@@ -544,7 +687,7 @@ private fun DrawScope.drawCharacter(
         // wings, only for a moment after a 1024+ merge
         if (wings > 0f) {
             val flap = sin(twoPi(t, 0.4f)) * 22f
-            val wingBrush = Brush.linearGradient(listOf(Color.White, Color(0xFFFFE7A6)), start = Offset(30f, 44f), end = Offset(5f, 70f))
+            val wingBrush = BrushCache.get("wing") { Brush.linearGradient(listOf(Color.White, Color(0xFFFFE7A6)), start = Offset(30f, 44f), end = Offset(5f, 70f)) }
             withTransform({ rotate(-flap, pivot = Offset(30f, 60f)) }) {
                 drawPath(Shapes.wingL, wingBrush, alpha = wings)
                 line(Shapes.wingL, Color(0xFFC99A2E), 1.4f, wings)
@@ -554,10 +697,43 @@ private fun DrawScope.drawCharacter(
                 line(Shapes.wingR, Color(0xFFC99A2E), 1.4f, wings)
             }
         }
+        withTransform({ if (fiery) scale(1f + 0.015f * flick, 1f + 0.04f * flick, pivot = Offset(50f, 89f)) }) { body() }
+        if (faceless) return@withTransform
+
+        // face (drawn live: blinks, looks around, changes with emotion)
+        val fy = when (e) {
+            SpriteElement.STAR -> -1f
+            SpriteElement.WATER -> 3f
+            else -> 0f
+        }
+        withTransform({ translate(0f, fy) }) { drawFace(spec, emo, t, blink, lookX, lookY) }
+
+        if (fiery) {
+            listOf(Triple(34f, 26f, 0f), Triple(66f, 22f, 0.66f), Triple(58f, 12f, 1.33f)).forEach { (x, y, d) ->
+                val p = ((t + d) % 2f) / 2f
+                drawCircle(if (d == 0f) Color(0xFFFFD25A) else Color(0xFFFF9A2E), 2f * (1f - 0.7f * p), Offset(x, y - 18f * p), alpha = sin(PI * p).toFloat())
+            }
+        }
+        if (e == SpriteElement.STAR || e == SpriteElement.KING || e == SpriteElement.CRYSTAL || e == SpriteElement.SUN) {
+            twinkle(14f, 30f, 1f, t, 0f, Color.White)
+            twinkle(88f, 44f, 0.7f, t, 0.33f, Color.White)
+            twinkle(84f, 16f, 0.5f, t, 0.66f, Color.White)
+        }
+
+        drawEmotionFx(emo, t)
+    }
+}
+
+/** Everything about a sprite that doesn't animate by itself, in the 100-unit box. Drawn once into a bitmap. */
+private fun DrawScope.drawSpriteBody(spec: SpriteSpec) {
+    val e = spec.element
+    val fiery = e == SpriteElement.FIRE || e == SpriteElement.KING
+    val L = lerp(spec.c3, Color(0xFF1A0830), 0.42f)
+    run {
         // behind the body
         when (e) {
             SpriteElement.SUN -> {
-                drawPath(Shapes.rays, Brush.radialGradient(listOf(spec.c2, spec.c3), center = Offset(50f, 60f), radius = 40f))
+                drawPath(Shapes.rays, BrushCache.get("rays${spec.name}") { Brush.radialGradient(listOf(spec.c2, spec.c3), center = Offset(50f, 60f), radius = 40f) })
                 line(Shapes.rays, L, 1.6f)
             }
             SpriteElement.COSMIC -> withTransform({ rotate(-10f, pivot = Offset(50f, 72f)) }) {
@@ -571,7 +747,7 @@ private fun DrawScope.drawCharacter(
             else -> Unit
         }
         // body
-        val bodyBrush = if (fiery) {
+        val bodyBrush = BrushCache.get("body${spec.name}") { if (fiery) {
             Brush.radialGradient(0f to spec.c1, 0.5f to spec.c2, 1f to spec.c3, center = Offset(50f, 78f), radius = 72f)
         } else {
             val (cx, cy, r) = when (e) {
@@ -582,13 +758,11 @@ private fun DrawScope.drawCharacter(
                 else -> Triple(40f, 46f, 54f)
             }
             Brush.radialGradient(0f to spec.c1, 0.5f to spec.c2, 1f to spec.c3, center = Offset(cx, cy), radius = r)
-        }
-        withTransform({ if (fiery) scale(1f + 0.015f * flick, 1f + 0.04f * flick, pivot = Offset(50f, 89f)) }) {
-            val body = Shapes.body(e)
-            drawPath(body, bodyBrush)
-            line(body, L, 1.8f)
-            if (fiery) drawPath(Shapes.flameCore, spec.c1, alpha = 0.55f)
-        }
+        } }
+        val bodyPath = Shapes.body(e)
+        drawPath(bodyPath, bodyBrush)
+        line(bodyPath, L, 1.8f)
+        if (fiery) drawPath(Shapes.flameCore, spec.c1, alpha = 0.55f)
         oval(spec.c3, 50f, 83f, 25f, 5.5f, 0.35f)
 
         // surface detail
@@ -597,6 +771,9 @@ private fun DrawScope.drawCharacter(
             drawCircle(Color.White, 1f, Offset(64f, 44f), alpha = 0.8f)
             drawCircle(Color.White, 1.5f, Offset(70f, 62f), alpha = 0.7f)
             drawCircle(Color.White, 1f, Offset(28f, 66f), alpha = 0.8f)
+        }
+        if (e == SpriteElement.ROCK) {
+            line(Shapes.rockCracks, Color(0xFFB57BFF), 2f, 0.9f)
         }
         if (e == SpriteElement.WAVE) {
             drawPath(Shapes.crest, spec.c1, alpha = 0.95f)
@@ -617,21 +794,13 @@ private fun DrawScope.drawCharacter(
         at(hx, hy, rotate = -35f) { oval(Color.White, 0f, 0f, 7.5f, 4.2f, 0.75f) }
         drawCircle(Color.White, 1.7f, Offset(hx + 8f, hy - 5f), alpha = 0.85f)
 
-        // face
-        val fy = when (e) {
-            SpriteElement.STAR -> -1f
-            SpriteElement.WATER -> 3f
-            else -> 0f
-        }
-        withTransform({ translate(0f, fy) }) { drawFace(spec, emo, t, blink, lookX, lookY) }
-
         // front accessories
         when (e) {
             SpriteElement.COSMIC -> withTransform({ rotate(-10f, pivot = Offset(50f, 72f)) }) {
                 drawPath(Shapes.ringFront, ringBrush(), style = Stroke(4.5f, cap = StrokeCap.Round))
             }
             SpriteElement.ICE -> {
-                val ice = Brush.linearGradient(listOf(Color.White, Color(0xFF8FD8FF)), start = Offset(30f, 6f), end = Offset(70f, 40f))
+                val ice = BrushCache.get("ice") { Brush.linearGradient(listOf(Color.White, Color(0xFF8FD8FF)), start = Offset(30f, 6f), end = Offset(70f, 40f)) }
                 listOf(Shapes.iceMid to Shapes.iceMidFacet, Shapes.iceL to Shapes.iceLFacet, Shapes.iceR to Shapes.iceRFacet).forEach { (shard, facet) ->
                     drawPath(shard, ice)
                     drawPath(facet, Color(0xFF9EDCFF), alpha = 0.8f)
@@ -640,7 +809,7 @@ private fun DrawScope.drawCharacter(
             }
             SpriteElement.FLOWER -> {
                 leaf(Shapes.sideLeaf, Offset(20f, 24f), Offset(38f, 36f))
-                val petal = Brush.linearGradient(listOf(Color(0xFFFFE3F1), Color(0xFFFF6FA8)), start = Offset(-5f, -13f), end = Offset(5f, 0f))
+                val petal = BrushCache.get("petal") { Brush.linearGradient(listOf(Color(0xFFFFE3F1), Color(0xFFFF6FA8)), start = Offset(-5f, -13f), end = Offset(5f, 0f)) }
                 at(63f, 26f) {
                     for (k in 0 until 5) {
                         withTransform({ rotate(k * 72f, pivot = Offset.Zero) }) {
@@ -653,12 +822,12 @@ private fun DrawScope.drawCharacter(
                 }
             }
             SpriteElement.CRYSTAL -> {
-                val lilac = Brush.linearGradient(listOf(Color.White, Color(0xFFB9A4FF)), start = Offset(30f, 6f), end = Offset(70f, 34f))
+                val lilac = BrushCache.get("lilac") { Brush.linearGradient(listOf(Color.White, Color(0xFFB9A4FF)), start = Offset(30f, 6f), end = Offset(70f, 34f)) }
                 Shapes.crystals.forEach { drawPath(it, lilac); line(it, L, 1.1f) }
                 drawCircle(Color(0xFFFF6FB8), 3.2f, Offset(50f, 33f))
             }
             SpriteElement.KING -> {
-                drawPath(Shapes.crown, Brush.verticalGradient(listOf(GoldLight, Gold, GoldDark), startY = 3f, endY = 30f))
+                drawPath(Shapes.crown, BrushCache.get("crown") { Brush.verticalGradient(listOf(GoldLight, Gold, GoldDark), startY = 3f, endY = 30f) })
                 line(Shapes.crown, Color(0xFF8A4A08), 1.5f)
                 drawRoundRect(GoldDark, topLeft = Offset(31f, 27f), size = Size(38f, 6f), cornerRadius = CornerRadius(2f))
                 drawCircle(Color(0xFFFF3D6E), 3.2f, Offset(50f, 20f))
@@ -667,26 +836,13 @@ private fun DrawScope.drawCharacter(
             }
             else -> Unit
         }
-        if (fiery) {
-            listOf(Triple(34f, 26f, 0f), Triple(66f, 22f, 0.66f), Triple(58f, 12f, 1.33f)).forEach { (x, y, d) ->
-                val p = ((t + d) % 2f) / 2f
-                drawCircle(if (d == 0f) Color(0xFFFFD25A) else Color(0xFFFF9A2E), 2f * (1f - 0.7f * p), Offset(x, y - 18f * p), alpha = sin(PI * p).toFloat())
-            }
-        }
-        if (e == SpriteElement.STAR || e == SpriteElement.KING || e == SpriteElement.CRYSTAL || e == SpriteElement.SUN) {
-            twinkle(14f, 30f, 1f, t, 0f, Color.White)
-            twinkle(88f, 44f, 0.7f, t, 0.33f, Color.White)
-            twinkle(84f, 16f, 0.5f, t, 0.66f, Color.White)
-        }
-
-        drawEmotionFx(emo, t)
     }
 }
 
-private fun ringBrush() = Brush.horizontalGradient(listOf(Color(0xFFFFB6F0), Color.White, Color(0xFFB57BFF)), startX = 8f, endX = 92f)
+private fun ringBrush() = BrushCache.get("ring") { Brush.horizontalGradient(listOf(Color(0xFFFFB6F0), Color.White, Color(0xFFB57BFF)), startX = 8f, endX = 92f) }
 
 private fun DrawScope.leaf(path: Path, from: Offset, to: Offset) {
-    drawPath(path, Brush.linearGradient(listOf(Color(0xFFD4FF8A), Color(0xFF3FA52C)), start = from, end = to))
+    drawPath(path, BrushCache.get("leaf${from.x},${from.y}") { Brush.linearGradient(listOf(Color(0xFFD4FF8A), Color(0xFF3FA52C)), start = from, end = to) })
     line(path, Color(0xFF2E6E1A), 1.5f)
 }
 
@@ -701,7 +857,7 @@ private fun DrawScope.drawFace(spec: SpriteSpec, emo: SpriteEmotion, t: Float, b
     val strongCheeks = emo == SpriteEmotion.HAPPY || emo == SpriteEmotion.LOVE || emo == SpriteEmotion.PROUD || emo == SpriteEmotion.EXCITED
     for (cx in listOf(32.5f, 67.5f)) {
         drawOval(
-            brush = Brush.radialGradient(listOf(Blush.copy(alpha = if (strongCheeks) 0.9f else 0.5f), Color.Transparent), center = Offset(cx, 68f), radius = 7f),
+            brush = BrushCache.get("blush$strongCheeks$cx") { Brush.radialGradient(listOf(Blush.copy(alpha = if (strongCheeks) 0.9f else 0.5f), Color.Transparent), center = Offset(cx, 68f), radius = 7f) },
             topLeft = Offset(cx - 7f, 64f),
             size = Size(14f, 8f)
         )

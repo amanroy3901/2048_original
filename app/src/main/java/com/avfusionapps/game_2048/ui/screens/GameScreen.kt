@@ -138,6 +138,8 @@ fun GameScreen(
     var showGameOverDialog by remember { mutableStateOf(true) }
     val canUndo by viewModel.canUndo.collectAsState()
     val coins by viewModel.coins.collectAsState()
+    val seenSprites by viewModel.seenSprites.collectAsState()
+    var showCollection by remember { mutableStateOf(false) }
     val context = LocalContext.current
     var showExitDialog by remember { mutableStateOf(false) }
 
@@ -307,7 +309,10 @@ fun GameScreen(
                 combo = gameState.combo,
                 freezeMoves = gameState.freezeMoves,
                 hammerArmed = gameState.hammerArmed,
-                modifier = Modifier.padding(horizontal = 4.dp)
+                modifier = Modifier.padding(horizontal = 4.dp),
+                rockTtl = gameState.rockTtl,
+                foundSprites = if (theme.usesSprites) seenSprites.count { it in 2..2048 } else null,
+                onCollectionClick = { showCollection = true }
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -330,6 +335,13 @@ fun GameScreen(
                 onRestart = { showGridSizeDialog = true }
             )
         }
+    }
+
+    if (showCollection) {
+        com.avfusionapps.game_2048.ui.components.SpriteCollectionSheet(
+            seen = seenSprites,
+            onDismiss = { showCollection = false }
+        )
     }
 
     if (showGridSizeDialog) {

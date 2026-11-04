@@ -70,8 +70,27 @@ data class GameState(
     /** Cell currently being smashed by the hammer (plays its animation before it empties). */
     val breakingCell: Pair<Int, Int>? = null,
     /** Points and coins from the last move, for the floating popup. */
-    val lastGain: MoveGain? = null
+    val lastGain: MoveGain? = null,
+    /** Moves left before the Shadow Rock crumbles; 0 when there is no rock. */
+    val rockTtl: Int = 0,
+    /** Moves in a row without a merge; 10 drops a Shadow Rock. */
+    val dryMoves: Int = 0,
+    /** Blocked swipes in a row; 3 drop a Shadow Rock. */
+    val bonks: Int = 0,
+    /** Bumped on every blocked swipe so the board can shake and the sprites get dizzy. */
+    val bonkKey: Int = 0,
+    val bonkDirection: Direction? = null,
+    /** A short message floated over the middle of the board ("Bonk!", "New friend: Frosty!"). */
+    val notice: BoardNotice? = null
 )
+
+/** Grid value of the Shadow Rock penalty tile: it slides but never merges. */
+const val SHADOW_ROCK = -1
+const val ROCK_LIFETIME = 12
+private const val DRY_MOVES_FOR_ROCK = 10
+private const val BONKS_FOR_ROCK = 3
+
+data class BoardNotice(val text: String, val key: Long = System.nanoTime())
 
 /** Power-up charges for the current game. When one hits 0, another costs [PowerUps.COST] coins. */
 data class PowerUps(
@@ -249,6 +268,9 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     val unlockedLevels: StateFlow<Set<Int>> = gameStateFlow
         .map { it.unlockedLevels }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), setOf(1))
+
+    val seenSprites: StateFlow<Set<Int>> = settingsRepository.seenSpritesFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
 
     val coins: StateFlow<Int> = settingsRepository.coinsFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), GameSettingsRepository.STARTING_COINS)
@@ -452,9 +474,14 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 freezeMoves = 0,
                 hammerArmed = false,
                 breakingCell = null,
-                lastGain = null
+                lastGain = null,
+                rockTtl = 0,
+                dryMoves = 0,
+                bonks = 0,
+                notice = null
             )
         )
+        markSeen(newGrid)
 
         viewModelScope.launch {
             gameMoveRepository.clearAllMoves()
@@ -479,9 +506,14 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                         freezeMoves = 0,
                         hammerArmed = false,
                         breakingCell = null,
-                        lastGain = null
+                        lastGain = null,
+                        rockTtl = if (lastMove.grid.flatten().contains(SHADOW_ROCK)) ROCK_LIFETIME else 0,
+                        dryMoves = 0,
+                        bonks = 0,
+                        notice = null
                     )
                 )
+                markSeen(lastMove.grid)
 
                 updateCanUndoState()
             } else {
@@ -560,6 +592,37 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
 
+            // Shadow Rock: counts down each move and crumbles at 0. A dry spell drops a new one.
+            var notice: BoardNotice? = null
+            var rockTtl = gameState.rockTtl
+            if (rockTtl > 0) {
+                rockTtl--
+                if (rockTtl == 0) {
+                    removeRock(newGrid)
+                    notice = BoardNotice("The Shadow Rock crumbled!")
+                }
+            }
+            val dryMoves = if (mergedThisTurn) 0 else gameState.dryMoves + 1
+            var dryAfter = dryMoves
+            if (dryMoves >= DRY_MOVES_FOR_ROCK) {
+                dryAfter = 0
+                val rockAt = dropRock(newGrid)
+                if (rockAt != null) {
+                    animationInfoMap[rockAt] = TileAnimationInfo(isNew = true)
+                    rockTtl = ROCK_LIFETIME
+                    notice = BoardNotice("10 moves without a merge. A Shadow Rock fell in!")
+                }
+            }
+
+            // New sprites found this move (merges only; spawns are always 2 or 4).
+            val mergedValues = animationInfoMap.filterValues { it.isMerged }.keys.map { newGrid[it.first][it.second] }
+            val firstTimers = mergedValues.filter { it >= 8 && it !in seenSprites.value }
+            if (firstTimers.isNotEmpty()) {
+                val best = firstTimers.max()
+                notice = BoardNotice("New friend: ${com.avfusionapps.game_2048.ui.sprites.ElementalSprites.specFor(best).name}!")
+            }
+            markSeen(newGrid)
+
             // Combo: merging on back-to-back moves multiplies the points, up to x5.
             val newCombo = if (mergedThisTurn) gameState.combo + 1 else 0
             val multiplier = newCombo.coerceIn(1, 5)
@@ -622,6 +685,10 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     moveCount = newMoveCount,
                     combo = newCombo,
                     freezeMoves = if (frozen) gameState.freezeMoves - 1 else 0,
+                    rockTtl = rockTtl,
+                    dryMoves = dryAfter,
+                    bonks = 0,
+                    notice = notice ?: gameState.notice,
                     lastGain = if (scoreIncreaseThisTurn > 0) {
                         MoveGain(scoreIncreaseThisTurn, multiplier, coinsThisTurn, newMoveCount)
                     } else null
@@ -666,11 +733,70 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             if (isGameOver(gameState.grid)) { // Check the current grid
                 updateGameState(gameState.copy(isGameOver = true))
                 println("Game Over! (No valid moves left)")
-            } else if (gameState.combo > 0) {
-                // Swiping where nothing can move breaks the combo.
-                updateGameState(gameState.copy(combo = 0))
+            } else {
+                // Bonk: swiping where nothing can move makes everyone dizzy and breaks the combo.
+                // Three in a row drop a Shadow Rock.
+                val bonks = gameState.bonks + 1
+                var notice = BoardNotice(if (gameState.combo >= 2) "Bonk! Combo lost." else "Bonk!")
+                var grid = gameState.grid
+                var rockTtl = gameState.rockTtl
+                var anim = gameState.tileAnimationInfo
+                var moveCount = gameState.moveCount
+                var bonksAfter = bonks
+                if (bonks >= BONKS_FOR_ROCK) {
+                    bonksAfter = 0
+                    val g = grid.map { it.toMutableList() }.toMutableList()
+                    val rockAt = dropRock(g)
+                    if (rockAt != null) {
+                        grid = g
+                        rockTtl = ROCK_LIFETIME
+                        moveCount += 1
+                        anim = mapOf(rockAt to TileAnimationInfo(isNew = true))
+                        notice = BoardNotice("Three bonks in a row. A Shadow Rock fell in!")
+                        viewModelScope.launch {
+                            gameMoveRepository.saveMove(g, gameState.score, moveCount)
+                            gameMoveRepository.keepOnlyLastMoves(3)
+                            updateCanUndoState()
+                        }
+                    }
+                }
+                _soundEvent.tryEmit(SoundManager.SOUND_MOVE)
+                updateGameState(
+                    gameState.copy(
+                        grid = grid,
+                        combo = 0,
+                        bonks = bonksAfter,
+                        bonkKey = gameState.bonkKey + 1,
+                        bonkDirection = direction,
+                        rockTtl = rockTtl,
+                        tileAnimationInfo = anim,
+                        moveCount = moveCount,
+                        notice = notice,
+                        isGameOver = isGameOver(grid)
+                    )
+                )
             }
         }
+    }
+
+    /** Puts the Shadow Rock on a random empty cell unless one is already out. Returns where, or null. */
+    private fun dropRock(grid: MutableList<MutableList<Int>>): Pair<Int, Int>? {
+        if (grid.flatten().contains(SHADOW_ROCK)) return null
+        val empty = mutableListOf<Pair<Int, Int>>()
+        grid.forEachIndexed { r, row -> row.forEachIndexed { c, v -> if (v == 0) empty.add(r to c) } }
+        val at = empty.randomOrNull() ?: return null
+        grid[at.first][at.second] = SHADOW_ROCK
+        firebaseAnalytics.logEvent("shadow_rock_dropped", null)
+        return at
+    }
+
+    private fun removeRock(grid: MutableList<MutableList<Int>>) {
+        grid.forEachIndexed { r, row -> row.forEachIndexed { c, v -> if (v == SHADOW_ROCK) grid[r][c] = 0 } }
+    }
+
+    private fun markSeen(grid: List<List<Int>>) {
+        val values = grid.flatten().filter { it > 0 && it !in seenSprites.value }.toSet()
+        if (values.isNotEmpty()) viewModelScope.launch { settingsRepository.markSpritesSeen(values) }
     }
 
     /**
@@ -793,7 +919,9 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 tileAnimationInfo = anim,
                 breakingCell = null,
                 isGameOver = isGameOver(grid),
-                lastGain = null
+                lastGain = null,
+                rockTtl = if (grid.flatten().contains(SHADOW_ROCK)) gameState.rockTtl else 0,
+                notice = if (gameState.rockTtl > 0 && !grid.flatten().contains(SHADOW_ROCK)) BoardNotice("Smashed the Shadow Rock!") else gameState.notice
             )
         )
         gameMoveRepository.saveMove(grid, gameState.score, newMoveCount)
@@ -838,7 +966,11 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                         isGameOver = false,
                         combo = 0,
                         hammerArmed = false,
-                        lastGain = null
+                        lastGain = null,
+                        rockTtl = if (restoredGrid.flatten().contains(SHADOW_ROCK)) {
+                            if (gameState.rockTtl > 0) (gameState.rockTtl + 1).coerceAtMost(ROCK_LIFETIME) else 1
+                        } else 0,
+                        bonks = 0
                     )
                 )
 
@@ -1058,7 +1190,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             // Check for a potential merge with the next tile
             if (i + 1 < indexedNonZero.size) {
                 val (originalIndex2, value2) = indexedNonZero[i + 1]
-                if (value1 == value2) {
+                if (value1 == value2 && value1 > 0) {
                     // --- Merge Occurred ---
                     val mergedValue = value1 * 2
                     result.add(
@@ -1128,9 +1260,9 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 if (grid[r][c] == 0) return false // Found an empty cell
                 val current = grid[r][c]
                 // Check right neighbor
-                if (c + 1 < size && current == grid[r][c + 1]) return false
+                if (c + 1 < size && current > 0 && current == grid[r][c + 1]) return false
                 // Check bottom neighbor
-                if (r + 1 < size && current == grid[r + 1][c]) return false
+                if (r + 1 < size && current > 0 && current == grid[r + 1][c]) return false
             }
         }
         return true // No empty cells and no possible merges
@@ -1169,7 +1301,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                         
                         var i = 0
                         while (i < col.size - 1) {
-                            if (col[i] == col[i + 1]) {
+                            if (col[i] > 0 && col[i] == col[i + 1]) {
                                 scoreGained += col[i] * 2
                                 col[i] *= 2
                                 col.removeAt(i + 1)
@@ -1186,7 +1318,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                         
                         var i = 0
                         while (i < col.size - 1) {
-                            if (col[i] == col[i + 1]) {
+                            if (col[i] > 0 && col[i] == col[i + 1]) {
                                 scoreGained += col[i] * 2
                                 col[i] *= 2
                                 col.removeAt(i + 1)
@@ -1203,7 +1335,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                         
                         var i = 0
                         while (i < row.size - 1) {
-                            if (row[i] == row[i + 1]) {
+                            if (row[i] > 0 && row[i] == row[i + 1]) {
                                 scoreGained += row[i] * 2
                                 row[i] *= 2
                                 row.removeAt(i + 1)
@@ -1220,7 +1352,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                         
                         var i = 0
                         while (i < row.size - 1) {
-                            if (row[i] == row[i + 1]) {
+                            if (row[i] > 0 && row[i] == row[i + 1]) {
                                 scoreGained += row[i] * 2
                                 row[i] *= 2
                                 row.removeAt(i + 1)
@@ -1254,28 +1386,28 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             Direction.UP -> {
                 for (c in 0 until gameState.gridSize) {
                     for (r in 1 until gameState.gridSize) {
-                        if (grid[r][c] != 0 && (grid[r - 1][c] == 0 || grid[r - 1][c] == grid[r][c])) return true
+                        if (grid[r][c] != 0 && (grid[r - 1][c] == 0 || grid[r - 1][c] == grid[r][c] && grid[r][c] > 0)) return true
                     }
                 }
             }
             Direction.DOWN -> {
                 for (c in 0 until gameState.gridSize) {
                     for (r in 0 until gameState.gridSize - 1) {
-                        if (grid[r][c] != 0 && (grid[r + 1][c] == 0 || grid[r + 1][c] == grid[r][c])) return true
+                        if (grid[r][c] != 0 && (grid[r + 1][c] == 0 || grid[r + 1][c] == grid[r][c] && grid[r][c] > 0)) return true
                     }
                 }
             }
             Direction.LEFT -> {
                 for (r in 0 until gameState.gridSize) {
                     for (c in 1 until gameState.gridSize) {
-                        if (grid[r][c] != 0 && (grid[r][c - 1] == 0 || grid[r][c - 1] == grid[r][c])) return true
+                        if (grid[r][c] != 0 && (grid[r][c - 1] == 0 || grid[r][c - 1] == grid[r][c] && grid[r][c] > 0)) return true
                     }
                 }
             }
             Direction.RIGHT -> {
                 for (r in 0 until gameState.gridSize) {
                     for (c in 0 until gameState.gridSize - 1) {
-                        if (grid[r][c] != 0 && (grid[r][c + 1] == 0 || grid[r][c + 1] == grid[r][c])) return true
+                        if (grid[r][c] != 0 && (grid[r][c + 1] == 0 || grid[r][c + 1] == grid[r][c] && grid[r][c] > 0)) return true
                     }
                 }
             }

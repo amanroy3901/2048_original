@@ -1121,6 +1121,10 @@ private fun darken(c: Color, f: Float): Color = lerp(c, Color.Black, f)
 /** Glossy, beveled tile face used across the board, launcher and chips. */
 @Composable
 private fun TileFace(value: Int, size: Dp, color: Color, corner: Dp = size * 0.22f) {
+    if (LocalGameTheme.current.usesSprites && value > 0) {
+        com.avfusionapps.game_2048.ui.sprites.SpriteTile(value = value, modifier = Modifier.size(size))
+        return
+    }
     val shape = RoundedCornerShape(corner)
     Box(
         modifier = Modifier

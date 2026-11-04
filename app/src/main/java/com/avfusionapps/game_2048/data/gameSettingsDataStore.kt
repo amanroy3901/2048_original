@@ -32,6 +32,7 @@ class GameSettingsRepository(private val context: Context) {
         val REMINDERS_ENABLED_KEY = booleanPreferencesKey("reminders_enabled")
         val LAST_PLAYED_AT_KEY = longPreferencesKey("last_played_at")
         val COINS_KEY = intPreferencesKey("coins")
+        val SEEN_SPRITES_KEY = androidx.datastore.preferences.core.stringSetPreferencesKey("seen_sprites")
         /** Coins a new player starts with, enough for a couple of extra power-ups. */
         const val STARTING_COINS = 120
         const val DEFAULT_PLAYER_NAME = "Player"
@@ -251,5 +252,20 @@ class GameSettingsRepository(private val context: Context) {
             }
         }
         return spent
+    }
+
+    /** Tile values the player has made at least once (2, 4, 8 …); drives the sprite collection. */
+    val seenSpritesFlow: Flow<Set<Int>> = context.gameSettingsDataStore.data
+        .catch { exception ->
+            if (exception is IOException) emit(androidx.datastore.preferences.core.emptyPreferences())
+            else throw exception
+        }
+        .map { preferences -> preferences[SEEN_SPRITES_KEY].orEmpty().mapNotNull { it.toIntOrNull() }.toSet() }
+
+    suspend fun markSpritesSeen(values: Collection<Int>) {
+        if (values.isEmpty()) return
+        context.gameSettingsDataStore.edit { preferences ->
+            preferences[SEEN_SPRITES_KEY] = preferences[SEEN_SPRITES_KEY].orEmpty() + values.map { it.toString() }
+        }
     }
 }

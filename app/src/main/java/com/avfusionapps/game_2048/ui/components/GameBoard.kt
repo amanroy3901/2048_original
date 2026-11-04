@@ -48,6 +48,10 @@ import com.avfusionapps.game_2048.ui.theme.LocalGameTheme
 import com.avfusionapps.game_2048.ui.theme._2048OriginalTheme
 import com.avfusionapps.game_2048.viewmodel.GameViewModel
 import com.avfusionapps.game_2048.viewmodel.MoveGain
+import com.avfusionapps.game_2048.viewmodel.BoardNotice
+import com.avfusionapps.game_2048.viewmodel.Direction
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -76,7 +80,11 @@ fun GameBoard(viewModel: GameViewModel) {
         onCellTap = { r, c -> viewModel.hammerAt(r, c, context) },
         breakingCell = state.breakingCell,
         frozen = state.freezeMoves > 0,
-        lastGain = state.lastGain
+        lastGain = state.lastGain,
+        rockTtl = state.rockTtl,
+        bonkKey = state.bonkKey,
+        bonkDirection = state.bonkDirection,
+        notice = state.notice
     )
 }
 
@@ -92,7 +100,11 @@ fun GameBoard(
     onCellTap: ((Int, Int) -> Unit)? = null,
     breakingCell: Pair<Int, Int>? = null,
     frozen: Boolean = false,
-    lastGain: MoveGain? = null
+    lastGain: MoveGain? = null,
+    rockTtl: Int = 0,
+    bonkKey: Int = 0,
+    bonkDirection: Direction? = null,
+    notice: BoardNotice? = null
 ) {
     val theme = LocalGameTheme.current
     val density = LocalDensity.current
@@ -132,10 +144,27 @@ fun GameBoard(
     }
     val emptyCount = remember(grid) { grid.sumOf { row -> row.count { it == 0 } } }
 
+    // Bonk: the board knocks toward the wall and every sprite is dizzy for a moment.
+    val bonkShake = remember { Animatable(0f) }
+    var dizzy by remember { mutableStateOf(false) }
+    LaunchedEffect(bonkKey) {
+        if (bonkKey == 0) return@LaunchedEffect
+        dizzy = true
+        bonkShake.snapTo(0f)
+        bonkShake.animateTo(1f, tween(280, easing = LinearEasing))
+        kotlinx.coroutines.delay(1000)
+        dizzy = false
+    }
+    val knock = if (bonkShake.value < 1f) sin(bonkShake.value * PI.toFloat() * 3f) * (1f - bonkShake.value) * with(density) { 7.dp.toPx() } else 0f
+    val knockX = when (bonkDirection) { Direction.LEFT -> -knock; Direction.RIGHT -> knock; else -> 0f }
+    val knockY = when (bonkDirection) { Direction.UP -> -knock; Direction.DOWN -> knock; else -> 0f }
+    val pokes = remember { mutableStateMapOf<Pair<Int, Int>, Int>() }
+
     Box(
         modifier = modifier
             .aspectRatio(1f)
             .fillMaxWidth()
+            .graphicsLayer { translationX = knockX; translationY = knockY }
             .onSizeChanged { boardSize = it }
             .clip(RoundedCornerShape(12.dp))
             .background(theme.surfaceColor)
@@ -155,15 +184,26 @@ fun GameBoard(
                 ) {
                     row.forEachIndexed { j, cellValue ->
                         val tileInfo = tileAnimationInfo[Pair(i, j)]
-                        val mood = if (theme.usesSprites) {
-                            spriteMood(grid, i, j, cellValue, isGameOver, idleLevel, emptyCount)
-                        } else SpriteMood.Neutral
-                        val tappable = hammerArmed && onCellTap != null && cellValue != 0
+                        val mood = when {
+                            !theme.usesSprites -> SpriteMood.Neutral
+                            dizzy && cellValue > 0 && !isGameOver -> SpriteMood(SpriteEmotion.DIZZY)
+                            else -> spriteMood(grid, i, j, cellValue, isGameOver, idleLevel, emptyCount)
+                        }
+                        // Tap: the hammer hits when armed, otherwise a sprite gets poked.
+                        val canHammer = hammerArmed && onCellTap != null && cellValue != 0
+                        val canPoke = theme.usesSprites && cellValue != 0
                         GameCell(
                             value = cellValue,
                             modifier = Modifier
                                 .weight(1f)
-                                .then(if (tappable) Modifier.clickable { onCellTap?.invoke(i, j) } else Modifier)
+                                .then(
+                                    if (canHammer || canPoke) Modifier.pointerInput(i, j, canHammer) {
+                                        detectTapGestures {
+                                            if (canHammer) onCellTap?.invoke(i, j)
+                                            else pokes[i to j] = (pokes[i to j] ?: 0) + 1
+                                        }
+                                    } else Modifier
+                                )
                                 .testTag("GameScreen_Item_GameCell_${i}_${j}")
                                 .semantics {
                                     contentDescription = if (cellValue == 0) "Empty Tile at row $i column $j" else "Tile $cellValue at row $i column $j"
@@ -179,7 +219,9 @@ fun GameBoard(
                             lookX = mood.lookX,
                             lookY = mood.lookY,
                             wobble = hammerArmed && cellValue != 0,
-                            breaking = breakingCell == Pair(i, j)
+                            breaking = breakingCell == Pair(i, j),
+                            pokeKey = pokes[i to j],
+                            badgeText = if (cellValue < 0) rockTtl.toString() else null
                         )
                     }
                 }
@@ -187,7 +229,41 @@ fun GameBoard(
         }
         if (frozen) FrostOverlay()
         if (lastGain != null) ScorePopup(lastGain)
+        if (notice != null) NoticePopup(notice)
     }
+}
+
+/** A short message in the middle of the board: bonks, rocks, new friends. */
+@Composable
+private fun BoxScope.NoticePopup(notice: BoardNotice) {
+    val p = remember(notice.key) { Animatable(0f) }
+    LaunchedEffect(notice.key) { p.animateTo(1f, tween(1700, easing = LinearEasing)) }
+    val t = p.value
+    if (t >= 1f) return
+    val alpha = when {
+        t < 0.1f -> t / 0.1f
+        t > 0.8f -> (1f - t) / 0.2f
+        else -> 1f
+    }
+    Text(
+        text = notice.text,
+        color = Color(0xFFFFC93A),
+        fontSize = 22.sp,
+        fontWeight = FontWeight.Black,
+        textAlign = TextAlign.Center,
+        style = TextStyle(shadow = Shadow(Color(0xFF2A0F4A), Offset(0f, 3f), 3f)),
+        modifier = Modifier
+            .align(Alignment.Center)
+            .padding(horizontal = 24.dp)
+            .background(Color(0xCC12082E), RoundedCornerShape(16.dp))
+            .padding(horizontal = 16.dp, vertical = 10.dp)
+            .graphicsLayer {
+                this.alpha = alpha.coerceIn(0f, 1f)
+                val pop = if (t < 0.1f) 0.8f + 2f * t else 1f
+                scaleX = pop
+                scaleY = pop
+            }
+    )
 }
 
 /** Icy rim while Freeze is active. */
@@ -287,7 +363,9 @@ fun GameCell(
     lookX: Float = 0f,
     lookY: Float = 0f,
     wobble: Boolean = false,
-    breaking: Boolean = false
+    breaking: Boolean = false,
+    pokeKey: Int? = null,
+    badgeText: String? = null
 ) {
     val sprites = LocalGameTheme.current.usesSprites
     // Hammer armed: tiles wiggle, asking to be hit. Breaking: shake, then shrink away.
@@ -399,7 +477,9 @@ fun GameCell(
             charScaleY = charScaleY,
             mergeKey = if (sprites && isMerged) moveCount else null,
             spawnKey = if (sprites && isNew) moveCount else null,
-            breaking = breaking
+            breaking = breaking,
+            pokeKey = pokeKey,
+            badgeText = badgeText
         )
         if (breaking && bp < 0.75f) {
             // The hammer swings down from the top right and hits at ~40%.
@@ -450,10 +530,13 @@ fun TileView(
     charScaleY: Float = 1f,
     mergeKey: Int? = null,
     spawnKey: Int? = null,
-    breaking: Boolean = false
+    breaking: Boolean = false,
+    pokeKey: Int? = null,
+    badgeText: String? = null
 ) {
     val theme = LocalGameTheme.current
-    if (theme.usesSprites && value != 0) {
+    // The Shadow Rock is always drawn as a sprite, whatever the theme.
+    if ((theme.usesSprites && value != 0) || value < 0) {
         SpriteTile(
             value = value,
             modifier = modifier,
@@ -465,6 +548,8 @@ fun TileView(
             mergeKey = mergeKey,
             spawnKey = spawnKey,
             breaking = breaking,
+            pokeKey = pokeKey,
+            badgeText = badgeText,
             fontSizeMultiplier = fontSizeMultiplier
         )
         return

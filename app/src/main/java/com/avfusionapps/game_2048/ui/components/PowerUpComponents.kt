@@ -172,7 +172,10 @@ fun GameStatusRow(
     combo: Int,
     freezeMoves: Int,
     hammerArmed: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    rockTtl: Int = 0,
+    foundSprites: Int? = null,
+    onCollectionClick: (() -> Unit)? = null
 ) {
     val theme = LocalGameTheme.current
     Row(
@@ -184,6 +187,16 @@ fun GameStatusRow(
             CoinIcon(Modifier.size(18.dp))
             Spacer(Modifier.width(6.dp))
             Text("%,d".format(coins), color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Black)
+        }
+        if (hammerArmed) {
+            Text(
+                "Tap a tile to break it",
+                color = Color(0xFFFFE07A),
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f)
+            )
+            return@Row
         }
         val multiplier = combo.coerceIn(1, 5)
         StatusPill(background = if (combo >= 2) Color(0xFFE0337A) else Color(0x8C0A041E)) {
@@ -201,14 +214,31 @@ fun GameStatusRow(
                 Text("$freezeMoves", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Black)
             }
         }
-        if (hammerArmed) {
-            Text(
-                "Tap a tile to break it",
-                color = Color(0xFFFFE07A),
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.weight(1f)
-            )
+        if (rockTtl > 0) {
+            StatusPill(background = Color(0xFF3E3560)) {
+                Text("Rock $rockTtl", color = Color(0xFFE9DDFF), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+        Spacer(Modifier.weight(1f))
+        if (foundSprites != null && onCollectionClick != null) {
+            Row(
+                modifier = Modifier
+                    .height(32.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color(0x8C0A041E))
+                    .border(1.dp, Color(0xFFFFC93A).copy(alpha = 0.6f), RoundedCornerShape(16.dp))
+                    .clickable(onClick = onCollectionClick)
+                    .padding(start = 4.dp, end = 10.dp)
+                    .semantics { contentDescription = "Collection, $foundSprites of 11 found" },
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                com.avfusionapps.game_2048.ui.sprites.SpriteTile(
+                    value = 64,
+                    showCard = false,
+                    modifier = Modifier.size(28.dp)
+                )
+                Text("$foundSprites/11", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Black)
+            }
         }
     }
 }
