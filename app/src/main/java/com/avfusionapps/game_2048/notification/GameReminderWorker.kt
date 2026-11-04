@@ -8,6 +8,7 @@ import android.content.Intent
 import android.graphics.BitmapFactory
 import android.os.Build
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.avfusionapps.game_2048.MainActivity
@@ -60,10 +61,16 @@ class GameReminderWorker(
             return Result.success()
         }
 
-        val content = buildContent(settings, step)
         createChannel()
-        showNotification(content)
-        logEvent("notification_shown", step)
+        // Notifications off (Android 13+ permission denied, or app/channel muted)? notify() would
+        // silently drop it — log it as blocked instead of shown, but keep the chain alive in case
+        // the player turns them back on.
+        if (canPostNotifications()) {
+            showNotification(buildContent(settings, step))
+            logEvent("notification_shown", step)
+        } else {
+            logEvent("notification_blocked", step)
+        }
 
         // Chain the next reminder.
         ReminderManager(applicationContext).scheduleStep(step + 1)
@@ -149,6 +156,16 @@ class GameReminderWorker(
             val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             nm.createNotificationChannel(channel)
         }
+    }
+
+    private fun canPostNotifications(): Boolean {
+        val nmc = NotificationManagerCompat.from(context)
+        if (!nmc.areNotificationsEnabled()) return false
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = nmc.getNotificationChannel(CHANNEL_ID)
+            if (channel != null && channel.importance == NotificationManager.IMPORTANCE_NONE) return false
+        }
+        return true
     }
 
     private fun logEvent(name: String, step: Int) {
