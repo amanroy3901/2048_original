@@ -1,6 +1,8 @@
 package com.avfusionapps.game_2048.ui.components
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -39,12 +41,16 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.avfusionapps.game_2048.model.TileAnimationInfo
+import com.avfusionapps.game_2048.ui.sprites.SpriteEmotion
+import com.avfusionapps.game_2048.ui.sprites.SpriteTile
 import com.avfusionapps.game_2048.ui.theme.GameTheme
 import com.avfusionapps.game_2048.ui.theme.LocalGameTheme
 import com.avfusionapps.game_2048.ui.theme._2048OriginalTheme
 import com.avfusionapps.game_2048.viewmodel.GameViewModel
 import kotlinx.coroutines.launch
+import kotlin.math.PI
 import kotlin.math.log2
+import kotlin.math.sin
 
 @Composable
 fun GameBoard(viewModel: GameViewModel) {
@@ -52,7 +58,8 @@ fun GameBoard(viewModel: GameViewModel) {
         grid = viewModel.gameState.grid,
         tileAnimationInfo = viewModel.gameState.tileAnimationInfo,
         moveCount = viewModel.gameState.moveCount,
-        onAnimationsComplete = { viewModel.clearAnimationInfo() }
+        onAnimationsComplete = { viewModel.clearAnimationInfo() },
+        isGameOver = viewModel.gameState.isGameOver
     )
 }
 
@@ -62,7 +69,8 @@ fun GameBoard(
     tileAnimationInfo: Map<Pair<Int, Int>, TileAnimationInfo>,
     moveCount: Int,
     onAnimationsComplete: (() -> Unit)? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isGameOver: Boolean = false
 ) {
     val theme = LocalGameTheme.current
     val density = LocalDensity.current
@@ -89,6 +97,19 @@ fun GameBoard(
         }
     }
 
+    // Sprites get bored: thinking after 6 s without a move, asleep after 14 s.
+    var idleLevel by remember { mutableIntStateOf(0) }
+    if (theme.usesSprites) {
+        LaunchedEffect(moveCount) {
+            idleLevel = 0
+            kotlinx.coroutines.delay(6_000)
+            idleLevel = 1
+            kotlinx.coroutines.delay(8_000)
+            idleLevel = 2
+        }
+    }
+    val emptyCount = remember(grid) { grid.sumOf { row -> row.count { it == 0 } } }
+
     Box(
         modifier = modifier
             .aspectRatio(1f)
@@ -112,6 +133,9 @@ fun GameBoard(
                 ) {
                     row.forEachIndexed { j, cellValue ->
                         val tileInfo = tileAnimationInfo[Pair(i, j)]
+                        val mood = if (theme.usesSprites) {
+                            spriteMood(grid, i, j, cellValue, isGameOver, idleLevel, emptyCount)
+                        } else SpriteMood.Neutral
                         GameCell(
                             value = cellValue,
                             modifier = Modifier
@@ -126,13 +150,46 @@ fun GameBoard(
                             currentPosition = Pair(i, j),
                             moveCount = moveCount,
                             cellSizePx = cellSizePx,
-                            spacingPx = spacingPx
+                            spacingPx = spacingPx,
+                            emotion = mood.emotion,
+                            lookX = mood.lookX,
+                            lookY = mood.lookY
                         )
                     }
                 }
             }
         }
     }
+}
+
+/** What a sprite on the board feels and where it looks, from the board alone. */
+data class SpriteMood(val emotion: SpriteEmotion, val lookX: Float = 0f, val lookY: Float = 0f) {
+    companion object {
+        val Neutral = SpriteMood(SpriteEmotion.IDLE)
+    }
+}
+
+private fun spriteMood(
+    grid: List<List<Int>>,
+    i: Int,
+    j: Int,
+    value: Int,
+    isGameOver: Boolean,
+    idleLevel: Int,
+    emptyCount: Int
+): SpriteMood {
+    if (value == 0) return SpriteMood.Neutral
+    if (isGameOver) return SpriteMood(SpriteEmotion.SAD)
+    if (idleLevel >= 2) return SpriteMood(SpriteEmotion.SLEEPY)
+    if (idleLevel == 1) return SpriteMood(SpriteEmotion.THINKING)
+    // A twin right next door: get excited and look at it (doubles as a hint).
+    for ((dr, dc) in listOf(0 to 1, 1 to 0, 0 to -1, -1 to 0)) {
+        if (grid.getOrNull(i + dr)?.getOrNull(j + dc) == value) {
+            return SpriteMood(SpriteEmotion.EXCITED, lookX = dc * 1.8f, lookY = dr * 1.6f)
+        }
+    }
+    if (emptyCount <= 2) return SpriteMood(SpriteEmotion.WORRIED)
+    return SpriteMood.Neutral
 }
 
 @Composable
@@ -146,8 +203,12 @@ fun GameCell(
     moveCount: Int = 0,
     cellSizePx: Float = 0f,
     spacingPx: Float = 0f,
-    fontSizeMultiplier: Float = 1.0f
+    fontSizeMultiplier: Float = 1.0f,
+    emotion: SpriteEmotion = SpriteEmotion.IDLE,
+    lookX: Float = 0f,
+    lookY: Float = 0f
 ) {
+    val sprites = LocalGameTheme.current.usesSprites
     // Compute pixel offsets based on grid coordinate difference
     val hasSlide = startPosition != null && startPosition != currentPosition
     val rowDiff = if (hasSlide) (startPosition!!.first - currentPosition!!.first) else 0
@@ -157,8 +218,27 @@ fun GameCell(
     // Synchronously initialize state based on moveCount to avoid a 1-frame flash at target position
     val slideProgress = remember(moveCount) { Animatable(if (hasSlide) 0f else 1f) }
     var scale by remember(moveCount) { mutableStateOf(if (isNew) 0f else 1f) }
+    // Sprites only: squash and stretch of the character (the card stays square).
+    val landing = remember(moveCount) { Animatable(1f) }
+    val evolve = remember(moveCount) { Animatable(1f) }
 
     LaunchedEffect(moveCount) {
+        if (sprites && (hasSlide || isMerged || isNew)) {
+            if (isNew) {
+                kotlinx.coroutines.delay(110)
+                animate(0f, 1f, animationSpec = spring(dampingRatio = 0.45f, stiffness = Spring.StiffnessMediumLow)) { v, _ -> scale = v }
+                return@LaunchedEffect
+            }
+            if (hasSlide) slideProgress.animateTo(1f, animationSpec = tween(durationMillis = 150))
+            if (isMerged) {
+                evolve.snapTo(0f)
+                evolve.animateTo(1f, tween(560))
+            } else if (hasSlide) {
+                landing.snapTo(0f)
+                landing.animateTo(1f, tween(320))
+            }
+            return@LaunchedEffect
+        }
         if (hasSlide || isMerged || isNew) {
             if (hasSlide) {
                 // Already initialized to 0f, just animate to 1f
@@ -182,6 +262,25 @@ fun GameCell(
     val progress = slideProgress.value
     val offsetX = colDiff * cellStride * (1f - progress)
     val offsetY = rowDiff * cellStride * (1f - progress)
+    val horizontal = colDiff != 0
+    var charScaleX = 1f
+    var charScaleY = 1f
+    if (sprites) {
+        if (hasSlide && progress < 1f) {
+            val st = sin(PI * progress).toFloat() * 0.2f
+            if (horizontal) { charScaleX = 1f + st; charScaleY = 1f - st * 0.75f } else { charScaleY = 1f + st; charScaleX = 1f - st * 0.75f }
+        }
+        val l = landing.value
+        if (l < 1f) {
+            val k = sin(PI * 2 * l).toFloat() * (1f - l) * 0.16f
+            if (horizontal) { charScaleX = 1f - k; charScaleY = 1f + k * 0.6f } else { charScaleY = 1f - k; charScaleX = 1f + k * 0.6f }
+        }
+        val e = evolve.value
+        if (e < 1f) {
+            val (sx, sy) = evolveSquash(e)
+            charScaleX = sx; charScaleY = sy
+        }
+    }
 
     Box(
         modifier = modifier.aspectRatio(1f),
@@ -197,18 +296,63 @@ fun GameCell(
                     scaleX = scale
                     scaleY = scale
                 },
-            fontSizeMultiplier = fontSizeMultiplier
+            fontSizeMultiplier = fontSizeMultiplier,
+            emotion = emotion,
+            lookX = lookX,
+            lookY = lookY,
+            charScaleX = charScaleX,
+            charScaleY = charScaleY,
+            mergeKey = if (sprites && isMerged) moveCount else null,
+            spawnKey = if (sprites && isNew) moveCount else null
         )
     }
+}
+
+/** The pop a sprite does when it evolves: tiny, wide, tall, settle. */
+private fun evolveSquash(p: Float): Pair<Float, Float> {
+    val keys = listOf(
+        0f to (0.3f to 0.3f),
+        0.3f to (1.34f to 0.76f),
+        0.55f to (0.86f to 1.2f),
+        0.8f to (1.06f to 0.96f),
+        1f to (1f to 1f)
+    )
+    val k = keys.indexOfLast { it.first <= p }.coerceIn(0, keys.size - 2)
+    val (p0, a) = keys[k]
+    val (p1, b) = keys[k + 1]
+    val f = ((p - p0) / (p1 - p0)).coerceIn(0f, 1f)
+    return Pair(a.first + (b.first - a.first) * f, a.second + (b.second - a.second) * f)
 }
 
 @Composable
 fun TileView(
     value: Int,
     modifier: Modifier = Modifier,
-    fontSizeMultiplier: Float = 1.0f
+    fontSizeMultiplier: Float = 1.0f,
+    emotion: SpriteEmotion = SpriteEmotion.IDLE,
+    lookX: Float = 0f,
+    lookY: Float = 0f,
+    charScaleX: Float = 1f,
+    charScaleY: Float = 1f,
+    mergeKey: Int? = null,
+    spawnKey: Int? = null
 ) {
     val theme = LocalGameTheme.current
+    if (theme.usesSprites && value != 0) {
+        SpriteTile(
+            value = value,
+            modifier = modifier,
+            emotion = emotion,
+            lookX = lookX,
+            lookY = lookY,
+            charScaleX = charScaleX,
+            charScaleY = charScaleY,
+            mergeKey = mergeKey,
+            spawnKey = spawnKey,
+            fontSizeMultiplier = fontSizeMultiplier
+        )
+        return
+    }
     val backgroundColor = theme.tileColors[value] ?: theme.tileColors[0]!!
     val textColor = if (value <= 4) theme.textColor else Color.White
 

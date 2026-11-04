@@ -18,7 +18,7 @@ class ThemeViewModel(application: Application) : AndroidViewModel(application) {
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
-            initialValue = GameTheme.NeonPink
+            initialValue = GameTheme.ElementalSprites
         )
 
     fun setTheme(theme: GameTheme) {

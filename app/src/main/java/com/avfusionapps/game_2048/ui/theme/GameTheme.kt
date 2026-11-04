@@ -19,9 +19,40 @@ sealed class GameTheme(val name: String) {
      */
     open val gradientEndColor: Color get() = secondaryColor
 
+    /** True when tiles are drawn as Elemental Sprites characters instead of plain numbered tiles. */
+    open val usesSprites: Boolean get() = false
+
     /** The signature sweep used by the wordmark, the primary CTAs and card borders. */
     val heroGradient: List<Color>
         get() = listOf(primaryColor, secondaryColor, gradientEndColor).distinct()
+
+    object ElementalSprites : GameTheme("Elemental Sprites") {
+        override val primaryColor = Color(0xFFB57BFF)
+        override val secondaryColor = Color(0xFFFFC93A)
+        override val gradientEndColor = Color(0xFF47C6FF)
+        override val backgroundColor = Color(0xFF130A2E)
+        override val surfaceColor = Color(0xFF22124F)
+        override val textColor = Color(0xFFF6F0FF)
+        override val accentColor = Color(0xFFFF9A1F)
+        override val isDark = true
+        override val usesSprites = true
+
+        // Card colours of each sprite (see ui/sprites/ElementalSprites.kt); 0 is the empty cell.
+        override val tileColors = mapOf(
+            0 to Color(0xFF1A0C42),
+            2 to Color(0xFF2A86E8),
+            4 to Color(0xFF3FA52C),
+            8 to Color(0xFFF0A01E),
+            16 to Color(0xFF3C8EDB),
+            32 to Color(0xFF6B35D6),
+            64 to Color(0xFFD9481C),
+            128 to Color(0xFF3FA532),
+            256 to Color(0xFF2F52D8),
+            512 to Color(0xFFE58A16),
+            1024 to Color(0xFF7E5BD8),
+            2048 to Color(0xFFF2A01A)
+        )
+    }
 
     object NeonPink : GameTheme("Neon Pink") {
         override val primaryColor = Color(0xFFFF006E)
@@ -253,6 +284,7 @@ sealed class GameTheme(val name: String) {
     companion object {
         fun fromName(name: String): GameTheme {
             return when (name) {
+                "Elemental Sprites" -> ElementalSprites
                 "Neon Rush", "Neon Pink" -> NeonPink
                 "Cyber Blue" -> CyberBlue
                 "Emerald Matrix", "Emerald" -> Emerald
@@ -262,11 +294,12 @@ sealed class GameTheme(val name: String) {
                 "AMOLED Black", "Amoled Black" -> AmoledBlack
                 "Ocean Teal" -> OceanTeal
                 "Golden Hour" -> GoldenHour
-                else -> NeonPink
+                else -> ElementalSprites
             }
         }
 
         fun allThemes() = listOf(
+            ElementalSprites,
             NeonPink,
             CyberBlue,
             Emerald,

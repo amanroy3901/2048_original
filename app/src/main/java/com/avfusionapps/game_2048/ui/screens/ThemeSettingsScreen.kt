@@ -459,6 +459,7 @@ private fun TilePreview(theme: GameTheme, value: Int, modifier: Modifier = Modif
 
 private fun getThemeDescription(name: String): String {
     return when (name) {
+        "Elemental Sprites" -> "Living characters that grow from a water drop to the Ember King."
         "Neon Pink" -> "Vibrant, energetic and made to pop!"
         "Cyber Blue" -> "Sleek, futuristic, and cool to the touch."
         "Emerald" -> "Crisp, natural, and matrix-inspired."
