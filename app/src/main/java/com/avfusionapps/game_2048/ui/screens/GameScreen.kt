@@ -76,6 +76,8 @@ import com.avfusionapps.game_2048.R
 import com.avfusionapps.game_2048.ui.NeonCutCornerButton
 import com.avfusionapps.game_2048.ui.NeonRoundedButton
 import com.avfusionapps.game_2048.ui.components.ClassicTopBar
+import com.avfusionapps.game_2048.ui.components.GameStatusRow
+import com.avfusionapps.game_2048.ui.components.PowerUpBar
 import com.avfusionapps.game_2048.ui.components.GameTutorialOverlay
 import com.avfusionapps.game_2048.ui.components.ClassicBottomBar
 import com.avfusionapps.game_2048.ui.components.GameScoreBoard
@@ -135,6 +137,7 @@ fun GameScreen(
     var showGridSizeDialog by remember { mutableStateOf(false) }
     var showGameOverDialog by remember { mutableStateOf(true) }
     val canUndo by viewModel.canUndo.collectAsState()
+    val coins by viewModel.coins.collectAsState()
     val context = LocalContext.current
     var showExitDialog by remember { mutableStateOf(false) }
 
@@ -297,7 +300,17 @@ fun GameScreen(
                 highScoreTint = theme.secondaryColor // Replaced hardcoded Gold color with theme.secondaryColor
             )
     
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(10.dp))
+
+            GameStatusRow(
+                coins = coins,
+                combo = gameState.combo,
+                freezeMoves = gameState.freezeMoves,
+                hammerArmed = gameState.hammerArmed,
+                modifier = Modifier.padding(horizontal = 4.dp)
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
     
             GameBoard(viewModel = viewModel)
     
@@ -305,10 +318,16 @@ fun GameScreen(
     
             GameSwipeIndicator()
     
-            ClassicBottomBar(
-                onUndoClick = { viewModel.undoMove(context) },
-                onRestartClick = { showGridSizeDialog = true },
-                onHintClick = { viewModel.showHint(context) }
+            PowerUpBar(
+                powerUps = gameState.powerUps,
+                hammerArmed = gameState.hammerArmed,
+                freezeActive = gameState.freezeMoves > 0,
+                onUndo = { viewModel.undoMove(context) },
+                onHammer = { viewModel.toggleHammer(context) },
+                onShuffle = { viewModel.shuffle(context) },
+                onFreeze = { viewModel.freeze(context) },
+                onHint = { viewModel.showHint(context) },
+                onRestart = { showGridSizeDialog = true }
             )
         }
     }

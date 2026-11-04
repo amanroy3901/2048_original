@@ -59,8 +59,37 @@ data class GameState(
     val moveCount: Int = 0,
     val currentLevel: Int = 1,
     val unlockedLevels: Set<Int> = setOf(1),
-    val hasSavedGame: Boolean = false
+    val hasSavedGame: Boolean = false,
+    /** Back-to-back merging moves; the score multiplier is min(combo, 5). */
+    val combo: Int = 0,
+    val powerUps: PowerUps = PowerUps(),
+    /** Moves left with no new tile spawning (Freeze power-up). */
+    val freezeMoves: Int = 0,
+    /** Hammer is armed: the next tap on a tile breaks it. */
+    val hammerArmed: Boolean = false,
+    /** Cell currently being smashed by the hammer (plays its animation before it empties). */
+    val breakingCell: Pair<Int, Int>? = null,
+    /** Points and coins from the last move, for the floating popup. */
+    val lastGain: MoveGain? = null
 )
+
+/** Power-up charges for the current game. When one hits 0, another costs [PowerUps.COST] coins. */
+data class PowerUps(
+    val undo: Int = 3,
+    val hint: Int = 5,
+    val hammer: Int = 3,
+    val shuffle: Int = 3,
+    val freeze: Int = 3
+) {
+    companion object {
+        const val COST = 50
+    }
+}
+
+enum class PowerUp { UNDO, HINT, HAMMER, SHUFFLE, FREEZE }
+
+/** What the last move earned. [key] is the move number, so the board knows when to replay the popup. */
+data class MoveGain(val points: Int, val multiplier: Int, val coins: Int, val key: Int)
 
 /**
  * Enum representing the possible move directions.
@@ -220,6 +249,9 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     val unlockedLevels: StateFlow<Set<Int>> = gameStateFlow
         .map { it.unlockedLevels }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), setOf(1))
+
+    val coins: StateFlow<Int> = settingsRepository.coinsFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), GameSettingsRepository.STARTING_COINS)
 
     val soundEnabled: StateFlow<Boolean> = settingsRepository.soundEnabledFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
@@ -414,7 +446,13 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 isGameOver = false,
                 moveCount = 0,
                 tileAnimationInfo = emptyMap(),
-                hasSavedGame = false
+                hasSavedGame = false,
+                combo = 0,
+                powerUps = PowerUps(),
+                freezeMoves = 0,
+                hammerArmed = false,
+                breakingCell = null,
+                lastGain = null
             )
         )
 
@@ -436,7 +474,12 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                         moveCount = lastMove.moveNumber,
                         isGameOver = false,
                         tileAnimationInfo = emptyMap(),
-                        hasSavedGame = false
+                        hasSavedGame = false,
+                        combo = 0,
+                        freezeMoves = 0,
+                        hammerArmed = false,
+                        breakingCell = null,
+                        lastGain = null
                     )
                 )
 
@@ -453,7 +496,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
      * Updates the gameState.
      */
     fun move(direction: Direction) {
-        if (gameState.isGameOver) return
+        if (gameState.isGameOver || gameState.breakingCell != null) return
+        if (gameState.hammerArmed) updateGameState(gameState.copy(hammerArmed = false))
 
         val currentGrid = gameState.grid
         val size = gameState.gridSize
@@ -461,6 +505,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         var boardMoved = false
         var mergedThisTurn = false
         var scoreIncreaseThisTurn = 0
+        var coinsThisTurn = 0
         val animationInfoMap = mutableMapOf<Pair<Int, Int>, TileAnimationInfo>()
 
         for (i in 0 until size) {
@@ -497,6 +542,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     if (didMerge) {
                         mergedThisTurn = true
                         _mergeEvent.tryEmit(Unit)
+                        // Merges of 32 and up pay coins: 32 → 1, 64 → 2 … 2048 → 64.
+                        if (processedTile.value >= 32) coinsThisTurn += processedTile.value / 32
                     }
                 }
             }
@@ -504,9 +551,21 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
 
         if (boardMoved) {
-            val (newTileRow, newTileCol) = addRandomTile(newGrid)
-            if (newTileRow != -1) {
-                animationInfoMap[Pair(newTileRow, newTileCol)] = TileAnimationInfo(isNew = true)
+            // Freeze skips the spawn for a few moves.
+            val frozen = gameState.freezeMoves > 0
+            if (!frozen) {
+                val (newTileRow, newTileCol) = addRandomTile(newGrid)
+                if (newTileRow != -1) {
+                    animationInfoMap[Pair(newTileRow, newTileCol)] = TileAnimationInfo(isNew = true)
+                }
+            }
+
+            // Combo: merging on back-to-back moves multiplies the points, up to x5.
+            val newCombo = if (mergedThisTurn) gameState.combo + 1 else 0
+            val multiplier = newCombo.coerceIn(1, 5)
+            scoreIncreaseThisTurn *= multiplier
+            if (coinsThisTurn > 0) {
+                viewModelScope.launch { settingsRepository.addCoins(coinsThisTurn) }
             }
 
             val newScore = gameState.score + scoreIncreaseThisTurn
@@ -560,7 +619,12 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     unlockedLevels = newUnlockedLevels,
                     isGameOver = gameOver,
                     tileAnimationInfo = animationInfoMap,
-                    moveCount = newMoveCount
+                    moveCount = newMoveCount,
+                    combo = newCombo,
+                    freezeMoves = if (frozen) gameState.freezeMoves - 1 else 0,
+                    lastGain = if (scoreIncreaseThisTurn > 0) {
+                        MoveGain(scoreIncreaseThisTurn, multiplier, coinsThisTurn, newMoveCount)
+                    } else null
                 )
             )
 
@@ -602,8 +666,139 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             if (isGameOver(gameState.grid)) { // Check the current grid
                 updateGameState(gameState.copy(isGameOver = true))
                 println("Game Over! (No valid moves left)")
+            } else if (gameState.combo > 0) {
+                // Swiping where nothing can move breaks the combo.
+                updateGameState(gameState.copy(combo = 0))
             }
         }
+    }
+
+    /**
+     * Takes one charge of [kind], buying one for [PowerUps.COST] coins when it has run out.
+     * Returns false (and tells the player) when neither is possible.
+     */
+    private suspend fun takeCharge(kind: PowerUp, context: Context): Boolean {
+        val p = gameState.powerUps
+        val left = when (kind) {
+            PowerUp.UNDO -> p.undo
+            PowerUp.HINT -> p.hint
+            PowerUp.HAMMER -> p.hammer
+            PowerUp.SHUFFLE -> p.shuffle
+            PowerUp.FREEZE -> p.freeze
+        }
+        if (left <= 0) {
+            if (!settingsRepository.spendCoins(PowerUps.COST)) {
+                Toast.makeText(context, "You need ${PowerUps.COST} coins for another ${kind.label()}", Toast.LENGTH_SHORT).show()
+                return false
+            }
+            Toast.makeText(context, "Bought 1 ${kind.label()} for ${PowerUps.COST} coins", Toast.LENGTH_SHORT).show()
+            logPowerUp(kind, bought = true)
+            return true
+        }
+        val next = when (kind) {
+            PowerUp.UNDO -> p.copy(undo = left - 1)
+            PowerUp.HINT -> p.copy(hint = left - 1)
+            PowerUp.HAMMER -> p.copy(hammer = left - 1)
+            PowerUp.SHUFFLE -> p.copy(shuffle = left - 1)
+            PowerUp.FREEZE -> p.copy(freeze = left - 1)
+        }
+        updateGameState(gameState.copy(powerUps = next))
+        logPowerUp(kind, bought = false)
+        return true
+    }
+
+    private fun PowerUp.label() = name.lowercase()
+
+    private fun logPowerUp(kind: PowerUp, bought: Boolean) {
+        firebaseAnalytics.logEvent("power_up_used", android.os.Bundle().apply {
+            putString("power_up", kind.label())
+            putLong("bought", if (bought) 1 else 0)
+        })
+    }
+
+    /** Arms the hammer, or puts it away if it is already armed. The charge is taken on the hit. */
+    fun toggleHammer(context: Context) {
+        if (gameState.breakingCell != null) return
+        if (gameState.hammerArmed) {
+            updateGameState(gameState.copy(hammerArmed = false))
+            return
+        }
+        if (gameState.grid.flatten().count { it != 0 } < 2) {
+            Toast.makeText(context, "Nothing worth breaking yet", Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (gameState.powerUps.hammer <= 0 && coins.value < PowerUps.COST) {
+            Toast.makeText(context, "You need ${PowerUps.COST} coins for another hammer", Toast.LENGTH_SHORT).show()
+            return
+        }
+        updateGameState(gameState.copy(hammerArmed = true))
+    }
+
+    /** Smashes the tile at (row, col): plays the break animation, then empties the cell as a new move. */
+    fun hammerAt(row: Int, col: Int, context: Context) {
+        if (!gameState.hammerArmed || gameState.grid[row][col] == 0) return
+        viewModelScope.launch {
+            if (!takeCharge(PowerUp.HAMMER, context)) {
+                updateGameState(gameState.copy(hammerArmed = false))
+                return@launch
+            }
+            updateGameState(gameState.copy(hammerArmed = false, breakingCell = row to col))
+            kotlinx.coroutines.delay(420)
+            val grid = gameState.grid.map { it.toMutableList() }.toMutableList()
+            grid[row][col] = 0
+            commitPowerUpBoard(grid, emptyMap())
+        }
+    }
+
+    /** Moves every tile to a random cell. */
+    fun shuffle(context: Context) {
+        if (gameState.breakingCell != null) return
+        val tiles = mutableListOf<Pair<Pair<Int, Int>, Int>>()
+        gameState.grid.forEachIndexed { r, row -> row.forEachIndexed { c, v -> if (v != 0) tiles.add((r to c) to v) } }
+        if (tiles.size < 2) {
+            Toast.makeText(context, "Not enough tiles to shuffle", Toast.LENGTH_SHORT).show()
+            return
+        }
+        viewModelScope.launch {
+            if (!takeCharge(PowerUp.SHUFFLE, context)) return@launch
+            val size = gameState.gridSize
+            val cells = (0 until size * size).map { it / size to it % size }.shuffled()
+            val grid = MutableList(size) { MutableList(size) { 0 } }
+            val anim = mutableMapOf<Pair<Int, Int>, TileAnimationInfo>()
+            tiles.forEachIndexed { k, (from, v) ->
+                val to = cells[k]
+                grid[to.first][to.second] = v
+                anim[to] = TileAnimationInfo(startPosition = from)
+            }
+            commitPowerUpBoard(grid, anim)
+        }
+    }
+
+    /** No new tiles for the next 3 moves. */
+    fun freeze(context: Context) {
+        if (gameState.isGameOver || gameState.freezeMoves > 0) return
+        viewModelScope.launch {
+            if (!takeCharge(PowerUp.FREEZE, context)) return@launch
+            updateGameState(gameState.copy(freezeMoves = 3))
+        }
+    }
+
+    /** Saves a board changed by a power-up as its own move, so Undo can take it back. */
+    private suspend fun commitPowerUpBoard(grid: List<List<Int>>, anim: Map<Pair<Int, Int>, TileAnimationInfo>) {
+        val newMoveCount = gameState.moveCount + 1
+        updateGameState(
+            gameState.copy(
+                grid = grid,
+                moveCount = newMoveCount,
+                tileAnimationInfo = anim,
+                breakingCell = null,
+                isGameOver = isGameOver(grid),
+                lastGain = null
+            )
+        )
+        gameMoveRepository.saveMove(grid, gameState.score, newMoveCount)
+        gameMoveRepository.keepOnlyLastMoves(3)
+        updateCanUndoState()
     }
 
     fun enableNotification() {
@@ -619,6 +814,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             val moves = gameMoveRepository.getLastMoves(2)
 
             if (moves.size >= 2) {
+                if (!takeCharge(PowerUp.UNDO, context)) return@launch
                 val latest = moves[0]
                 val previousMove = moves[1]
 
@@ -639,7 +835,10 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                         currentLevel = restoredCurrentLevel,
                         unlockedLevels = restoredUnlockedLevels,
                         tileAnimationInfo = emptyMap(),
-                        isGameOver = false
+                        isGameOver = false,
+                        combo = 0,
+                        hammerArmed = false,
+                        lastGain = null
                     )
                 )
 
@@ -940,10 +1139,14 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     fun showHint(context: Context) {
         // Find the best move using a simple heuristic (highest score yield)
         val bestMove = findBestMove(gameState.grid)
-        if (bestMove != null) {
-            Toast.makeText(context, "Try swiping ${bestMove.name}", Toast.LENGTH_SHORT).show()
-        } else {
+        if (bestMove == null) {
             Toast.makeText(context, "No obvious good moves!", Toast.LENGTH_SHORT).show()
+            return
+        }
+        viewModelScope.launch {
+            if (takeCharge(PowerUp.HINT, context)) {
+                Toast.makeText(context, "Try swiping ${bestMove.name}", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 

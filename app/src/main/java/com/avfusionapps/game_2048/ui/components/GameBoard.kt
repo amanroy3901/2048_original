@@ -47,6 +47,16 @@ import com.avfusionapps.game_2048.ui.theme.GameTheme
 import com.avfusionapps.game_2048.ui.theme.LocalGameTheme
 import com.avfusionapps.game_2048.ui.theme._2048OriginalTheme
 import com.avfusionapps.game_2048.viewmodel.GameViewModel
+import com.avfusionapps.game_2048.viewmodel.MoveGain
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Gavel
+import androidx.compose.material3.Icon
+import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
 import kotlin.math.PI
 import kotlin.math.log2
@@ -54,12 +64,19 @@ import kotlin.math.sin
 
 @Composable
 fun GameBoard(viewModel: GameViewModel) {
+    val context = LocalContext.current
+    val state = viewModel.gameState
     GameBoard(
-        grid = viewModel.gameState.grid,
-        tileAnimationInfo = viewModel.gameState.tileAnimationInfo,
-        moveCount = viewModel.gameState.moveCount,
+        grid = state.grid,
+        tileAnimationInfo = state.tileAnimationInfo,
+        moveCount = state.moveCount,
         onAnimationsComplete = { viewModel.clearAnimationInfo() },
-        isGameOver = viewModel.gameState.isGameOver
+        isGameOver = state.isGameOver,
+        hammerArmed = state.hammerArmed,
+        onCellTap = { r, c -> viewModel.hammerAt(r, c, context) },
+        breakingCell = state.breakingCell,
+        frozen = state.freezeMoves > 0,
+        lastGain = state.lastGain
     )
 }
 
@@ -70,7 +87,12 @@ fun GameBoard(
     moveCount: Int,
     onAnimationsComplete: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
-    isGameOver: Boolean = false
+    isGameOver: Boolean = false,
+    hammerArmed: Boolean = false,
+    onCellTap: ((Int, Int) -> Unit)? = null,
+    breakingCell: Pair<Int, Int>? = null,
+    frozen: Boolean = false,
+    lastGain: MoveGain? = null
 ) {
     val theme = LocalGameTheme.current
     val density = LocalDensity.current
@@ -136,10 +158,12 @@ fun GameBoard(
                         val mood = if (theme.usesSprites) {
                             spriteMood(grid, i, j, cellValue, isGameOver, idleLevel, emptyCount)
                         } else SpriteMood.Neutral
+                        val tappable = hammerArmed && onCellTap != null && cellValue != 0
                         GameCell(
                             value = cellValue,
                             modifier = Modifier
                                 .weight(1f)
+                                .then(if (tappable) Modifier.clickable { onCellTap?.invoke(i, j) } else Modifier)
                                 .testTag("GameScreen_Item_GameCell_${i}_${j}")
                                 .semantics {
                                     contentDescription = if (cellValue == 0) "Empty Tile at row $i column $j" else "Tile $cellValue at row $i column $j"
@@ -153,11 +177,66 @@ fun GameBoard(
                             spacingPx = spacingPx,
                             emotion = mood.emotion,
                             lookX = mood.lookX,
-                            lookY = mood.lookY
+                            lookY = mood.lookY,
+                            wobble = hammerArmed && cellValue != 0,
+                            breaking = breakingCell == Pair(i, j)
                         )
                     }
                 }
             }
+        }
+        if (frozen) FrostOverlay()
+        if (lastGain != null) ScorePopup(lastGain)
+    }
+}
+
+/** Icy rim while Freeze is active. */
+@Composable
+private fun BoxScope.FrostOverlay() {
+    val pulse = rememberInfiniteTransition(label = "frost")
+    val a by pulse.animateFloat(0.55f, 0.95f, infiniteRepeatable(tween(1100), androidx.compose.animation.core.RepeatMode.Reverse), label = "frostAlpha")
+    Box(
+        modifier = Modifier
+            .matchParentSize()
+            .border(3.dp, Color(0xFFC8F5FF).copy(alpha = a), RoundedCornerShape(10.dp))
+            .background(
+                Brush.radialGradient(
+                    listOf(Color.Transparent, Color(0xFFA6ECFF).copy(alpha = 0.22f * a)),
+                    radius = 900f
+                ),
+                RoundedCornerShape(10.dp)
+            )
+    )
+}
+
+/** "+64", "Combo x3" and "+2 coins" floating up over the board after a scoring move. */
+@Composable
+private fun BoxScope.ScorePopup(gain: MoveGain) {
+    val p = remember(gain.key) { Animatable(0f) }
+    LaunchedEffect(gain.key) { p.animateTo(1f, tween(1000, easing = LinearEasing)) }
+    val t = p.value
+    if (t >= 1f) return
+    val alpha = if (t < 0.15f) t / 0.15f else (1f - (t - 0.15f) / 0.85f)
+    Column(
+        modifier = Modifier
+            .align(Alignment.TopCenter)
+            .padding(top = 18.dp)
+            .graphicsLayer {
+                translationY = -60f * t
+                this.alpha = alpha.coerceIn(0f, 1f)
+                val pop = if (t < 0.2f) 0.7f + 1.6f * t else 1f
+                scaleX = pop
+                scaleY = pop
+            },
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        val outline = Shadow(Color(0xFF2A0F4A), Offset(0f, 3f), 2f)
+        Text("+${gain.points}", color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Black, style = TextStyle(shadow = outline))
+        if (gain.multiplier >= 2) {
+            Text("Combo x${gain.multiplier}", color = Color(0xFFFFC93A), fontSize = 22.sp, fontWeight = FontWeight.Black, style = TextStyle(shadow = outline))
+        }
+        if (gain.coins > 0) {
+            Text("+${gain.coins} coins", color = Color(0xFFFFE07A), fontSize = 16.sp, fontWeight = FontWeight.Bold, style = TextStyle(shadow = outline))
         }
     }
 }
@@ -206,9 +285,21 @@ fun GameCell(
     fontSizeMultiplier: Float = 1.0f,
     emotion: SpriteEmotion = SpriteEmotion.IDLE,
     lookX: Float = 0f,
-    lookY: Float = 0f
+    lookY: Float = 0f,
+    wobble: Boolean = false,
+    breaking: Boolean = false
 ) {
     val sprites = LocalGameTheme.current.usesSprites
+    // Hammer armed: tiles wiggle, asking to be hit. Breaking: shake, then shrink away.
+    val wiggle = rememberInfiniteTransition(label = "wiggle")
+    val wigglePhase by wiggle.animateFloat(0f, 1f, infiniteRepeatable(tween(500, easing = LinearEasing)), label = "wigglePhase")
+    val breakProgress = remember { Animatable(0f) }
+    LaunchedEffect(breaking) {
+        if (breaking) {
+            breakProgress.snapTo(0f)
+            breakProgress.animateTo(1f, tween(420, easing = LinearEasing))
+        } else breakProgress.snapTo(0f)
+    }
     // Compute pixel offsets based on grid coordinate difference
     val hasSlide = startPosition != null && startPosition != currentPosition
     val rowDiff = if (hasSlide) (startPosition!!.first - currentPosition!!.first) else 0
@@ -282,6 +373,9 @@ fun GameCell(
         }
     }
 
+    val bp = breakProgress.value
+    val breakScale = if (breaking && bp > 0.55f) (1f - (bp - 0.55f) / 0.45f).coerceIn(0f, 1f) else 1f
+    val shake = if (breaking && bp in 0.35f..0.6f) sin(bp * 90f) * 6f else 0f
     Box(
         modifier = modifier.aspectRatio(1f),
         contentAlignment = Alignment.Center
@@ -291,10 +385,11 @@ fun GameCell(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer {
-                    translationX = offsetX
+                    translationX = offsetX + shake
                     translationY = offsetY
-                    scaleX = scale
-                    scaleY = scale
+                    scaleX = scale * breakScale
+                    scaleY = scale * breakScale
+                    rotationZ = if (wobble) sin(wigglePhase * 2f * PI.toFloat()) * 3f else 0f
                 },
             fontSizeMultiplier = fontSizeMultiplier,
             emotion = emotion,
@@ -303,8 +398,27 @@ fun GameCell(
             charScaleX = charScaleX,
             charScaleY = charScaleY,
             mergeKey = if (sprites && isMerged) moveCount else null,
-            spawnKey = if (sprites && isNew) moveCount else null
+            spawnKey = if (sprites && isNew) moveCount else null,
+            breaking = breaking
         )
+        if (breaking && bp < 0.75f) {
+            // The hammer swings down from the top right and hits at ~40%.
+            val swing = if (bp < 0.4f) 60f - 100f * (bp / 0.4f) else -40f + 15f * ((bp - 0.4f) / 0.35f)
+            Icon(
+                imageVector = Icons.Rounded.Gavel,
+                contentDescription = null,
+                tint = Color(0xFFE9E3FF),
+                modifier = Modifier
+                    .fillMaxSize(0.75f)
+                    .graphicsLayer {
+                        translationX = size.width * 0.35f
+                        translationY = -size.height * 0.35f
+                        rotationZ = swing
+                        transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.15f, 0.85f)
+                        alpha = if (bp > 0.6f) (0.75f - bp) / 0.15f else 1f
+                    }
+            )
+        }
     }
 }
 
@@ -335,7 +449,8 @@ fun TileView(
     charScaleX: Float = 1f,
     charScaleY: Float = 1f,
     mergeKey: Int? = null,
-    spawnKey: Int? = null
+    spawnKey: Int? = null,
+    breaking: Boolean = false
 ) {
     val theme = LocalGameTheme.current
     if (theme.usesSprites && value != 0) {
@@ -349,6 +464,7 @@ fun TileView(
             charScaleY = charScaleY,
             mergeKey = mergeKey,
             spawnKey = spawnKey,
+            breaking = breaking,
             fontSizeMultiplier = fontSizeMultiplier
         )
         return

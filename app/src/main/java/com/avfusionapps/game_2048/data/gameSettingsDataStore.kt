@@ -31,6 +31,9 @@ class GameSettingsRepository(private val context: Context) {
         val HAS_SEEN_NEON_DROP_TUTORIAL_KEY = booleanPreferencesKey("has_seen_neon_drop_tutorial")
         val REMINDERS_ENABLED_KEY = booleanPreferencesKey("reminders_enabled")
         val LAST_PLAYED_AT_KEY = longPreferencesKey("last_played_at")
+        val COINS_KEY = intPreferencesKey("coins")
+        /** Coins a new player starts with, enough for a couple of extra power-ups. */
+        const val STARTING_COINS = 120
         const val DEFAULT_PLAYER_NAME = "Player"
         const val DEFAULT_HIGH_SCORE = 0
     }
@@ -220,5 +223,33 @@ class GameSettingsRepository(private val context: Context) {
         context.gameSettingsDataStore.edit { preferences ->
             preferences[LAST_PLAYED_AT_KEY] = timestamp
         }
+    }
+
+    /** The player's coin balance. Earned from big merges, spent on extra power-ups. */
+    val coinsFlow: Flow<Int> = context.gameSettingsDataStore.data
+        .catch { exception ->
+            if (exception is IOException) emit(androidx.datastore.preferences.core.emptyPreferences())
+            else throw exception
+        }
+        .map { preferences -> preferences[COINS_KEY] ?: STARTING_COINS }
+
+    suspend fun addCoins(delta: Int) {
+        context.gameSettingsDataStore.edit { preferences ->
+            val current = preferences[COINS_KEY] ?: STARTING_COINS
+            preferences[COINS_KEY] = (current + delta).coerceAtLeast(0)
+        }
+    }
+
+    /** Takes [cost] coins if the balance covers it; returns whether it did. Atomic inside the edit block. */
+    suspend fun spendCoins(cost: Int): Boolean {
+        var spent = false
+        context.gameSettingsDataStore.edit { preferences ->
+            val current = preferences[COINS_KEY] ?: STARTING_COINS
+            if (current >= cost) {
+                preferences[COINS_KEY] = current - cost
+                spent = true
+            }
+        }
+        return spent
     }
 }

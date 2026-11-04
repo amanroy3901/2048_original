@@ -194,7 +194,8 @@ fun SpriteTile(
     spawnKey: Int? = null,
     showCard: Boolean = true,
     showNumber: Boolean = true,
-    fontSizeMultiplier: Float = 1f
+    fontSizeMultiplier: Float = 1f,
+    breaking: Boolean = false
 ) {
     val spec = ElementalSprites.specFor(value)
     val index = ElementalSprites.indexFor(value)
@@ -210,6 +211,7 @@ fun SpriteTile(
     val mergeFx = remember { Animatable(1f) }
     val spawnFx = remember { Animatable(1f) }
     val wings = remember { Animatable(0f) }
+    val breakFx = remember { Animatable(1f) }
     var override by remember { mutableStateOf<SpriteEmotion?>(null) }
     val scope = rememberCoroutineScope()
 
@@ -238,6 +240,13 @@ fun SpriteTile(
             delay(1500)
             wings.animateTo(0f, tween(250))
         }
+    }
+    LaunchedEffect(breaking) {
+        if (!breaking) return@LaunchedEffect
+        override = SpriteEmotion.SURPRISED
+        breakFx.snapTo(0f)
+        delay(160)
+        breakFx.animateTo(1f, tween(520, easing = LinearOutSlowInEasing))
     }
     LaunchedEffect(spawnKey) {
         if (spawnKey == null) return@LaunchedEffect
@@ -278,6 +287,7 @@ fun SpriteTile(
             }
 
             if (m < 1f) drawMergeBurst(spec, m, particleSeed)
+            if (breakFx.value < 1f) drawShards(spec, breakFx.value)
         }
         if (showNumber && showCard) {
             NumberBadge(
@@ -429,6 +439,22 @@ private fun DrawScope.drawMergeBurst(spec: SpriteSpec, p: Float, seed: Int) {
         val pr = w * (0.035f + rnd.nextFloat() * 0.035f) * (1f - 0.7f * p)
         val col = if (k % 3 == 0) Color.White else spec.particle
         drawCircle(color = col.copy(alpha = (1f - p).coerceIn(0f, 1f)), radius = pr, center = Offset(c.x + cos(ang) * dist, c.y + sin(ang) * dist))
+    }
+}
+
+private fun DrawScope.drawShards(spec: SpriteSpec, p: Float) {
+    val w = size.width
+    val c = center
+    val rnd = Random(7)
+    repeat(16) { k ->
+        val ang = rnd.nextFloat() * 2f * PI.toFloat()
+        val dist = w * (0.3f + rnd.nextFloat() * 0.7f) * p
+        val r = w * (0.05f + rnd.nextFloat() * 0.05f) * (1f - 0.6f * p)
+        val pos = Offset(c.x + cos(ang) * dist, c.y + sin(ang) * dist + w * 0.25f * p * p)
+        val col = if (k % 2 == 0) spec.c2 else Color.White
+        withTransform({ rotate(ang * 57f + p * 300f, pivot = pos) }) {
+            drawRect(col.copy(alpha = 1f - p), topLeft = Offset(pos.x - r, pos.y - r * 0.6f), size = Size(r * 2, r * 1.2f))
+        }
     }
 }
 
