@@ -235,6 +235,7 @@ fun GameStatusRow(
                 com.avfusionapps.game_2048.ui.sprites.SpriteTile(
                     value = 64,
                     showCard = false,
+                                    showNumber = false,
                     modifier = Modifier.size(28.dp)
                 )
                 Text("$foundSprites/11", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Black)

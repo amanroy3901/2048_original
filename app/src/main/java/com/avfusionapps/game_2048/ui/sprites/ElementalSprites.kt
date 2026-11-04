@@ -366,6 +366,14 @@ fun SpriteTile(
                     val m = mergeFx.value
                     val sp = spawnFx.value
 
+                    if (cardBitmap == null && !locked) {
+                        // Card-less sprites (the shooter, mascots) get a soft aura instead of a card.
+                        drawCircle(
+                            brush = Brush.radialGradient(listOf(spec.glow.copy(alpha = 0.4f), Color.Transparent), center = Offset(w / 2, h * 0.55f), radius = w * 0.5f),
+                            radius = w * 0.5f,
+                            center = Offset(w / 2, h * 0.55f)
+                        )
+                    }
                     if (cardBitmap != null) {
                         drawImage(cardBitmap, topLeft = Offset(-w * 0.14f, -h * 0.14f))
                         drawCardLive(legend, t, if (m < 0.3f) (1f - m / 0.3f) else 0f)
@@ -401,7 +409,7 @@ fun SpriteTile(
                     .padding(horizontal = 8.dp, vertical = 2.dp)
             )
         }
-        if (showNumber && showCard) {
+        if (showNumber) {
             NumberBadge(
                 value = value,
                 text = badgeText ?: if (locked) "?" else value.toString(),

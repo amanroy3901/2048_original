@@ -915,6 +915,7 @@ fun MainScreenContent(
                                 com.avfusionapps.game_2048.ui.sprites.SpriteTile(
                                     value = 2,
                                     showCard = false,
+                                    showNumber = false,
                                     emotion = com.avfusionapps.game_2048.ui.sprites.SpriteEmotion.HAPPY,
                                     modifier = Modifier.size(screenW * 0.09f)
                                 )
@@ -930,6 +931,7 @@ fun MainScreenContent(
                                 com.avfusionapps.game_2048.ui.sprites.SpriteTile(
                                     value = 64,
                                     showCard = false,
+                                    showNumber = false,
                                     emotion = com.avfusionapps.game_2048.ui.sprites.SpriteEmotion.EXCITED,
                                     modifier = Modifier.size(screenW * 0.09f)
                                 )

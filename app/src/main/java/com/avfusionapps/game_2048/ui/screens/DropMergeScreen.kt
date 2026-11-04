@@ -487,6 +487,10 @@ private fun DropBoard(
     viewModel: DropMergeViewModel
 ) {
     val theme = LocalGameTheme.current
+    if (theme.usesSprites) {
+        SpriteDropBoard(modifier = modifier, gameState = gameState, viewModel = viewModel)
+        return
+    }
     val density = LocalDensity.current
     val currentColor = dropTileColor(theme, gameState.currentValue)
     val inputEnabled = !gameState.isResolving && !gameState.isGameOver && !gameState.isPaused
@@ -882,7 +886,7 @@ private fun TileNumber(value: Int, cell: Dp, background: Color) {
 }
 
 @Composable
-private fun ComboText(
+internal fun ComboText(
     combo: Int,
     fontSize: androidx.compose.ui.unit.TextUnit,
     modifier: Modifier = Modifier
@@ -1390,14 +1394,14 @@ private fun BottomActionPill(
 // ──────────────────────────── First-play tutorial ───────────────────────────
 
 /** Elements a tutorial tip can point at; resolved to on-screen bounds at layout time. */
-private enum class TutorialAnchor { LAUNCHER, GOAL, UNDO, SKIP }
+internal enum class TutorialAnchor { LAUNCHER, GOAL, UNDO, SKIP }
 
 /** Provided by the screen so anchored controls can report their on-screen bounds. */
-private val LocalTutorialRegister =
+internal val LocalTutorialRegister =
     staticCompositionLocalOf<((TutorialAnchor, Rect) -> Unit)?> { null }
 
 /** Reports this element's bounds (root coords) so the coach can point at it. */
-private fun Modifier.tutorialAnchor(anchor: TutorialAnchor): Modifier = composed {
+internal fun Modifier.tutorialAnchor(anchor: TutorialAnchor): Modifier = composed {
     val register = LocalTutorialRegister.current
     if (register != null) {
         this.onGloballyPositioned { register(anchor, it.boundsInRoot()) }
