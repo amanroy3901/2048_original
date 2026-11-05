@@ -2,9 +2,32 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
     // Each signed-in player can only read and write their own progression doc.
     match /level_progressions/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if isOwner(userId);
+    }
+
+    // Elemental Sprites progress: lifetime stats, medals, coins and the sprites found.
+    // Only the owner, only these fields, with sane types and sizes.
+    match /player_progress/{userId} {
+      allow read, delete: if isOwner(userId);
+      allow create, update: if isOwner(userId)
+        && request.resource.data.keys().hasOnly(['stats', 'achievements', 'coins', 'sprites', 'version', 'updatedAt'])
+        && request.resource.data.stats is map
+        && request.resource.data.stats.size() <= 40
+        && request.resource.data.achievements is list
+        && request.resource.data.achievements.size() <= 64
+        && request.resource.data.coins is int
+        && request.resource.data.coins >= 0
+        && request.resource.data.coins < 10000000
+        && request.resource.data.sprites is list
+        && request.resource.data.sprites.size() <= 32
+        && request.resource.data.version is int
+        && request.resource.data.updatedAt is timestamp;
     }
 
     // Everything else is closed.

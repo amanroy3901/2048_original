@@ -254,7 +254,10 @@ object Progress {
                 _stats.value = stats
                 dailyNow?.let { now ->
                     _daily.value = now
-                    if (now.done && !(daily?.done ?: false)) _events.tryEmit(ProgressEvent.DailyDone(now))
+                    if (now.done && !(daily?.done ?: false)) {
+                        _events.tryEmit(ProgressEvent.DailyDone(now))
+                        log("daily_challenge_done") { putString("kind", now.kind.name.lowercase()); putLong("target", now.target.toLong()) }
+                    }
                 }
                 checkAchievements(stats)
             }
@@ -268,7 +271,10 @@ object Progress {
         store.edit { it[UNLOCKED] = have + fresh.map { a -> a.id } }
         _unlocked.value = have + fresh.map { it.id }
         GameSettingsRepository(app).addCoins(fresh.sumOf { it.tier.coins })
-        fresh.forEach { _events.tryEmit(ProgressEvent.Unlocked(it)) }
+        fresh.forEach {
+            _events.tryEmit(ProgressEvent.Unlocked(it))
+            log("achievement_unlocked") { putString("achievement_id", it.id); putString("tier", it.tier.name.lowercase()) }
+        }
     }
 
     /** Collects the daily reward once the challenge is done; returns the coins paid. */
@@ -287,6 +293,7 @@ object Progress {
                 p[STATS.getValue("daily_done")] = p.stat("daily_done") + 1
             }
             GameSettingsRepository(app).addCoins(reward)
+            log("daily_challenge_claimed") { putLong("reward", reward.toLong()); putLong("streak", (d.streak + 1).toLong()) }
             val p = store.data.first()
             _daily.value = d.copy(claimed = true, streak = p.stat("daily_streak"))
             val stats = p.toStats(_stats.value.spritesFound)
@@ -302,10 +309,39 @@ object Progress {
         scope.launch { store.edit { it[AUTH_PROMPT_DONE] = true } }
     }
 
+    private fun log(event: String, params: android.os.Bundle.() -> Unit) {
+        runCatching { com.google.firebase.analytics.FirebaseAnalytics.getInstance(app).logEvent(event, android.os.Bundle().apply(params)) }
+    }
+
     fun markWelcomeSeen() {
         if (!started.get()) return
+        log("elemental_welcome_seen") { }
         _seenWelcome.value = true
         scope.launch { store.edit { it[SEEN_WELCOME] = true } }
+    }
+
+    // ── Cloud sync (see ProgressSync) ──
+
+    /** Every counter by its storage name, for the cloud copy. */
+    suspend fun exportStats(): Map<String, Int> {
+        if (!started.get()) return emptyMap()
+        val p = store.data.first()
+        return STATS.mapValues { (_, key) -> p[key] ?: 0 }
+    }
+
+    /** Folds a cloud copy in: each counter keeps the higher value; medals are combined. */
+    suspend fun importFromCloud(stats: Map<String, Int>, achievements: Set<String>) {
+        if (!started.get()) return
+        mutex.withLock {
+            store.edit { p ->
+                stats.forEach { (k, v) -> STATS[k]?.let { key -> p[key] = maxOf(p[key] ?: 0, v) } }
+                val known = Achievements.all.map { it.id }.toSet()
+                p[UNLOCKED] = (p[UNLOCKED] ?: emptySet()) + achievements.filter { it in known }
+            }
+            val p = store.data.first()
+            _unlocked.value = p[UNLOCKED] ?: emptySet()
+            _stats.value = p.toStats(GameSettingsRepository(app).seenSpritesFlow.first().count { it in 2..2048 })
+        }
     }
 
     // ── Events from the games ──

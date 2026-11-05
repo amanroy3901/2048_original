@@ -15,8 +15,8 @@ android {
         applicationId = "com.avfusionapps.game_2048"
         minSdk = 27
         targetSdk = 36
-        versionCode = 9
-        versionName = "3.1.0"
+        versionCode = 10
+        versionName = "4.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

@@ -188,6 +188,8 @@ class LevelProgressionRepository(
 
         try {
             firestore.collection(COLLECTION_NAME).document(user.uid).delete().await()
+            // The Elemental Sprites progress copy goes with it.
+            runCatching { firestore.collection("player_progress").document(user.uid).delete().await() }
             Log.d(TAG, "Level progression deleted successfully")
         } catch (e: Exception) {
             Log.e(TAG, "Error deleting level progression", e)
