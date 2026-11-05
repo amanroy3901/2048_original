@@ -225,6 +225,7 @@ internal fun GoldTitle(text: String, size: Float, modifier: Modifier = Modifier)
 @Composable
 internal fun ElementalWelcome(updating: Boolean, onDone: () -> Unit) {
     Dialog(onDismissRequest = onDone, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        com.avfusionapps.game_2048.ui.sprites.SpriteCover {
         Column(
             Modifier
                 .padding(20.dp)
@@ -277,6 +278,7 @@ internal fun ElementalWelcome(updating: Boolean, onDone: () -> Unit) {
             Spacer(Modifier.height(18.dp))
             SpriteGoldButton("Let's play!", onDone, Modifier.fillMaxWidth())
         }
+    }
     }
 }
 
@@ -395,6 +397,6 @@ internal fun Medal(a: Achievement, unlocked: Boolean, size: Dp, modifier: Modifi
             },
         contentAlignment = Alignment.Center
     ) {
-        SpriteTile(value = a.sprite, modifier = Modifier.size(size * 0.7f), showCard = false, showNumber = false, showAura = false, showEffects = false, locked = !unlocked, emotion = SpriteEmotion.HAPPY)
+        SpriteTile(value = a.sprite, modifier = Modifier.size(size * 0.7f), showCard = false, showNumber = false, showAura = false, showEffects = false, locked = !unlocked, emotion = SpriteEmotion.HAPPY, still = true)
     }
 }

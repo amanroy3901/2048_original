@@ -180,6 +180,7 @@ class MainActivity : ComponentActivity() {
             val themeViewModel: ThemeViewModel = viewModel()
             val currentTheme by themeViewModel.currentTheme.collectAsState()
 
+            com.avfusionapps.game_2048.ui.sprites.ProvideSpriteClock {
             _2048OriginalTheme(theme = currentTheme) {
                 val navController = rememberNavController()
                 snackbarHostState = remember { SnackbarHostState() }
@@ -306,6 +307,7 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
+            }
         }
     }
 
@@ -329,6 +331,13 @@ class MainActivity : ComponentActivity() {
                 appUpdateManager.completeUpdate()
             }
         }
+    }
+
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        // In the background, or the system is short of memory: let go of the sprites' cached art.
+        @Suppress("DEPRECATION")
+        if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN) com.avfusionapps.game_2048.ui.sprites.trimSpriteArt()
     }
 
     override fun onDestroy() {

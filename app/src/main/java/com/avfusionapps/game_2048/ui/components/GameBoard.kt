@@ -346,8 +346,7 @@ fun GameBoard(
 
     val pokes = remember { mutableStateMapOf<Pair<Int, Int>, Int>() }
     val over by animateFloatAsState(if (isGameOver && sprites) 1f else 0f, tween(600), label = "over")
-    val dangerT = rememberInfiniteTransition(label = "danger")
-    val dangerP by dangerT.animateFloat(0f, 1f, infiniteRepeatable(tween(1100, easing = LinearEasing)), label = "dangerP")
+    val clock by com.avfusionapps.game_2048.ui.sprites.spriteTime()
     val boardRadius = if (sprites && boardSize.width > 0) with(density) { (boardSize.width * 0.072f).toDp() } else 12.dp
     val boardShape = RoundedCornerShape(boardRadius)
 
@@ -372,7 +371,7 @@ fun GameBoard(
             .onSizeChanged { boardSize = it }
             .then(
                 if (sprites) Modifier
-                    .drawBehind { drawSpriteBoardGlow(boardRadius.toPx(), danger, dangerP) }
+                    .drawBehind { drawSpriteBoardGlow(boardRadius.toPx(), danger, if (danger) (clock % 1.1f) / 1.1f else 0f) }
                     .clip(boardShape)
                     .background(Brush.verticalGradient(listOf(Color(0xBF3C1E82), Color(0xD9200E50))))
                     .drawBehind { drawInnerShadow(boardRadius.toPx(), 30.dp.toPx(), Color.Black.copy(alpha = 0.35f)) }

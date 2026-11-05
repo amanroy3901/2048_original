@@ -155,8 +155,10 @@ internal fun SpriteNightBackground(modifier: Modifier = Modifier, scene: Boolean
         val rnd = Random(2048)
         List(30) { Triple(rnd.nextFloat(), rnd.nextFloat() * 0.45f, 1f + rnd.nextFloat() * 2.2f) to rnd.nextFloat() * 3f }
     }
-    val clock by rememberInfiniteTransition(label = "sky").animateFloat(0f, 3600f, infiniteRepeatable(tween(3_600_000, easing = LinearEasing)), label = "skyT")
-    Canvas(modifier) {
+    val clock = com.avfusionapps.game_2048.ui.sprites.spriteTime()
+    // Sky, hills and moon are drawn once; only the small star layer redraws as the stars twinkle.
+    Box(modifier) {
+    Canvas(Modifier.matchParentSize()) {
         drawRect(
             Brush.verticalGradient(
                 0f to Color(0xFF2B1870), 0.45f to Color(0xFF1A0E45), 1f to Color(0xFF140A33)
@@ -177,12 +179,15 @@ internal fun SpriteNightBackground(modifier: Modifier = Modifier, scene: Boolean
                 drawCircle(Color(0xFF2B1870), radius = 16f * sx, center = Offset(338f * sx, 22f * sy))
             }
         }
+    }
+    Canvas(Modifier.matchParentSize()) {
         // stars twinkle .15 ↔ .9 every 3 s
-        val t = clock
+        val t = clock.value
         stars.forEach { (s, d) ->
             val a = 0.15f + 0.75f * pingPong(cycle(t, 3f, -d))
             drawCircle(Color.White.copy(alpha = a), radius = s.third.dp.toPx() / 2f, center = Offset(s.first * size.width, s.second * size.height))
         }
+    }
     }
 }
 
@@ -208,7 +213,7 @@ internal fun SpriteClassicHeader(
                 .border(2.dp, Color(0xFFFFB547), CircleShape),
             contentAlignment = Alignment.Center
         ) {
-            SpriteTile(value = 64, modifier = Modifier.size(42.dp), showCard = false, showNumber = false, showAura = false, showEffects = false)
+            SpriteTile(value = 64, modifier = Modifier.size(42.dp), showCard = false, showNumber = false, showAura = false, showEffects = false, still = true)
         }
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text("Lv. $level", color = Color.White, fontFamily = SpriteNumberFont, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp, lineHeight = 15.sp)
@@ -293,7 +298,7 @@ internal fun SpriteHero(
     showScores: Boolean = true,
     maxScale: Float = 1.15f
 ) {
-    val clock by rememberInfiniteTransition(label = "hero").animateFloat(0f, 3600f, infiniteRepeatable(tween(3_600_000, easing = LinearEasing)), label = "heroT")
+    val clock = com.avfusionapps.game_2048.ui.sprites.spriteTime()
     // Side sprites: Drip, Sprig, Starla, Orbi (left to right), floating on a 3.2 s loop.
     val sides = remember { listOf(SideSprite(2, 48.dp, 0.02f, true, 86.dp, 0f), SideSprite(4, 44.dp, 0.14f, true, 100.dp, -1f), SideSprite(512, 44.dp, 0.14f, false, 100.dp, -2f), SideSprite(32, 48.dp, 0.02f, false, 86.dp, -0.5f)) }
     // Side fidgets: now and then one of them wiggles or hops, like on the board.
@@ -353,11 +358,11 @@ internal fun SpriteHero(
         // side sprites
         sides.forEachIndexed { k, s ->
             val x = if (s.left) w * s.x else w - w * s.x - s.size * scale
-            val bob = (-7f * pingPong(cycle(clock, 3.2f, s.delay)))
             Box(
                 Modifier
                     .offset(x = x, y = height - s.bottom * scale - s.size * scale)
-                    .graphicsLayer { translationY = bob * density }
+                    // read the clock in the layer, so the bob moves the layer without recomposing the banner
+                    .graphicsLayer { translationY = -7f * pingPong(cycle(clock.value, 3.2f, s.delay)) * density }
                     .size(s.size * scale)
             ) {
                 SpriteTile(
@@ -493,7 +498,7 @@ internal class SpritePowerButton(
 /** v3 power-ups: big glossy squares with a glow, a light rim, and their charges (or price) on a badge. */
 @Composable
 internal fun SpritePowerRow(buttons: List<SpritePowerButton>, cost: Int, modifier: Modifier = Modifier) {
-    val pulseT by rememberInfiniteTransition(label = "pw").animateFloat(0f, 1f, infiniteRepeatable(tween(1000, easing = LinearEasing)), label = "pwT")
+    val clock = com.avfusionapps.game_2048.ui.sprites.spriteTime()
     Row(modifier = modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)) {
         buttons.forEach { b ->
             val interaction = remember { MutableInteractionSource() }
@@ -510,7 +515,7 @@ internal fun SpritePowerRow(buttons: List<SpritePowerButton>, cost: Int, modifie
                         .fillMaxSize()
                         .scale(if (pressed) 0.9f else 1f)
                         .drawBehind {
-                            val k = if (b.active) pingPong(pulseT) else 0f
+                            val k = if (b.active) pingPong(cycle(clock.value, 1f)) else 0f
                             val blur = (14f + 12f * k).dp.toPx()
                             val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                                 color = b.glow.toArgb()
@@ -648,7 +653,7 @@ internal fun SpriteShooterHud(
     onPause: () -> Unit,
     goalModifier: Modifier = Modifier
 ) {
-    val near by rememberInfiniteTransition(label = "near").animateFloat(0f, 1f, infiniteRepeatable(tween(1000, easing = LinearEasing)), label = "nearT")
+    val clock = com.avfusionapps.game_2048.ui.sprites.spriteTime()
     Row(
         modifier = Modifier.fillMaxWidth().height(height),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -703,7 +708,7 @@ internal fun SpriteShooterHud(
                 )
             }
         }
-        val k = if (goalNear) pingPong(near) else 0f
+        val k = if (goalNear) pingPong(cycle(clock.value, 1f)) else 0f
         HudBox(goalModifier.weight(1f), border = Color(0x80FFC93A), glow = if (k > 0.01f) Gold.copy(alpha = 0.6f * k) else null, ring = 4f * k) {
             HudLabel("Next goal")
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {

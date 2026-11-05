@@ -70,6 +70,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.avfusionapps.game_2048.data.progress.Achievements
@@ -257,12 +258,14 @@ private fun Panel(modifier: Modifier = Modifier, border: Color = Line, radius: D
 private fun DailyStrip(daily: DailyChallenge?, actions: HomeActions, compact: Boolean) {
     val d = daily ?: return
     val scope = rememberCoroutineScope()
-    val pulse by rememberInfiniteTransition(label = "daily").animateFloat(0f, 1f, infiniteRepeatable(tween(1000, easing = LinearEasing), RepeatMode.Reverse), label = "dailyT")
+    val clock = com.avfusionapps.game_2048.ui.sprites.spriteTime()
     val ready = d.done && !d.claimed
+    // The border only pulses (and only reads the clock) while a reward waits to be claimed.
+    val pulse = if (ready) { val c = (clock.value % 2f) / 2f; if (c < 0.5f) c * 2f else (1f - c) * 2f } else 0f
     Panel(Modifier.fillMaxWidth(), border = if (ready) Gold.copy(alpha = 0.45f + 0.45f * pulse) else Color(0x80FFC93A), padding = if (compact) 8.dp else 10.dp) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(if (compact) 40.dp else 48.dp), contentAlignment = Alignment.Center) {
-                SpriteTile(value = dailySprite(d), modifier = Modifier.fillMaxSize(), emotion = if (d.done) SpriteEmotion.PROUD else SpriteEmotion.EXCITED, showNumber = false, showEffects = false)
+                SpriteTile(value = dailySprite(d), modifier = Modifier.fillMaxSize(), emotion = if (d.done) SpriteEmotion.PROUD else SpriteEmotion.EXCITED, showNumber = false, showEffects = false, still = true)
             }
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
@@ -408,7 +411,7 @@ private fun DockItem(label: String, value: String, sprite: Int, onClick: () -> U
             .semantics { contentDescription = "$label $value" },
         verticalAlignment = Alignment.CenterVertically
     ) {
-        SpriteTile(value = sprite, modifier = Modifier.size(if (compact) 32.dp else 38.dp), showCard = false, showNumber = false, showEffects = false)
+        SpriteTile(value = sprite, modifier = Modifier.size(if (compact) 32.dp else 38.dp), showCard = false, showNumber = false, showEffects = false, still = true)
         Spacer(Modifier.width(4.dp))
         Column(Modifier.weight(1f)) {
             Text(value, color = Color.White, fontFamily = SpriteNumberFont, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp, lineHeight = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -437,7 +440,7 @@ private fun HomeTopBar(playerName: String, coins: Int, actions: HomeActions) {
                     .background(Brush.radialGradient(listOf(Color(0xFF5A2CB8), Color(0xFF2A1366))))
                     .border(2.dp, Color(0xFFFFB547), CircleShape),
                 contentAlignment = Alignment.Center
-            ) { SpriteTile(64, Modifier.size(34.dp), showCard = false, showNumber = false, showAura = false, showEffects = false) }
+            ) { SpriteTile(64, Modifier.size(34.dp), showCard = false, showNumber = false, showAura = false, showEffects = false, still = true) }
             Spacer(Modifier.width(8.dp))
             Text(playerName, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
@@ -507,7 +510,7 @@ private fun MiniBoard(grid: List<List<Int>>, modifier: Modifier) {
             Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
                 row.forEach { v ->
                     Box(Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(5.dp)).background(Color(0xA6140834)), contentAlignment = Alignment.Center) {
-                        if (v != 0) SpriteTile(value = v, modifier = Modifier.fillMaxSize(), showNumber = n <= 4, fontSizeMultiplier = 0.8f, showEffects = false)
+                        if (v != 0) SpriteTile(value = v, modifier = Modifier.fillMaxSize(), showNumber = n <= 4, fontSizeMultiplier = 0.8f, showEffects = false, still = true)
                     }
                 }
             }
@@ -520,7 +523,7 @@ private fun ClassicArt() {
     Box(Modifier.size(92.dp)) {
         listOf(Triple(2, 0f, 0f), Triple(4, 1f, 0f), Triple(8, 0f, 1f), Triple(16, 1f, 1f)).forEachIndexed { k, (v, x, y) ->
             Box(Modifier.offset(x = (x * 46).dp, y = (y * 46).dp).size(44.dp).graphicsLayer { rotationZ = if (k % 2 == 0) -4f else 4f }) {
-                SpriteTile(value = v, modifier = Modifier.fillMaxSize(), fontSizeMultiplier = 0.9f, showEffects = false)
+                SpriteTile(value = v, modifier = Modifier.fillMaxSize(), fontSizeMultiplier = 0.9f, showEffects = false, still = true)
             }
         }
     }
@@ -528,7 +531,7 @@ private fun ClassicArt() {
 
 @Composable
 private fun TimeAttackArt() {
-    val t by rememberInfiniteTransition(label = "clock").animateFloat(0f, 360f, infiniteRepeatable(tween(4000, easing = LinearEasing)), label = "clockT")
+    val clock = com.avfusionapps.game_2048.ui.sprites.spriteTime()
     Box(Modifier.size(92.dp), contentAlignment = Alignment.Center) {
         Canvas(Modifier.fillMaxSize()) {
             val r = size.minDimension / 2f
@@ -539,16 +542,20 @@ private fun TimeAttackArt() {
                 val a = Math.toRadians(k * 30.0)
                 drawLine(Color.White.copy(alpha = 0.6f), Offset(center.x + r * 0.78f * kotlin.math.sin(a).toFloat(), center.y - r * 0.78f * kotlin.math.cos(a).toFloat()), Offset(center.x + r * 0.88f * kotlin.math.sin(a).toFloat(), center.y - r * 0.88f * kotlin.math.cos(a).toFloat()), strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round)
             }
-            val a = Math.toRadians(t.toDouble())
+        }
+        // Only the hand redraws as it sweeps (once every 4 s).
+        Canvas(Modifier.fillMaxSize()) {
+            val r = size.minDimension / 2f
+            val a = Math.toRadians((clock.value % 4f) / 4f * 360.0)
             drawLine(Gold, center, Offset(center.x + r * 0.7f * kotlin.math.sin(a).toFloat(), center.y - r * 0.7f * kotlin.math.cos(a).toFloat()), strokeWidth = 3.dp.toPx(), cap = StrokeCap.Round)
         }
-        SpriteTile(value = 16, modifier = Modifier.size(58.dp).offset(y = 6.dp), showCard = false, showNumber = false, showEffects = false, emotion = SpriteEmotion.EXCITED)
+        SpriteTile(value = 16, modifier = Modifier.size(58.dp).offset(y = 6.dp), showCard = false, showNumber = false, showEffects = false, emotion = SpriteEmotion.EXCITED, still = true)
     }
 }
 
 @Composable
 private fun ShooterArt() {
-    val t by rememberInfiniteTransition(label = "shot").animateFloat(0f, 1f, infiniteRepeatable(tween(1600, easing = LinearEasing)), label = "shotT")
+    val clock = com.avfusionapps.game_2048.ui.sprites.spriteTime()
     Box(Modifier.size(92.dp)) {
         Canvas(Modifier.fillMaxSize()) {
             for (k in 0 until 3) {
@@ -562,9 +569,13 @@ private fun ShooterArt() {
             }
             drawPath(beam, Brush.verticalGradient(listOf(Color(0x08FF9A2E), Color(0xB8FFC04A)), startY = size.height * 0.2f, endY = size.height * 0.85f))
         }
-        Box(Modifier.offset(x = 4.dp, y = 4.dp).size(26.dp)) { SpriteTile(8, Modifier.fillMaxSize(), showCard = false, showNumber = false, showEffects = false) }
-        Box(Modifier.offset(x = 60.dp, y = 4.dp).size(26.dp)) { SpriteTile(4, Modifier.fillMaxSize(), showCard = false, showNumber = false, showEffects = false) }
-        val y = 58f - 44f * ((t * 1.4f).coerceAtMost(1f))
-        Box(Modifier.offset(x = 31.dp, y = y.dp).size(30.dp)) { SpriteTile(2, Modifier.fillMaxSize(), showCard = false, showNumber = false, showEffects = false, emotion = SpriteEmotion.EXCITED) }
+        Box(Modifier.offset(x = 4.dp, y = 4.dp).size(26.dp)) { SpriteTile(8, Modifier.fillMaxSize(), showCard = false, showNumber = false, showEffects = false, still = true) }
+        Box(Modifier.offset(x = 60.dp, y = 4.dp).size(26.dp)) { SpriteTile(4, Modifier.fillMaxSize(), showCard = false, showNumber = false, showEffects = false, still = true) }
+        // The shot rises in the layout's placement step, so the art never recomposes.
+        Box(
+            Modifier
+                .offset { val t = (clock.value % 1.6f) / 1.6f; IntOffset(31.dp.roundToPx(), (58f - 44f * (t * 1.4f).coerceAtMost(1f)).dp.roundToPx()) }
+                .size(30.dp)
+        ) { SpriteTile(2, Modifier.fillMaxSize(), showCard = false, showNumber = false, showEffects = false, emotion = SpriteEmotion.EXCITED, still = true) }
     }
 }

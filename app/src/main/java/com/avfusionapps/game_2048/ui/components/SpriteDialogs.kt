@@ -85,6 +85,8 @@ private val Bounce = CubicBezierEasing(0.3f, 1.6f, 0.5f, 1f)
 @Composable
 internal fun SpriteDialog(onDismiss: () -> Unit, dismissable: Boolean = true, testTag: String = "", content: @Composable ColumnScope.() -> Unit) {
     Dialog(onDismissRequest = { if (dismissable) onDismiss() }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        // The screen behind holds still while the dialog's own sprites keep moving.
+        com.avfusionapps.game_2048.ui.sprites.SpriteCover {
         Column(
             Modifier
                 .padding(22.dp)
@@ -97,6 +99,7 @@ internal fun SpriteDialog(onDismiss: () -> Unit, dismissable: Boolean = true, te
             horizontalAlignment = Alignment.CenterHorizontally,
             content = content
         )
+    }
     }
 }
 
@@ -205,6 +208,8 @@ internal fun SpriteMilestoneDialog(value: Int, onDismiss: () -> Unit) {
     val grow = remember { Animatable(0f) }
     LaunchedEffect(Unit) { grow.animateTo(1f, tween(700, easing = Bounce)) }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        // The screen behind holds still while the dialog's own sprites keep moving.
+        com.avfusionapps.game_2048.ui.sprites.SpriteCover {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(
                 Modifier
@@ -231,6 +236,7 @@ internal fun SpriteMilestoneDialog(value: Int, onDismiss: () -> Unit) {
             }
             ConfettiBurst(44)
         }
+    }
     }
 }
 

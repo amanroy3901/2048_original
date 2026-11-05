@@ -45,6 +45,9 @@ android {
 dependencies {
 
     implementation(libs.androidx.core.ktx)
+    // Installs the app's baseline profile (src/main/baseline-prof.txt) and the Compose libraries' own, so the
+    // first launches after an install run compiled code instead of the interpreter.
+    implementation("androidx.profileinstaller:profileinstaller:1.3.1")
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))

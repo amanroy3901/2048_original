@@ -219,8 +219,8 @@ internal fun SpriteDropBoard(
         // One animated lane position so the light, chevrons and launcher always slide together.
         val aimX by animateFloatAsState(laneX(launcherCol), spring(dampingRatio = 0.62f, stiffness = Spring.StiffnessMedium), label = "aimX")
 
-        val clockT = rememberInfiniteTransition(label = "shooterClock")
-        val clock by clockT.animateFloat(0f, 3600f, infiniteRepeatable(tween(3_600_000, easing = LinearEasing)), label = "clock")
+        // The beam, chevrons and fuses drift on the shared sprite clock.
+        val clock by com.avfusionapps.game_2048.ui.sprites.spriteTime()
 
         // Board shake (game over, a hammer hit) and the little bump when a shot lands.
         val shake = remember { Animatable(1f) }
@@ -524,8 +524,7 @@ private fun BoxScope.StepEffects(
 
 @Composable
 private fun LaneTrack(x: Float, widthDp: Dp, heightDp: Dp, topPx: Float, danger: Boolean, critical: Boolean, aimed: Boolean, aimedBlocked: Boolean) {
-    val pulse = rememberInfiniteTransition(label = "laneDanger")
-    val a by pulse.animateFloat(0f, 1f, infiniteRepeatable(tween(if (critical) 550 else 1000, easing = LinearEasing)), label = "laneDangerA")
+    val clock by com.avfusionapps.game_2048.ui.sprites.spriteTime()
     val fill = when {
         aimedBlocked -> LaneAimedBlocked
         aimed -> LaneAimed
@@ -537,7 +536,7 @@ private fun LaneTrack(x: Float, widthDp: Dp, heightDp: Dp, topPx: Float, danger:
             .size(widthDp, heightDp)
             .drawBehind {
                 if (danger) {
-                    val k = pingPong(a)
+                    val k = pingPong(cycle(clock, if (critical) 0.55f else 1f))
                     val r = CornerRadius(16.dp.toPx())
                     drawRoundRect(BeamBlocked.copy(alpha = 0.45f * k), topLeft = Offset(-4.dp.toPx(), -4.dp.toPx()), size = Size(size.width + 8.dp.toPx(), size.height + 8.dp.toPx()), cornerRadius = CornerRadius(20.dp.toPx()), style = Stroke(6.dp.toPx() * k + 0.5f))
                     drawRoundRect(fill, cornerRadius = r)

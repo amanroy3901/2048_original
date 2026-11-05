@@ -136,7 +136,7 @@ private fun StatsStrip(s: PlayerStats) {
 
 @Composable
 private fun AchievementCell(a: Achievement, unlocked: Boolean, stats: PlayerStats) {
-    val shine by rememberInfiniteTransition(label = "shine").animateFloat(0f, 1f, infiniteRepeatable(tween(2800, easing = LinearEasing)), label = "shineT")
+    val clock by com.avfusionapps.game_2048.ui.sprites.spriteTime()
     Column(
         Modifier
             .fillMaxWidth()
@@ -146,6 +146,7 @@ private fun AchievementCell(a: Achievement, unlocked: Boolean, stats: PlayerStat
             .border(if (unlocked) 2.dp else 1.dp, if (unlocked) Gold.copy(alpha = 0.6f) else Line, RoundedCornerShape(18.dp))
             .drawBehind {
                 if (unlocked) {
+                    val shine = (clock % 2.8f) / 2.8f
                     val x = -size.width * 0.5f + shine * size.width * 2f
                     drawRect(Brush.linearGradient(listOf(Color.Transparent, Color.White.copy(alpha = 0.12f), Color.Transparent), start = Offset(x - 40f, 0f), end = Offset(x + 40f, size.height)))
                 }

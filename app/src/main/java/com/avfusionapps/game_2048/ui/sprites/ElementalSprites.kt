@@ -424,18 +424,41 @@ private object BrushCache {
 /** The parts of a sprite that never change shape, rendered once per size and shared by every tile. */
 private class BodyArt(val body: ImageBitmap, val glow: ImageBitmap?, val glowX: Float, val glowY: Float)
 
+/**
+ * Rendered cards and bodies, reused by every sprite of the same kind and size. Least recently used art goes first
+ * once the cache passes [BUDGET] bytes (instead of dropping everything at once), and [trim] frees it all when
+ * Android is short of memory.
+ */
 private object ArtCache {
-    private val cards = HashMap<String, ImageBitmap>()
-    private val bodies = HashMap<String, BodyArt>()
+    private const val BUDGET = 16L * 1024 * 1024
+    private val cards = LinkedHashMap<String, ImageBitmap>(64, 0.75f, true)
+    private val bodies = LinkedHashMap<String, BodyArt>(64, 0.75f, true)
+    private var bytes = 0L
+
+    private fun ImageBitmap.bytes(): Long = asAndroidBitmap().allocationByteCount.toLong()
+    private fun BodyArt.bytes(): Long = body.bytes() + (glow?.bytes() ?: 0L)
+
     fun card(key: String, make: () -> ImageBitmap): ImageBitmap {
-        if (cards.size > 48) cards.clear()
-        return cards.getOrPut(key, make)
+        cards[key]?.let { return it }
+        return make().also { cards[key] = it; bytes += it.bytes(); evict() }
     }
     fun body(key: String, make: () -> BodyArt): BodyArt {
-        if (bodies.size > 48) bodies.clear()
-        return bodies.getOrPut(key, make)
+        bodies[key]?.let { return it }
+        return make().also { bodies[key] = it; bytes += it.bytes(); evict() }
     }
+    private fun evict() {
+        while (bytes > BUDGET && (cards.size > 1 || bodies.size > 1)) {
+            // drop the oldest entry of the larger map
+            if (cards.size >= bodies.size) cards.entries.iterator().let { val e = it.next(); bytes -= e.value.bytes(); it.remove() }
+            else bodies.entries.iterator().let { val e = it.next(); bytes -= e.value.bytes(); it.remove() }
+        }
+    }
+    /** Frees all cached art (it is redrawn on demand). */
+    fun trim() { cards.clear(); bodies.clear(); bytes = 0L }
 }
+
+/** Frees the sprites' cached art; call when Android reports low memory. */
+fun trimSpriteArt() = ArtCache.trim()
 
 private val labelPaint by lazy {
     android.graphics.Paint().apply {
@@ -466,6 +489,8 @@ private val Blush = Color(0xFFFF6FA0)
 private val GroundShadow = Color(0x73050014)
 
 private const val CLOCK_SECONDS = 3600f
+/** The moment a still sprite is drawn at: mid-breath, eyes open. */
+private const val STILL_T = 0.8f
 private const val DONE = 1_000_000f
 private const val MERGE_MS = 1000f
 private const val SPAWN_MS = 640f
@@ -520,19 +545,17 @@ fun SpriteTile(
     /** Draws the merge swirl, flash and particles (off for ghost copies). */
     showEffects: Boolean = true,
     /** Remove/Hammer armed: the sprite rocks ±this many degrees, asking to be picked. */
-    wantHitDeg: Float = 0f
+    wantHitDeg: Float = 0f,
+    /** Icons and previews: drawn once in a calm pose, no idle loop (one-shot motions still play). */
+    still: Boolean = false
 ) {
     val rock = value < 0
     val spec = ElementalSprites.specFor(value)
     val index = if (rock) 5 else ElementalSprites.indexFor(value)
     LabelFont.ensure(androidx.compose.ui.platform.LocalContext.current)
-    val clock = rememberInfiniteTransition(label = "sprite")
-    val time = clock.animateFloat(
-        initialValue = 0f,
-        targetValue = CLOCK_SECONDS,
-        animationSpec = infiniteRepeatable(tween((CLOCK_SECONDS * 1000).toInt(), easing = LinearEasing)),
-        label = "spriteClock"
-    )
+    // Idle loops run on the shared, throttled sprite clock; a still sprite never reads it, so it never redraws.
+    val time = spriteTime()
+    val stillState = rememberUpdatedState(still)
     val timeOffset = remember { Random.nextFloat() * 5f }
     val blinkPeriod = remember { 3f + Random.nextFloat() * 3.5f }
 
@@ -709,7 +732,7 @@ fun SpriteTile(
                     }
                 }
                 onDrawBehind {
-                    val t = time.value + timeOffset
+                    val t = if (stillState.value) STILL_T else time.value + timeOffset
                     val emo = if (rock) SpriteEmotion.GRUMPY else (overrideState.value ?: emotionState.value)
                     val mm = mergeMs()
                     val sm = spawnMs()

@@ -1,0 +1,5 @@
+# Baseline profile: compile the whole app ahead of time on install (it is small), so the home screen,
+# the sprites and the three game modes start fast from the first launch. Library profiles (Compose,
+# Navigation, Firebase) ship inside their own artifacts and are merged automatically.
+Lcom/avfusionapps/game_2048/**;
+HSPLcom/avfusionapps/game_2048/**;->**(**)**
