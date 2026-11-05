@@ -50,6 +50,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -260,9 +261,17 @@ private fun DailyStrip(daily: DailyChallenge?, actions: HomeActions, compact: Bo
     val scope = rememberCoroutineScope()
     val clock = com.avfusionapps.game_2048.ui.sprites.spriteTime()
     val ready = d.done && !d.claimed
-    // The border only pulses (and only reads the clock) while a reward waits to be claimed.
-    val pulse = if (ready) { val c = (clock.value % 2f) / 2f; if (c < 0.5f) c * 2f else (1f - c) * 2f } else 0f
-    Panel(Modifier.fillMaxWidth(), border = if (ready) Gold.copy(alpha = 0.45f + 0.45f * pulse) else Color(0x80FFC93A), padding = if (compact) 8.dp else 10.dp) {
+    // While a reward waits to be claimed the border glows brighter and dimmer. The glow is drawn on top in the
+    // draw phase, so the pulse repaints one outline instead of rebuilding the card.
+    val glow = if (ready) Modifier.drawWithContent {
+        drawContent()
+        val c = (clock.value % 2f) / 2f
+        val k = if (c < 0.5f) c * 2f else (1f - c) * 2f
+        val r = 20.dp.toPx()
+        val sw = 2.dp.toPx()
+        drawRoundRect(Gold.copy(alpha = 0.45f * k), topLeft = Offset(sw / 2, sw / 2), size = Size(size.width - sw, size.height - sw), cornerRadius = CornerRadius(r), style = Stroke(sw))
+    } else Modifier
+    Panel(Modifier.fillMaxWidth().then(glow), border = if (ready) Gold.copy(alpha = 0.45f) else Color(0x80FFC93A), padding = if (compact) 8.dp else 10.dp) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(if (compact) 40.dp else 48.dp), contentAlignment = Alignment.Center) {
                 SpriteTile(value = dailySprite(d), modifier = Modifier.fillMaxSize(), emotion = if (d.done) SpriteEmotion.PROUD else SpriteEmotion.EXCITED, showNumber = false, showEffects = false, still = true)
