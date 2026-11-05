@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Themed-icon silhouette of Blaze. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <group android:translateX="23.00" android:translateY="25.93" android:scaleX="0.62" android:scaleY="0.62">
+        <path android:pathData="M50 8 C55 20 61 22 65 15 C71 26 68 33 75 33 C83 43 85 54 85 63 C85 79 70 89 50 89 C30 89 15 79 15 63 C15 51 21 42 28 35 C30 41 34 43 37 39 C36 28 44 20 50 8 Z M36.4,61 a4.6,5.9 0 1,0 9.2,0 a4.6,5.9 0 1,0 -9.2,0 M54.4,61 a4.6,5.9 0 1,0 9.2,0 a4.6,5.9 0 1,0 -9.2,0 M44.5 67 Q50 68 55.5 67 Q54.6 75.5 50 75.5 Q45.4 75.5 44.5 67 Z" android:fillColor="#FFFFFFFF" android:fillType="evenOdd" />
+    </group>
+</vector>

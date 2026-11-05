@@ -162,7 +162,7 @@ fun ProfileScreen(
                 val packageName = context.packageName
                 val shareIntent = Intent(Intent.ACTION_SEND).apply {
                     type = "text/plain"
-                    putExtra(Intent.EXTRA_SUBJECT, "2048 Neon Rush")
+                    putExtra(Intent.EXTRA_SUBJECT, "2048 Elemental Sprites")
                     putExtra(Intent.EXTRA_TEXT, "Hey, check out this awesome, glowing 2048 game: https://play.google.com/store/apps/details?id=$packageName")
                 }
                 context.startActivity(Intent.createChooser(shareIntent, "Share via"))
@@ -525,7 +525,7 @@ fun ProfileScreen(
                                 val packageName = context.packageName
                                 val shareIntent = Intent(Intent.ACTION_SEND).apply {
                                     type = "text/plain"
-                                    putExtra(Intent.EXTRA_SUBJECT, "2048 Neon Rush")
+                                    putExtra(Intent.EXTRA_SUBJECT, "2048 Elemental Sprites")
                                     putExtra(Intent.EXTRA_TEXT, "Hey, check out this awesome, glowing 2048 game: https://play.google.com/store/apps/details?id=$packageName")
                                 }
                                 context.startActivity(Intent.createChooser(shareIntent, "Share via"))
@@ -571,7 +571,7 @@ fun ProfileScreen(
                                     fontStyle = FontStyle.Italic
                                 )
                                 Text(
-                                    text = "NEON RUSH",
+                                    text = "SPRITES",
                                     color = theme.secondaryColor,
                                     fontSize = 8.sp,
                                     fontWeight = FontWeight.Bold
@@ -580,7 +580,7 @@ fun ProfileScreen(
                         }
                         Spacer(modifier = Modifier.width(16.dp))
                         Column {
-                            Text("2048 Neon Rush", color = theme.textColor, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            Text("2048 Elemental Sprites", color = theme.textColor, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                             Text("Version $versionName", color = theme.textColor.copy(alpha = 0.5f), fontSize = 12.sp)
                             Spacer(modifier = Modifier.height(4.dp))
                             Text("Made with ❤️ by Sayne Design", color = theme.textColor.copy(alpha = 0.8f), fontSize = 12.sp)

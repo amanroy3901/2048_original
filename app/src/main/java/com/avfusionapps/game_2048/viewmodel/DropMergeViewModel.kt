@@ -172,7 +172,12 @@ class DropMergeViewModel(application: Application) : AndroidViewModel(applicatio
                 isResolving = true, canUndo = false, comboCount = 0, justUndid = false,
                 actionCount = state.actionCount + 1
             )
+            if (state.moveCount == 0) com.avfusionapps.game_2048.data.progress.Progress.gameStarted(com.avfusionapps.game_2048.data.progress.GameMode.SHOOTER)
+            com.avfusionapps.game_2048.data.progress.Progress.shot()
             val runningBest = playSteps(result.steps, state.bestTileEver)
+            com.avfusionapps.game_2048.data.progress.Progress.merged(com.avfusionapps.game_2048.data.progress.GameMode.SHOOTER, result.steps.filter { it.kind == DropStepKind.MERGE }.map { it.gained })
+            if (result.maxChain >= 2) com.avfusionapps.game_2048.data.progress.Progress.chain(result.maxChain)
+            com.avfusionapps.game_2048.data.progress.Progress.score(_gameState.value.score)
 
             // Reload the launcher and settle the turn. A frozen launcher keeps its
             // tile; otherwise cap the next tile at the board's max so it can merge.
@@ -462,10 +467,12 @@ class DropMergeViewModel(application: Application) : AndroidViewModel(applicatio
             }
             notice("Bought 1 $name for ${DropPowerUps.COST} coins")
             logPowerUp(power, bought = true)
+            com.avfusionapps.game_2048.data.progress.Progress.powerUpUsed()
             return true
         }
         _gameState.update { it.copy(powerUps = it.powerUps.plus(power, -1)) }
         logPowerUp(power, bought = false)
+        com.avfusionapps.game_2048.data.progress.Progress.powerUpUsed()
         return true
     }
 

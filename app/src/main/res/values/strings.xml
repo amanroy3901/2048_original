@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">2048 Neon Rush</string>
+    <string name="app_name">2048 Elemental Sprites</string>
     <string name="stats">Stats</string>
     <string name="theme">Theme</string>
     <string name="number">NUMBER</string>
@@ -46,21 +46,21 @@
     <!-- Re-engagement notifications -->
     <string name="notif_channel_name">Play reminders</string>
     <string name="notif_channel_desc">Gentle nudges to come back and play</string>
-    <string name="notif_title">2048 Neon Rush</string>
+    <string name="notif_title">2048 Elemental Sprites</string>
     <string name="notif_action_resume">Resume ▶</string>
     <string name="notif_action_play">Play ▶</string>
     <!-- Saved-game nudges: %1$s = "Name, " (or empty), %2$s = best tile, %3$s = score -->
-    <string name="notif_saved_1">%1$syour run\'s still live — tile %2$s, score %3$s. One more? 🎮</string>
-    <string name="notif_saved_2">%1$syour neon board is paused at %3$s. Jump back in ⚡</string>
-    <string name="notif_saved_3">%1$sdon\'t let that %2$s tile go to waste — finish your game!</string>
+    <string name="notif_saved_1">%1$sBlaze kept your board warm: tile %2$s, score %3$s. One more go? 🔥</string>
+    <string name="notif_saved_2">%1$syour sprites are napping at %3$s points. Swipe to wake them up 💤</string>
+    <string name="notif_saved_3">%1$syour %2$s sprite is waiting for its twin. Finish the game! ✨</string>
     <!-- Best-score nudges: %1$s = "Name, " (or empty), %2$s = best score -->
-    <string name="notif_best_1">Think you can beat %2$s? Your neon tiles are waiting ⚡</string>
-    <string name="notif_best_2">%1$syour best is %2$s. Think you can top it? 🏆</string>
-    <string name="notif_best_3">A fresh neon run is calling — go beat %2$s!</string>
+    <string name="notif_best_1">Blaze bets you can\'t beat %2$s. Prove him wrong 🔥</string>
+    <string name="notif_best_2">%1$syour best is %2$s. The Ember King is waiting 👑</string>
+    <string name="notif_best_3">Drip, Sprig and Sunny want a rematch. Go beat %2$s! 💧🌱☀️</string>
     <!-- First-time / no-save nudges: %1$s = "Name, " (or empty) -->
-    <string name="notif_new_1">%1$sready to merge some tiles? 🎮</string>
-    <string name="notif_new_2">Your 2048 Neon Rush challenge awaits ⚡</string>
-    <string name="notif_new_3">Quick game? Swipe, merge, glow ✨</string>
+    <string name="notif_new_1">%1$sthe sprites are bored without you. Come merge some! 🎮</string>
+    <string name="notif_new_2">Today\'s daily challenge is ready, and Blaze has coins for you 🪙</string>
+    <string name="notif_new_3">Quick game? Swipe, merge, evolve ✨</string>
 
     <!-- Settings -->
     <string name="settings_reminders_title">Play reminders</string>

@@ -154,7 +154,8 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
         )
     }
 
-    if (showAuthDialog && firebaseAuth.currentUser == null) {
+    // Wait for the start-up intro and welcome before asking to sign in.
+    if (showAuthDialog && firebaseAuth.currentUser == null && !StartupFlow.busy) {
         val configuration = androidx.compose.ui.platform.LocalConfiguration.current
         val screenWidth = configuration.screenWidthDp.dp
         val dialogWidth = if (screenWidth * 0.9f > 400.dp) 400.dp else screenWidth * 0.9f

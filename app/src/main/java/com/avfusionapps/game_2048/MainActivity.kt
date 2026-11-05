@@ -21,6 +21,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
@@ -163,6 +165,7 @@ class MainActivity : ComponentActivity() {
         appUpdateManager = AppUpdateManagerFactory.create(this)
         reminderManager = ReminderManager(this)
         settingsRepository = GameSettingsRepository(this)
+        com.avfusionapps.game_2048.data.progress.Progress.init(this)
         pendingNavDestination.value = intent?.getStringExtra(GameReminderWorker.EXTRA_DESTINATION)
         firebaseAuth = Firebase.auth
         
@@ -173,28 +176,25 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val themeViewModel: ThemeViewModel = viewModel()
-            val currentTheme by themeViewModel.currentTheme.collectAsState(initial = GameTheme.NeonPink)
+            val currentTheme by themeViewModel.currentTheme.collectAsState()
 
             _2048OriginalTheme(theme = currentTheme) {
                 val navController = rememberNavController()
                 snackbarHostState = remember { SnackbarHostState() }
 
                 LaunchedEffect(key1 = Unit) {
+                    // Ask for notifications only once the start-up intro and welcome are out of the way.
+                    androidx.compose.runtime.snapshotFlow { com.avfusionapps.game_2048.ui.screens.StartupFlow.busy }
+                        .first { !it }
                     requestNotificationPermission()
+                }
+                LaunchedEffect(key1 = Unit) {
                     checkForUpdates()
                     
                     // Default to main screen and determine auth state without auto-redirecting
-                    val currentUser = firebaseAuth.currentUser
-                    if (currentUser == null) {
-                        keepSplashScreen = false
-                    } else {
-                        currentUser.getIdToken(false).addOnSuccessListener {
-                            keepSplashScreen = false
-                        }.addOnFailureListener {
-                            keepSplashScreen = false
-                            firebaseAuth.signOut()
-                        }
-                    }
+                    // Never hold the splash for the network: show the game now and check the sign-in in the background.
+                    keepSplashScreen = false
+                    firebaseAuth.currentUser?.getIdToken(false)?.addOnFailureListener { firebaseAuth.signOut() }
                 }
 
                 // Handle a tap from a reminder notification once the NavHost is ready.
@@ -280,6 +280,25 @@ class MainActivity : ComponentActivity() {
                             GameScreen(navController = navController, viewModel = vm)
                         }
                     }
+                    if (currentTheme.usesSprites) {
+                        // Elemental Sprites: a playful hello on cold start, then a one-time welcome, and banners
+                        // for achievements and the daily challenge on every screen.
+                        var showIntro by rememberSaveable { mutableStateOf(true) }
+                        val seenWelcome by com.avfusionapps.game_2048.data.progress.Progress.seenWelcome.collectAsState()
+                        val bestEver by settingsRepository.highScoreFlow.collectAsState(initial = 0)
+                        com.avfusionapps.game_2048.ui.screens.StartupFlow.introShowing.value = showIntro
+                        com.avfusionapps.game_2048.ui.screens.StartupFlow.welcomeShowing.value = seenWelcome != true
+                        com.avfusionapps.game_2048.ui.screens.ProgressCelebrations()
+                        if (!showIntro && seenWelcome == false) {
+                            com.avfusionapps.game_2048.ui.screens.ElementalWelcome(updating = bestEver > 0) {
+                                com.avfusionapps.game_2048.data.progress.Progress.markWelcomeSeen()
+                            }
+                        }
+                        if (showIntro) com.avfusionapps.game_2048.ui.screens.SpriteSplashIntro { showIntro = false }
+                    } else {
+                        com.avfusionapps.game_2048.ui.screens.StartupFlow.introShowing.value = false
+                        com.avfusionapps.game_2048.ui.screens.StartupFlow.welcomeShowing.value = false
+                    }
                 }
             }
         }
@@ -343,10 +362,8 @@ class MainActivity : ComponentActivity() {
                 Log.d("AppUpdate", "No update available or update not allowed")
             }
         }.addOnFailureListener { exception ->
+            // Quietly: this fails whenever Play isn't reachable, and players can't act on it.
             Log.e("AppUpdate", "Failed to check for updates: $exception")
-            lifecycleScope.launch {
-                showSnackbar("Failed to check for updates. Please try again later.")
-            }
         }
     }
 

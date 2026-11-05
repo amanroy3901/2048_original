@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Launcher background: the Elemental Sprites night sky, a violet glow with a few stars. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:pathData="M0,0h108v108h-108z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="radial" android:centerX="54" android:centerY="58" android:gradientRadius="78">
+                <item android:offset="0" android:color="#FF6A3BD0" />
+                <item android:offset="0.45" android:color="#FF2B1870" />
+                <item android:offset="1" android:color="#FF140A33" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path android:fillColor="#FF241356" android:pathData="M0,80 Q16,66 32,76 T64,72 T108,70 V108 H0 Z" />
+    <path android:fillColor="#FF1A0D42" android:pathData="M0,88 Q22,78 46,86 T108,84 V108 H0 Z" />
+    <path android:fillColor="#B3FFFFFF" android:pathData="M24,26 a1.2,1.2 0 1,0 2.4,0 a1.2,1.2 0 1,0 -2.4,0" />
+    <path android:fillColor="#80FFFFFF" android:pathData="M80,22 a1,1 0 1,0 2,0 a1,1 0 1,0 -2,0" />
+    <path android:fillColor="#99FFFFFF" android:pathData="M86,44 a0.8,0.8 0 1,0 1.6,0 a0.8,0.8 0 1,0 -1.6,0" />
+    <path android:fillColor="#80FFFFFF" android:pathData="M18,50 a0.8,0.8 0 1,0 1.6,0 a0.8,0.8 0 1,0 -1.6,0" />
+    <path android:fillColor="#FFFFE58A" android:pathData="M74,30 Q74.6,32.4 77,33 Q74.6,33.6 74,36 Q73.4,33.6 71,33 Q73.4,32.4 74,30 Z" />
+</vector>

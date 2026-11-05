@@ -674,6 +674,12 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 else -> _soundEvent.tryEmit(SoundManager.SOUND_MOVE)
             }
 
+            // Long-term progress: stats, achievements and the daily challenge.
+            if (gameState.moveCount == 0) com.avfusionapps.game_2048.data.progress.Progress.gameStarted(com.avfusionapps.game_2048.data.progress.GameMode.CLASSIC)
+            com.avfusionapps.game_2048.data.progress.Progress.merged(com.avfusionapps.game_2048.data.progress.GameMode.CLASSIC, mergedValues)
+            if (newCombo >= 2) com.avfusionapps.game_2048.data.progress.Progress.combo(newCombo)
+            if (scoreIncreaseThisTurn > 0) com.avfusionapps.game_2048.data.progress.Progress.score(newScore)
+
             val newMoveCount = gameState.moveCount + 1
             updateGameState(
                 gameState.copy(
@@ -798,7 +804,10 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun markSeen(grid: List<List<Int>>) {
         val values = grid.flatten().filter { it > 0 && it !in seenSprites.value }.toSet()
-        if (values.isNotEmpty()) viewModelScope.launch { settingsRepository.markSpritesSeen(values) }
+        if (values.isNotEmpty()) viewModelScope.launch {
+            settingsRepository.markSpritesSeen(values)
+            com.avfusionapps.game_2048.data.progress.Progress.spritesChanged()
+        }
     }
 
     /**
@@ -821,6 +830,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             }
             Toast.makeText(context, "Bought 1 ${kind.label()} for ${PowerUps.COST} coins", Toast.LENGTH_SHORT).show()
             logPowerUp(kind, bought = true)
+            com.avfusionapps.game_2048.data.progress.Progress.powerUpUsed()
             return true
         }
         val next = when (kind) {
@@ -832,6 +842,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         }
         updateGameState(gameState.copy(powerUps = next))
         logPowerUp(kind, bought = false)
+        com.avfusionapps.game_2048.data.progress.Progress.powerUpUsed()
         return true
     }
 
@@ -874,6 +885,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             // The hammer lands at 340 ms and the sprite crumbles for 560 ms before the cell empties.
             kotlinx.coroutines.delay(900)
             val grid = gameState.grid.map { it.toMutableList() }.toMutableList()
+            if (grid[row][col] == SHADOW_ROCK) com.avfusionapps.game_2048.data.progress.Progress.rockSmashed()
             grid[row][col] = 0
             commitPowerUpBoard(grid, emptyMap())
         }

@@ -4,10 +4,11 @@
 
     <style name="Theme.App.Starting" parent="Theme.SplashScreen">
         <!-- Set the splash screen background -->
-        <item name="windowSplashScreenBackground">#0B0C10</item>
+        <item name="windowSplashScreenBackground">#1A0E45</item>
         <!-- Set the splash screen icon -->
-        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
-        <item name="windowSplashScreenAnimationDuration">1000</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_fg_sprites</item>
+        <item name="windowSplashScreenIconBackgroundColor">#2B1870</item>
+        <item name="windowSplashScreenAnimationDuration">600</item>
         <!-- Post splash screen theme -->
         <item name="postSplashScreenTheme">@style/Theme._2048Original</item>
     </style>

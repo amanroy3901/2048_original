@@ -420,7 +420,10 @@ fun GameBoard(
                                     if (canHammer || canPoke) Modifier.pointerInput(i, j, canHammer) {
                                         detectTapGestures {
                                             if (canHammer) onCellTap?.invoke(i, j)
-                                            else pokes[i to j] = (pokes[i to j] ?: 0) + 1
+                                            else {
+                                                pokes[i to j] = (pokes[i to j] ?: 0) + 1
+                                                com.avfusionapps.game_2048.data.progress.Progress.poked()
+                                            }
                                         }
                                     } else Modifier
                                 )

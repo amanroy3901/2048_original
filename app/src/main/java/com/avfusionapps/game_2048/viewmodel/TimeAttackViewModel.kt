@@ -259,6 +259,10 @@ class TimeAttackViewModel(application: Application) : AndroidViewModel(applicati
                 )
             }
 
+            if (currentState.moveCount == 0) com.avfusionapps.game_2048.data.progress.Progress.gameStarted(com.avfusionapps.game_2048.data.progress.GameMode.TIME_ATTACK)
+            com.avfusionapps.game_2048.data.progress.Progress.merged(com.avfusionapps.game_2048.data.progress.GameMode.TIME_ATTACK, mergedTiles)
+            if (finalScoreGained > 0) com.avfusionapps.game_2048.data.progress.Progress.score(currentState.score + finalScoreGained)
+
             _gameState.value = currentState.copy(
                 grid = gridWithNewTile,
                 previousGrid = currentGrid,
