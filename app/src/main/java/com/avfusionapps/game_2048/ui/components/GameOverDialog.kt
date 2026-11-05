@@ -31,7 +31,9 @@ import com.avfusionapps.game_2048.ui.theme.LocalGameTheme
 fun GameOverDialog(
     score: Int,
     onNewGame: () -> Unit,
-    onExit: () -> Unit
+    onExit: () -> Unit,
+    /** Optional ways to keep playing (e.g. spend an Undo), shown above Play Again. */
+    rescue: (@Composable ColumnScope.() -> Unit)? = null
 ) {
     val theme = LocalGameTheme.current
 
@@ -134,6 +136,11 @@ fun GameOverDialog(
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
+
+                if (rescue != null) {
+                    rescue()
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
 
                 // Play Again Button
                 val isLight = ((theme.primaryColor.red * 0.2126f + theme.primaryColor.green * 0.7152f + theme.primaryColor.blue * 0.0722f) +

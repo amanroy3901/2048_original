@@ -36,8 +36,8 @@
     <string name="drop_tut_1">Tap a lane — your tile shoots straight up</string>
     <string name="drop_tut_2">Land the SAME number on top: they merge, double &amp; chain for a COMBO!</string>
     <string name="drop_tut_3">Grow your tiles up to reach this goal tile</string>
-    <string name="drop_tut_4">UNDO takes back your last shot</string>
-    <string name="drop_tut_5">SKIP swaps the tile you\'re about to shoot</string>
+    <string name="drop_tut_4">UNDO takes back your last shot. Shuffle, Remove and Freeze get you out of a jam</string>
+    <string name="drop_tut_5">NEXT swaps the sprite you\'re about to shoot, once per shot</string>
     <string name="drop_tut_6">You\'ve got it! Keep chaining merges 🎉</string>
     <string name="drop_tut_skip">Skip</string>
     <string name="drop_tut_got_it">Got it!</string>

@@ -49,6 +49,10 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.inset
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.PathParser
@@ -65,6 +69,7 @@ import com.avfusionapps.game_2048.model.DropStepKind
 import com.avfusionapps.game_2048.ui.sprites.ElementalSprites
 import com.avfusionapps.game_2048.ui.sprites.SpriteEmotion
 import com.avfusionapps.game_2048.ui.sprites.SpriteTile
+import com.avfusionapps.game_2048.viewmodel.DropAnim
 import com.avfusionapps.game_2048.viewmodel.DropMergeViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -85,6 +90,7 @@ private val LaneTrack = Color(0x8C140834)
 private val BeamGold = Color(0xFFFFC04A)
 private val BeamOrange = Color(0xFFFF9A2E)
 private val BeamBlocked = Color(0xFFFF4D6D)
+private val IceBlue = Color(0xFF6EC8FF)
 
 private val arrowPath by lazy { PathParser().parsePathString("M12 3.5 L20.5 12.5 H15.2 V20.5 H8.8 V12.5 H3.5 Z").toPath() }
 
@@ -127,6 +133,8 @@ internal fun SpriteDropBoard(
         fun cellCenter(c: Int, r: Int) = Offset(laneX(c) + lanePx / 2f, gapPx + r * cellHPx + cellHPx / 2f)
         fun launchCenter(c: Int) = Offset(laneX(c) + lanePx / 2f, padsTop + padsHPx / 2f - padsHPx * 0.08f)
         fun colFromX(x: Float) = ((x - gapPx / 2f) / (lanePx + gapPx)).toInt().coerceIn(0, COLS - 1)
+        fun rowFromY(y: Float) = ((y - gapPx) / cellHPx).toInt()
+        val targeting = gameState.removeArmed
 
         var aimCol by remember { mutableStateOf<Int?>(null) }
         var lastShotCol by remember { mutableIntStateOf(COLS / 2) }
@@ -182,10 +190,21 @@ internal fun SpriteDropBoard(
                 .clip(RoundedCornerShape(22.dp))
                 .background(Brush.verticalGradient(listOf(Color(0x993C1E82), Color(0xCC200E50))))
                 .border(2.dp, BoardGold.copy(alpha = 0.75f), RoundedCornerShape(22.dp))
-                .pointerInput(inputEnabled) {
-                    detectTapGestures { offset -> if (inputEnabled) fire(colFromX(offset.x)) }
+                .pointerInput(inputEnabled, targeting, gameState.columns) {
+                    detectTapGestures { offset ->
+                        if (targeting) {
+                            // Remove is armed: hit the sprite under the finger (a tap just below a lane's end counts too).
+                            val column = gameState.columns[colFromX(offset.x)]
+                            val row = rowFromY(offset.y)
+                            (column.getOrNull(row) ?: column.lastOrNull()?.takeIf { row == column.size })
+                                ?.let { viewModel.removeTile(it.id) }
+                        } else if (inputEnabled) {
+                            fire(colFromX(offset.x))
+                        }
+                    }
                 }
-                .pointerInput(inputEnabled) {
+                .pointerInput(inputEnabled, targeting) {
+                    if (targeting) return@pointerInput
                     detectDragGestures(
                         onDragStart = { offset -> if (inputEnabled) aimCol = colFromX(offset.x) },
                         onDrag = { change, _ -> if (inputEnabled) aimCol = colFromX(change.position.x) },
@@ -209,7 +228,7 @@ internal fun SpriteDropBoard(
             }
 
             // ── Light cone from the launcher up to the landing slot ──
-            if (!gameState.isGameOver) {
+            if (!gameState.isGameOver && !targeting) {
                 val landRow = min(aimedColumn.size, ROWS - 1)
                 val coneTop = if (aimedFull) gapPx else cellCenter(launcherCol, landRow).y - cellHPx / 2f
                 val coneBottom = launchCenter(launcherCol).y
@@ -222,14 +241,14 @@ internal fun SpriteDropBoard(
             // Hide only the pad the launcher is sitting over right now (it slides between lanes).
             val launcherOver = ((aimX - gapPx) / (lanePx + gapPx)).roundToInt().coerceIn(0, COLS - 1)
             for (c in 0 until COLS) {
-                if (c == launcherOver && !gameState.isResolving) continue
+                if (c == launcherOver && !(gameState.isResolving && !gameState.powerResolving)) continue
                 val padSize = with(density) { (padsHPx * 0.86f).toDp() }
                 val center = Offset(laneX(c) + lanePx / 2f, padsTop + padsHPx / 2f)
                 LaunchPad(center = center, size = padSize, blocked = gameState.columns[c].let { it.size >= ROWS && it.last().value != gameState.currentValue }, modifier = Modifier.testTag("DropMerge_LauncherSlot_$c"))
             }
 
             // ── Chevrons above the launcher ──
-            if (!blocked && !gameState.isGameOver) {
+            if (!blocked && !gameState.isGameOver && !targeting) {
                 val lc = launchCenter(launcherCol)
                 val chevTopPx = lc.y - tileSizePx * LAUNCH_SCALE * 0.5f - with(density) { 40.dp.toPx() }
                 val landBottom = cellCenter(launcherCol, min(aimedColumn.size, ROWS - 1)).y + cellHPx * 0.4f
@@ -240,12 +259,14 @@ internal fun SpriteDropBoard(
 
             // ── Live sprites, keyed by id so moves and merges animate ──
             val step = gameState.lastStep
-            val mergeKeyBase = gameState.moveCount * 32
+            val mergeKeyBase = gameState.actionCount * 32
             gameState.columns.forEachIndexed { c, column ->
                 column.forEachIndexed { r, tile ->
                     key(tile.id) {
                         val isEnd = r == column.lastIndex
                         val emotion = when {
+                            gameState.removingTileId == tile.id -> SpriteEmotion.SURPRISED
+                            targeting -> SpriteEmotion.WORRIED
                             gameState.isGameOver -> SpriteEmotion.SAD
                             idleLevel >= 2 -> SpriteEmotion.SLEEPY
                             idleLevel == 1 -> SpriteEmotion.THINKING
@@ -263,7 +284,10 @@ internal fun SpriteDropBoard(
                             fromLauncher = !gameState.justUndid,
                             emotion = emotion,
                             mergeReady = emotion == SpriteEmotion.EXCITED,
-                            mergeKey = if (merged) mergeKeyBase + step!!.chainIndex else null
+                            mergeKey = if (merged) mergeKeyBase + step!!.chainIndex else null,
+                            wobble = targeting,
+                            hit = gameState.removingTileId == tile.id,
+                            spinKey = gameState.shuffleKey
                         )
                     }
                 }
@@ -283,7 +307,7 @@ internal fun SpriteDropBoard(
                             to = fuseTo ?: cellCenter(consumed.toCol, consumed.toRow),
                             sizePx = tileSizePx,
                             size = tileSize,
-                            purge = step.kind == DropStepKind.PURGE
+                            purge = step.kind != DropStepKind.MERGE
                         )
                     }
                 }
@@ -306,6 +330,15 @@ internal fun SpriteDropBoard(
                 }
             }
 
+            // ── The Remove hammer swinging down on its target ──
+            gameState.removingTileId?.let { id ->
+                gameState.columns.forEachIndexed { c, col ->
+                    col.forEachIndexed { r, t ->
+                        if (t.id == id) key("hammer-$id") { HammerSwing(cellCenter(c, r), tileSizePx) }
+                    }
+                }
+            }
+
             // ── Launcher ──
             val lc = launchCenter(launcherCol)
             Launcher(
@@ -314,10 +347,12 @@ internal fun SpriteDropBoard(
                 center = Offset(aimX + lanePx / 2f, lc.y),
                 sizePx = tileSizePx * LAUNCH_SCALE,
                 size = tileSize * LAUNCH_SCALE,
-                hidden = gameState.isResolving,
-                blocked = blocked,
+                hidden = gameState.isResolving && !gameState.powerResolving,
+                blocked = blocked && !targeting,
                 recoil = recoil.value,
                 phase = phase,
+                frozenShots = gameState.freezeShots,
+                dimmed = targeting,
                 modifier = Modifier.tutorialAnchor(TutorialAnchor.LAUNCHER)
             )
 
@@ -451,7 +486,10 @@ private fun SpriteBoardTile(
     fromLauncher: Boolean,
     emotion: SpriteEmotion,
     mergeReady: Boolean,
-    mergeKey: Int?
+    mergeKey: Int?,
+    wobble: Boolean = false,
+    hit: Boolean = false,
+    spinKey: Int = 0
 ) {
     val pos = remember { Animatable(if (fromLauncher) launch else target, Offset.VectorConverter) }
     val flightScale = remember { Animatable(if (fromLauncher) LAUNCH_SCALE else 0.45f) }
@@ -481,14 +519,40 @@ private fun SpriteBoardTile(
         }
     }
 
+    // Shuffle: a full spin while the sprite slides to its new slot, looking dizzy.
+    val spin = remember { Animatable(0f) }
+    var dizzy by remember { mutableStateOf(false) }
+    val firstSpinKey = remember { spinKey }
+    LaunchedEffect(spinKey) {
+        if (spinKey == firstSpinKey) return@LaunchedEffect
+        dizzy = true
+        spin.snapTo(0f)
+        spin.animateTo(1f, tween(460, easing = FastOutSlowInEasing))
+        delay(500)
+        dizzy = false
+    }
+    // Remove armed: every sprite wobbles, asking not to be picked. Hit: it shudders under the hammer.
+    val jitterT = rememberInfiniteTransition(label = "tileJitter")
+    val jitter by jitterT.animateFloat(0f, 1f, infiniteRepeatable(tween(if (hit) 90 else 500, easing = LinearEasing)), label = "jitter")
+    val wave = sin(jitter * 2f * PI.toFloat())
+
     val half = sizePx / 2f
     Box(
         modifier = Modifier
             .offset { IntOffset((pos.value.x - half).roundToInt(), (pos.value.y - half).roundToInt()) }
             .size(size)
             .graphicsLayer {
-                scaleX = flightScale.value
-                scaleY = flightScale.value
+                val s = spin.value
+                val spinScale = if (s in 0.001f..0.999f) 1f - 0.3f * sin(s * PI.toFloat()) else 1f
+                scaleX = flightScale.value * spinScale
+                scaleY = flightScale.value * spinScale
+                rotationZ = when {
+                    s in 0.001f..0.999f -> 360f * s
+                    hit -> wave * 7f
+                    wobble -> wave * 4f
+                    else -> 0f
+                }
+                if (wobble && !hit) translationY = -kotlin.math.abs(wave) * 3.dp.toPx()
             }
             .drawBehind {
                 if (mergeReady) {
@@ -502,7 +566,11 @@ private fun SpriteBoardTile(
         SpriteTile(
             value = value,
             modifier = Modifier.fillMaxSize(),
-            emotion = if (surprised) SpriteEmotion.SURPRISED else emotion,
+            emotion = when {
+                dizzy -> SpriteEmotion.DIZZY
+                surprised -> SpriteEmotion.SURPRISED
+                else -> emotion
+            },
             lookY = if (mergeReady) 2f else 0f,
             charScaleX = squashX.value,
             charScaleY = squashY.value,
@@ -610,8 +678,11 @@ private fun Launcher(
     blocked: Boolean,
     recoil: Float,
     phase: Float,
+    frozenShots: Int,
+    dimmed: Boolean,
     modifier: Modifier
 ) {
+    val frozen = frozenShots > 0
     val reload = remember { Animatable(1f) }
     LaunchedEffect(reloadKey) {
         reload.snapTo(0f)
@@ -621,7 +692,11 @@ private fun Launcher(
     val rise = (1f - r) * 0.6f
     val bob = sin(phase * 2f * PI.toFloat()) * 3f
     val shake = if (blocked) sin(phase * 2f * PI.toFloat() * 6f) * 3f else 0f
-    val glow = if (blocked) BeamBlocked else ElementalSprites.specFor(value).glow
+    val glow = when {
+        blocked -> BeamBlocked
+        frozen -> IceBlue
+        else -> ElementalSprites.specFor(value).glow
+    }
     val half = sizePx / 2f
     Box(
         modifier = Modifier
@@ -629,7 +704,7 @@ private fun Launcher(
             .then(modifier)
             .size(size)
             .graphicsLayer {
-                alpha = if (hidden) 0f else (0.2f + 0.8f * r)
+                alpha = if (hidden) 0f else (0.2f + 0.8f * r) * (if (dimmed) 0.45f else 1f)
                 val pop = if (r < 0.6f) 0.5f + r / 0.6f * 0.62f else 1.12f - (r - 0.6f) / 0.4f * 0.12f
                 scaleX = pop
                 scaleY = pop
@@ -644,10 +719,73 @@ private fun Launcher(
         SpriteTile(
             value = value,
             modifier = Modifier.fillMaxSize(),
-            emotion = if (blocked) SpriteEmotion.SURPRISED else SpriteEmotion.EXCITED,
+            emotion = when {
+                blocked -> SpriteEmotion.SURPRISED
+                frozen -> SpriteEmotion.WORRIED
+                else -> SpriteEmotion.EXCITED
+            },
             charScaleX = 1f + 0.18f * recoil,
             charScaleY = 1f - 0.22f * recoil,
             showCard = false
         )
+        if (frozen) {
+            // An ice shell over the sprite, with the shots left on a snowflake badge.
+            Canvas(Modifier.fillMaxSize()) {
+                val rad = this.size.minDimension * 0.47f
+                drawCircle(Brush.radialGradient(listOf(Color(0x33DFF7FF), Color(0x666EC8FF)), radius = rad), radius = rad)
+                drawCircle(Color(0xFFBFEFFF).copy(alpha = 0.9f), radius = rad, style = Stroke(width = 2.5.dp.toPx()))
+                drawArc(
+                    Color.White.copy(alpha = 0.7f), startAngle = 200f, sweepAngle = 60f, useCenter = false,
+                    topLeft = Offset(center.x - rad * 0.78f, center.y - rad * 0.78f), size = Size(rad * 1.56f, rad * 1.56f),
+                    style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
+                )
+            }
+            FrozenBadge(shots = frozenShots, modifier = Modifier.align(Alignment.TopEnd))
+        }
     }
+}
+
+/** The Remove hammer: rears back, slams onto the sprite, and throws out a ring of shards. */
+@Composable
+private fun HammerSwing(at: Offset, tileSizePx: Float) {
+    val swing = remember { Animatable(0f) }
+    LaunchedEffect(Unit) { swing.animateTo(1f, tween(DropAnim.REMOVE_HIT.toInt(), easing = LinearEasing)) }
+    val t = swing.value
+    Canvas(Modifier.fillMaxSize()) {
+        val hs = tileSizePx * 0.95f
+        // 0–0.45 wind up, 0.45–0.6 slam, then rest on the sprite.
+        val angle = when {
+            t < 0.45f -> -20f - 35f * (t / 0.45f)
+            t < 0.6f -> -55f + 75f * ((t - 0.45f) / 0.15f)
+            else -> 20f - 6f * ((t - 0.6f) / 0.4f)
+        }
+        val pivot = Offset(at.x + hs * 0.55f, at.y + hs * 0.45f)
+        withTransform({
+            rotate(angle, pivot)
+            translate(at.x - hs * 0.15f, at.y - hs * 0.85f)
+        }) {
+            drawIntoBox(hs) { drawHammerIcon() }
+        }
+        if (t > 0.58f) {
+            val k = (t - 0.58f) / 0.42f
+            drawCircle(Color.White.copy(alpha = 0.8f * (1f - k)), radius = tileSizePx * (0.3f + 0.5f * k), center = at, style = Stroke(width = 4.dp.toPx() * (1f - k) + 1f))
+            for (i in 0 until 8) {
+                val a = (i / 8f) * 2f * PI.toFloat()
+                val dir = Offset(kotlin.math.cos(a), kotlin.math.sin(a))
+                drawLine(
+                    Color(0xFFFF9FB0).copy(alpha = 1f - k),
+                    at + dir * (tileSizePx * (0.35f + 0.35f * k)),
+                    at + dir * (tileSizePx * (0.5f + 0.5f * k)),
+                    strokeWidth = 3.dp.toPx(), cap = StrokeCap.Round
+                )
+            }
+        }
+    }
+}
+
+/** Runs [block] in a [side]×[side] box at the current origin (the hammer icon draws itself to fit). */
+private inline fun DrawScope.drawIntoBox(side: Float, block: DrawScope.() -> Unit) {
+    val dx = side - size.width
+    val dy = side - size.height
+    inset(0f, 0f, -dx, -dy) { block() }
 }

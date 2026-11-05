@@ -243,4 +243,61 @@ class DropMergeEngineTest {
         val firstMerge = result.steps.first { it.kind == DropStepKind.MERGE }
         assertEquals(shot.id, firstMerge.mergedTileId)
     }
+
+    // ── Power-ups ──
+
+    @Test
+    fun `shuffle keeps every tile and evens out the lanes`() {
+        val e = engine()
+        // No two equal values, so nothing can merge after the shuffle.
+        val start = board(listOf(2, 4, 8, 16, 32, 64, 128), listOf(256), emptyList(), emptyList(), listOf(512))
+        val result = e.shuffle(start, bestTileEver = 0)
+
+        assertEquals(DropStepKind.SETTLE, result.steps.first().kind)
+        val after = result.steps.last().columns
+        assertEquals(start.flatten().map { it.id }.toSet(), after.flatten().map { it.id }.toSet())
+        val heights = after.map { it.size }
+        assertTrue("lanes should differ by at most one: $heights", heights.max() - heights.min() <= 1)
+        assertEquals(0, result.totalGained)
+    }
+
+    @Test
+    fun `shuffle lets matching sprites merge`() {
+        val e = DropMergeEngine(random = Random(7))
+        val start = board(listOf(4, 4), listOf(4, 4))
+        val result = e.shuffle(start, bestTileEver = 0)
+
+        // Four 4s over five lanes always leave at least one pair touching on the top row.
+        assertTrue(result.steps.any { it.kind == DropStepKind.MERGE })
+        assertEquals(16, result.steps.last().columns.flatten().sumOf { it.value })
+    }
+
+    @Test
+    fun `remove closes the lane and merges what meets`() {
+        val e = engine()
+        // Lane 0 is 8 / 2 / 8: knocking out the 2 brings the two 8s together.
+        val start = board(listOf(8, 2, 8))
+        val twoId = start[0][1].id
+        val result = e.removeTile(start, twoId, bestTileEver = 0)!!
+
+        val first = result.steps.first()
+        assertEquals(DropStepKind.SETTLE, first.kind)
+        assertEquals(twoId, first.consumed.single().tile.id)
+        assertEquals(listOf(8, 8), values(first.columns)[0])
+        assertEquals(listOf(16), values(result.steps.last().columns)[0])
+        assertEquals(16, result.totalGained)
+    }
+
+    @Test
+    fun `remove of a missing tile does nothing`() {
+        val e = engine()
+        assertEquals(null, e.removeTile(board(listOf(2)), tileId = 99_999L, bestTileEver = 0))
+    }
+
+    @Test
+    fun `xp needed grows by 600 a level from 1400`() {
+        assertEquals(1_400, DropMergeConfig.xpForLevel(1))
+        assertEquals(2_000, DropMergeConfig.xpForLevel(2))
+        assertEquals(6_800, DropMergeConfig.xpForLevel(10))
+    }
 }

@@ -115,10 +115,6 @@ class DropMergeEngine(
 
         val cols = columns.map { it.toMutableList() }.toMutableList()
         val steps = mutableListOf<DropStep>()
-        var runningBest = bestTileEver
-        var totalGained = 0
-        var chain = 0
-        var maxChain = 0
 
         // 1) Placement. When the column is full-but-matching the tile briefly
         //    sits one row past capacity and fuses on the very next step.
@@ -127,12 +123,73 @@ class DropMergeEngine(
 
         // 2) The landed tile merges first (genre rule: the action point may
         //    fuse with up/left/right at once → ×2 / ×4 / ×8).
-        var focus: DropTile? = tile
+        val (gained, maxChain) = cascade(cols, focus = tile, bestTileEver = bestTileEver, steps = steps)
+        return DropShotResult(steps, gained, maxChain, overflow = false)
+    }
+
+    // ─────────────────────────────── Power-ups ──────────────────────────────
+
+    /**
+     * Shuffle: deals every tile back out in random order across the lanes, keeping
+     * the lanes as evenly filled as possible, then lets the new board merge.
+     * The first step ([DropStepKind.SETTLE]) is the shuffled board itself.
+     */
+    fun shuffle(columns: DropColumns, bestTileEver: Int): DropShotResult {
+        val tiles = columns.flatten().shuffled(random)
+        val base = tiles.size / DropMergeConfig.COLUMNS
+        val extra = tiles.size % DropMergeConfig.COLUMNS
+        val tallLanes = (0 until DropMergeConfig.COLUMNS).shuffled(random).take(extra).toSet()
+        val cols = MutableList(DropMergeConfig.COLUMNS) { mutableListOf<DropTile>() }
+        var next = 0
+        for (c in 0 until DropMergeConfig.COLUMNS) {
+            val height = base + if (c in tallLanes) 1 else 0
+            repeat(height) { cols[c].add(tiles[next++]) }
+        }
+        return settleBoard(cols, bestTileEver, consumed = emptyList())
+    }
+
+    /**
+     * Remove: takes the tile [tileId] off the board (its lane closes up behind it),
+     * then lets the board merge. Returns null when the tile isn't on the board.
+     */
+    fun removeTile(columns: DropColumns, tileId: Long, bestTileEver: Int): DropShotResult? {
+        val (c, r) = findTile(columns, tileId) ?: return null
+        val cols = columns.map { it.toMutableList() }.toMutableList()
+        val removed = cols[c].removeAt(r)
+        return settleBoard(cols, bestTileEver, consumed = listOf(ConsumedTile(removed, c, r, c, r)))
+    }
+
+    private fun settleBoard(
+        cols: MutableList<MutableList<DropTile>>,
+        bestTileEver: Int,
+        consumed: List<ConsumedTile>
+    ): DropShotResult {
+        val steps = mutableListOf(DropStep(columns = snapshot(cols), kind = DropStepKind.SETTLE, consumed = consumed))
+        val (gained, maxChain) = cascade(cols, focus = null, bestTileEver = bestTileEver, steps = steps)
+        return DropShotResult(steps, gained, maxChain, overflow = false)
+    }
+
+    /**
+     * Merges around [focus] first, then sweeps the board until nothing matches,
+     * purging tiers below the spawn floor between sweeps. Appends a step per
+     * merge/purge to [steps]; returns (score gained, longest chain).
+     */
+    private fun cascade(
+        cols: MutableList<MutableList<DropTile>>,
+        focus: DropTile?,
+        bestTileEver: Int,
+        steps: MutableList<DropStep>
+    ): Pair<Int, Int> {
+        var runningBest = bestTileEver
+        var totalGained = 0
+        var chain = 0
+        var maxChain = 0
+        var current: DropTile? = focus
 
         while (true) {
-            // 2a) Cascade around the focus tile, then sweep the rest of the board.
+            // a) Cascade around the focus tile, then sweep the rest of the board.
             while (true) {
-                val target = focus?.takeIf { findTile(cols, it.id) != null && hasEqualNeighbor(cols, it) }
+                val target = current?.takeIf { findTile(cols, it.id) != null && hasEqualNeighbor(cols, it) }
                     ?: findScanFocus(cols)
                     ?: break
 
@@ -170,10 +227,10 @@ class DropMergeEngine(
                     chainIndex = chain,
                     unlockedValue = unlocked
                 )
-                focus = grown
+                current = grown
             }
 
-            // 2b) Board is merge-stable — purge tiers below the spawn floor.
+            // b) Board is merge-stable — purge tiers below the spawn floor.
             val floor = minSpawnValue(runningBest)
             val purged = mutableListOf<ConsumedTile>()
             for (c in cols.indices) {
@@ -195,10 +252,9 @@ class DropMergeEngine(
                 gained = purgeGained,
                 chainIndex = chain
             )
-            focus = null // collapse may open new merges — sweep again
+            current = null // collapse may open new merges — sweep again
         }
-
-        return DropShotResult(steps, totalGained, maxChain, overflow = false)
+        return totalGained to maxChain
     }
 
     // ─────────────────────────────── Internals ──────────────────────────────

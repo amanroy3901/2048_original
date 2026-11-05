@@ -15,8 +15,9 @@ import java.io.IOException
 private val Context.dropMergeDataStore: DataStore<Preferences> by preferencesDataStore(name = "drop_merge")
 
 /**
- * Persistence for the Neon Drop mode: best score, best tile ever built and
- * games played. Intentionally no currencies or consumables.
+ * Persistence for the Neon Drop mode: best score, best tile ever built, games
+ * played, and the player's shooter level and XP. Power-up charges are per game
+ * and aren't stored; coins live in the shared game settings.
  */
 class DropMergeRepository(private val context: Context) {
 
@@ -24,6 +25,22 @@ class DropMergeRepository(private val context: Context) {
         val BEST_SCORE_KEY = intPreferencesKey("best_score")
         val BEST_TILE_KEY = intPreferencesKey("best_tile")
         val GAMES_PLAYED_KEY = intPreferencesKey("games_played")
+        val LEVEL_KEY = intPreferencesKey("level")
+        val XP_KEY = intPreferencesKey("xp")
+    }
+
+    /** Shooter level (starts at 1) and XP towards the next level. */
+    val levelAndXp: Flow<Pair<Int, Int>> = context.dropMergeDataStore.data
+        .catch { exception ->
+            if (exception is IOException) emit(emptyPreferences()) else throw exception
+        }
+        .map { preferences -> (preferences[LEVEL_KEY] ?: 1) to (preferences[XP_KEY] ?: 0) }
+
+    suspend fun saveLevel(level: Int, xp: Int) {
+        context.dropMergeDataStore.edit { preferences ->
+            preferences[LEVEL_KEY] = level
+            preferences[XP_KEY] = xp
+        }
     }
 
     val bestScore: Flow<Int> = context.dropMergeDataStore.data
