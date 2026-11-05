@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -46,6 +47,7 @@ import androidx.credentials.exceptions.GetCredentialException
 import com.avfusionapps.game_2048.R
 import com.avfusionapps.game_2048.ui.screens.handleSignInResult
 import com.avfusionapps.game_2048.ui.theme.LocalGameTheme
+import com.avfusionapps.game_2048.ui.screens.spritePanel
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
@@ -76,14 +78,23 @@ fun GoogleSignInCard(
             .build()
     }
 
-    NeonCard(
-        accentColor = theme.primaryColor,
-        isSelected = true,
-        onClick = null,
-        cornerRadius = 24.dp,
-        borderWidth = 1.5.dp,
-        modifier = modifier.fillMaxWidth().testTag("GoogleSignInCard_Root")
-    ) {
+    // The sprite theme dresses the card as Blaze asking to keep your sprites safe; the sign-in logic is shared.
+    val sprites = theme.usesSprites
+    val container: @Composable (@Composable () -> Unit) -> Unit = { body ->
+        if (sprites) {
+            Box(modifier.fillMaxWidth().testTag("GoogleSignInCard_Root").spritePanel(24.dp)) { body() }
+        } else {
+            NeonCard(
+                accentColor = theme.primaryColor,
+                isSelected = true,
+                onClick = null,
+                cornerRadius = 24.dp,
+                borderWidth = 1.5.dp,
+                modifier = modifier.fillMaxWidth().testTag("GoogleSignInCard_Root")
+            ) { body() }
+        }
+    }
+    container {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -91,11 +102,28 @@ fun GoogleSignInCard(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             if (currentUser == null) {
-                Text(
-                    text = stringResource(R.string.sign_in_sync_progress),
-                    color = theme.textColor.copy(alpha = 0.75f),
-                    style = MaterialTheme.typography.bodyMedium
-                )
+                if (sprites) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        com.avfusionapps.game_2048.ui.sprites.SpriteTile(
+                            value = 64, modifier = Modifier.size(64.dp), showCard = false, showNumber = false,
+                            emotion = com.avfusionapps.game_2048.ui.sprites.SpriteEmotion.EXCITED
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text("Keep your sprites safe", color = Color.White, fontFamily = com.avfusionapps.game_2048.ui.sprites.SpriteDisplayFont, fontSize = 22.sp)
+                            Text(
+                                "Sign in to save your scores, coins and collection, and carry them to any device.",
+                                color = Color(0xFFC9B8F0), fontSize = 14.sp, lineHeight = 18.sp
+                            )
+                        }
+                    }
+                } else {
+                    Text(
+                        text = stringResource(R.string.sign_in_sync_progress),
+                        color = theme.textColor.copy(alpha = 0.75f),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),

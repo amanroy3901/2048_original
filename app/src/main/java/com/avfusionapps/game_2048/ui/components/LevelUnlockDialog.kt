@@ -925,6 +925,10 @@ fun AnimatedLevelUnlockDialog(
     soundEnabled: Boolean = true,
     onDismiss: () -> Unit
 ) {
+    if (LocalGameTheme.current.usesSprites) {
+        if (unlockedTileValue != null) SpriteMilestoneDialog(unlockedTileValue, onDismiss)
+        return
+    }
     AnimatedVisibility(
         visible = unlockedTileValue != null,
         enter = fadeIn() + scaleIn(initialScale = 0.8f),

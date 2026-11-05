@@ -43,6 +43,10 @@ fun GameTutorialOverlay(
     onDismiss: () -> Unit
 ) {
     val theme = LocalGameTheme.current
+    if (theme.usesSprites) {
+        SpriteTutorial(isTimeAttack, onDismiss)
+        return
+    }
     var currentStepIndex by remember { mutableStateOf(0) }
 
     // Define steps

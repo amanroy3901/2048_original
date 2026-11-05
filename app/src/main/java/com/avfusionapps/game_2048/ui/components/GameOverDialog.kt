@@ -36,6 +36,10 @@ fun GameOverDialog(
     rescue: (@Composable ColumnScope.() -> Unit)? = null
 ) {
     val theme = LocalGameTheme.current
+    if (theme.usesSprites) {
+        SpriteGameOverDialog(score = score, onNewGame = onNewGame, onExit = onExit, rescue = rescue)
+        return
+    }
 
     Dialog(onDismissRequest = {}) {
         Box(
@@ -210,6 +214,17 @@ fun TimeAttackGameOverDialog(
     val theme = LocalGameTheme.current
     val minutes = (timeSurvived / 60000).toInt()
     val seconds = ((timeSurvived % 60000) / 1000).toInt()
+    if (theme.usesSprites) {
+        SpriteGameOverDialog(
+            score = finalScore,
+            title = if (isTimeUp) "Time's up!" else "No moves left",
+            body = "You kept the sprites going for %d:%02d. Merge faster to earn more time.".format(minutes, seconds),
+            primary = "Play again",
+            onNewGame = onPlayAgain,
+            onExit = onExit
+        )
+        return
+    }
 
     Dialog(onDismissRequest = {}) {
         Box(

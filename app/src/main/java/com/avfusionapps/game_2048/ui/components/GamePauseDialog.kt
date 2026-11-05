@@ -38,6 +38,10 @@ fun GamePauseDialog(
     onDismiss: () -> Unit
 ) {
     val theme = LocalGameTheme.current
+    if (theme.usesSprites) {
+        SpritePauseDialog(currentScore, onResume, onRestart, onQuit, onDismiss)
+        return
+    }
 
     Dialog(onDismissRequest = onDismiss) {
         Box(

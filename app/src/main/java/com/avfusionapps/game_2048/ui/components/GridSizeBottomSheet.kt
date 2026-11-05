@@ -64,6 +64,10 @@ fun GridSizeBottomSheet(
     modifier: Modifier = Modifier,
 ) {
     val theme = LocalGameTheme.current
+    if (theme.usesSprites) {
+        SpriteGridSizeDialog(currentSize, onSizeSelected, onDismiss)
+        return
+    }
     val sheetShape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)
     val scrollState = rememberScrollState()
 

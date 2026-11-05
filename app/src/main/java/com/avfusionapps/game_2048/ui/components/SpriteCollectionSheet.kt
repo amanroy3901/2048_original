@@ -33,6 +33,10 @@ import com.avfusionapps.game_2048.ui.theme.LocalGameTheme
 @Composable
 fun SpriteCollectionSheet(seen: Set<Int>, onDismiss: () -> Unit) {
     val theme = LocalGameTheme.current
+    if (theme.usesSprites) {
+        SpriteCollectionDialog(seen, onDismiss)
+        return
+    }
     val found = ElementalSprites.all.indices.count { (2 shl it) in seen }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
