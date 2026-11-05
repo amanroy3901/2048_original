@@ -131,7 +131,7 @@ internal fun SpriteHomeScreen(
                     Box(Modifier.fillMaxWidth().heightIn(min = this@BoxWithConstraints.maxHeight - 76.dp), contentAlignment = Alignment.Center) {
                     Row(horizontalArrangement = Arrangement.spacedBy(24.dp), modifier = Modifier.widthIn(max = 1100.dp)) {
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                            SpriteHero(0, 0, SpriteEmotion.HAPPY, 0, 0, 0, height = 300.dp, showScores = false)
+                            SpriteHero(0, 0, SpriteEmotion.HAPPY, 0, 0, 0, height = if (this@BoxWithConstraints.maxHeight < 600.dp) 210.dp else 300.dp, showScores = false)
                             DailyCard(daily, actions)
                             ContinueCard(hasSaved, savedScore, savedGrid, actions)
                         }

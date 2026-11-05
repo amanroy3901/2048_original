@@ -2,6 +2,9 @@ package com.avfusionapps.game_2048.ui.screens
 
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.unit.Dp
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -192,15 +195,8 @@ internal fun SpriteClassicLayout(
                     }
                 }
         ) {
-            // Tablets: keep the phone proportions in a centred column.
-            val w = minOf(maxWidth, 600.dp)
-            val h = maxHeight
             val gap = 10.dp
-            // header, two-line bubble, power-ups (with badges), bottom menu, gaps
-            val fixed = 46.dp + 52.dp + 78.dp + 72.dp + gap * 5
-            val heroH = (h - fixed - w).coerceIn(170.dp, 224.dp)
-            val board = minOf(w, h - fixed - heroH)
-            Column(Modifier.align(Alignment.TopCenter).fillMaxHeight().width(w), horizontalAlignment = Alignment.CenterHorizontally) {
+            val header: @Composable () -> Unit = {
                 SpriteClassicHeader(
                     level = level,
                     progress = progress,
@@ -208,7 +204,8 @@ internal fun SpriteClassicLayout(
                     soundOn = soundEnabled,
                     onSound = { viewModel.updateSoundEnabled(!soundEnabled) }
                 )
-                Spacer(Modifier.height(gap))
+            }
+            val hero: @Composable (Dp) -> Unit = { height ->
                 SpriteHero(
                     score = gameState.score,
                     best = maxOf(best, gameState.score),
@@ -216,9 +213,10 @@ internal fun SpriteClassicLayout(
                     hopKey = hopKey,
                     reactValue = reactValue,
                     reactKey = reactKey,
-                    height = heroH
+                    height = height
                 )
-                Spacer(Modifier.height(gap))
+            }
+            val narrator: @Composable () -> Unit = {
                 SpriteNarratorRow(
                     text = line.text,
                     textKey = line.key,
@@ -226,9 +224,8 @@ internal fun SpriteClassicLayout(
                     freezeMoves = gameState.freezeMoves,
                     rockTtl = gameState.rockTtl
                 )
-                Spacer(Modifier.height(gap))
-                Box(Modifier.size(board)) { GameBoard(viewModel = viewModel) }
-                Spacer(Modifier.height(gap))
+            }
+            val powers: @Composable () -> Unit = {
                 val p = gameState.powerUps
                 SpritePowerRow(
                     cost = PowerUps.COST,
@@ -240,7 +237,8 @@ internal fun SpriteClassicLayout(
                         SpritePowerButton("Hint", p.hint, Color(0xFFFFE07A), Color(0xFFE59A12), Color(0xB3FFD25A), onClick = { viewModel.showHint(context) }) { drawHintIcon() }
                     )
                 )
-                Spacer(Modifier.weight(1f))
+            }
+            val nav: @Composable () -> Unit = {
                 SpriteBottomNav(
                     items = listOf(
                         SpriteNavItem("Menu", onMenu) { navMenuIcon() },
@@ -250,6 +248,55 @@ internal fun SpriteClassicLayout(
                         SpriteNavItem("Themes", onThemes) { navThemesIcon() }
                     )
                 )
+            }
+            if (maxWidth > maxHeight) {
+                // Landscape: the controls in a column on the left, the board as big as the height allows on the right.
+                val mw = maxWidth
+                val mh = maxHeight
+                val board = minOf(mh, mw - 380.dp)
+                val tall = mh >= 600.dp
+                Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(20.dp, Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.width(minOf(460.dp, mw - board - 20.dp)).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
+                        header()
+                        Spacer(Modifier.height(gap))
+                        if (tall) {
+                            hero((mh - (46.dp + 52.dp + 78.dp + 72.dp + gap * 5)).coerceIn(150.dp, 260.dp))
+                        } else {
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                ScoreBox("Score", gameState.score, Modifier)
+                                ScoreBox("Best", maxOf(best, gameState.score), Modifier)
+                            }
+                        }
+                        Spacer(Modifier.height(gap))
+                        narrator()
+                        Spacer(Modifier.weight(1f))
+                        powers()
+                        Spacer(Modifier.height(gap))
+                        nav()
+                    }
+                    Box(Modifier.size(board)) { GameBoard(viewModel = viewModel) }
+                }
+            } else {
+            // Tablets: keep the phone proportions in a centred column.
+            val w = minOf(maxWidth, 600.dp)
+            val h = maxHeight
+            // header, two-line bubble, power-ups (with badges), bottom menu, gaps
+            val fixed = 46.dp + 52.dp + 78.dp + 72.dp + gap * 5
+            val heroH = (h - fixed - w).coerceIn(170.dp, 224.dp)
+            val board = minOf(w, h - fixed - heroH)
+            Column(Modifier.align(Alignment.TopCenter).fillMaxHeight().width(w), horizontalAlignment = Alignment.CenterHorizontally) {
+                header()
+                Spacer(Modifier.height(gap))
+                hero(heroH)
+                Spacer(Modifier.height(gap))
+                narrator()
+                Spacer(Modifier.height(gap))
+                Box(Modifier.size(board)) { GameBoard(viewModel = viewModel) }
+                Spacer(Modifier.height(gap))
+                powers()
+                Spacer(Modifier.weight(1f))
+                nav()
+            }
             }
         }
     }

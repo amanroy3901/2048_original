@@ -245,7 +245,7 @@ fun GameScreen(
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
-    if (isLandscape) {
+    if (isLandscape && !theme.usesSprites) {
         GameScreenLandscape(
             viewModel = viewModel,
             gameState = gameState,
