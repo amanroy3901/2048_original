@@ -25,7 +25,7 @@ fun MainMenu(game: GameViewModel) {
         spritesFound = seen.count { it in 2..2048 },
         actions = HomeActions(
             onContinue = { game.resumeSavedGame(); Nav.navigate("game?resume=true") },
-            onNewClassic = { Nav.navigate("game?resume=false") },
+            onNewClassic = { game.initializeGame(); Nav.navigate("game?resume=false") },
             onTimeAttack = { Nav.navigate("timeAttack") },
             onShooter = { Nav.navigate("dropMerge") },
             onProfile = { Nav.navigate("profile") },
