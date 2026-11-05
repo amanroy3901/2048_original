@@ -123,13 +123,13 @@ private val chevronPath by lazy { PathParser().parsePathString("M3 11 L13 3 L23 
 private var shooterMotionCounter = 0
 private fun nextKey() = ++shooterMotionCounter
 
-private fun cycle(t: Float, period: Float, delay: Float = 0f): Float {
+private fun dropCycle(t: Float, period: Float, delay: Float = 0f): Float {
     val x = (t - delay) / period
     return x - floor(x)
 }
 
 /** Ease-in-out triangle: 0 → 1 → 0 over one cycle, like a CSS 0%/50%/100% loop. */
-private fun pingPong(c: Float): Float = EaseInOut.transform(if (c < 0.5f) c * 2f else (1f - c) * 2f)
+private fun dropPingPong(c: Float): Float = EaseInOut.transform(if (c < 0.5f) c * 2f else (1f - c) * 2f)
 
 /**
  * The Elemental Sprites Neon Shooter board: lanes with launch pads at their foot, a warm light cone that
@@ -536,7 +536,7 @@ private fun LaneTrack(x: Float, widthDp: Dp, heightDp: Dp, topPx: Float, danger:
             .size(widthDp, heightDp)
             .drawBehind {
                 if (danger) {
-                    val k = pingPong(cycle(clock, if (critical) 0.55f else 1f))
+                    val k = dropPingPong(dropCycle(clock, if (critical) 0.55f else 1f))
                     val r = CornerRadius(16.dp.toPx())
                     drawRoundRect(BeamBlocked.copy(alpha = 0.45f * k), topLeft = Offset(-4.dp.toPx(), -4.dp.toPx()), size = Size(size.width + 8.dp.toPx(), size.height + 8.dp.toPx()), cornerRadius = CornerRadius(20.dp.toPx()), style = Stroke(6.dp.toPx() * k + 0.5f))
                     drawRoundRect(fill, cornerRadius = r)
@@ -579,14 +579,14 @@ private fun DrawScope.drawLightCone(laneLeft: Float, laneW: Float, top: Float, b
     clipPath(path) {
         // bands of light rising 70 px every 1.2 s
         val band = 70.dp.toPx()
-        var y = bottom - cycle(t, 1.2f) * band
+        var y = bottom - dropCycle(t, 1.2f) * band
         while (y > top - band) {
             drawRect(Color(0xFFFFECB4).copy(alpha = 0.035f), topLeft = Offset(laneLeft, y - 44.dp.toPx()), size = Size(laneW, 10.dp.toPx()))
             y -= band
         }
     }
     // the bright cone at its foot (pulses 1.4 s)
-    val pulse = 0.55f + 0.45f * pingPong(cycle(t, 1.4f))
+    val pulse = 0.55f + 0.45f * dropPingPong(dropCycle(t, 1.4f))
     val cw = laneW * 0.4f
     val ch = h * 0.34f
     val cTop = bottom + h * 0.06f - ch
@@ -605,7 +605,7 @@ private fun DrawScope.drawChevrons(top: Offset, t: Float) {
     val w = 26.dp.toPx()
     val h = 13.dp.toPx()
     for (k in 0 until 3) {
-        val c = pingPong(cycle(t, 1f, (2 - k) * 0.15f))
+        val c = dropPingPong(dropCycle(t, 1f, (2 - k) * 0.15f))
         val a = 0.25f + 0.75f * c
         val dy = (4f - 6f * c) * 1.dp.toPx()
         val y = top.y + k * h + dy
@@ -745,7 +745,7 @@ private fun SpriteBoardTile(
                 val t = clock()
                 if (mergeReady) {
                     // readyGlow: pulse .35 ↔ 1 and .9 ↔ 1.1 every second
-                    val k = pingPong(cycle(t, 1f))
+                    val k = dropPingPong(dropCycle(t, 1f))
                     val r = this.size.minDimension * 0.55f * (0.9f + 0.2f * k)
                     drawCircle(Brush.radialGradient(listOf(spec.glow.copy(alpha = 0.6f * (0.35f + 0.65f * k)), Color.Transparent), radius = r), radius = r)
                 }
@@ -902,8 +902,8 @@ private fun Launcher(
                 val sy = kfLinear(r, RELOAD_AT, RELOAD_SY)
                 val a = kfLinear(r, RELOAD_AT, RELOAD_A)
                 // bob 1.6 s, 4 px; blocked: shake ±4 px every .35 s
-                val bob = -4f * px * pingPong(cycle(t, 1.6f))
-                val no = if (blocked) kfLinear(EaseInOut.transform(cycle(t, 0.35f)), NO_AT, NO_X) * px else 0f
+                val bob = -4f * px * dropPingPong(dropCycle(t, 1.6f))
+                val no = if (blocked) kfLinear(EaseInOut.transform(dropCycle(t, 0.35f)), NO_AT, NO_X) * px else 0f
                 translationX = no
                 translationY = ty * this.size.height + bob
                 scaleX = sx
@@ -912,7 +912,7 @@ private fun Launcher(
             }
             .drawBehind {
                 // the halo (inset -18 %, pulsing 1.4 s)
-                val k = 0.55f + 0.45f * pingPong(cycle(clock(), 1.4f))
+                val k = 0.55f + 0.45f * dropPingPong(dropCycle(clock(), 1.4f))
                 val r = this.size.minDimension * 0.96f
                 drawCircle(Brush.radialGradient(0f to glow.copy(alpha = 0.55f * k), 0.66f to Color.Transparent, radius = r), radius = r)
             }
