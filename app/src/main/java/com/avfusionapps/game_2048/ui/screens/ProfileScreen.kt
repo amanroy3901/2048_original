@@ -182,7 +182,7 @@ fun ProfileScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .testTag("ProfileScreen_Root")
-                .background(theme.backgroundColor)
+                .background(if (theme.usesSprites) NightBrush else androidx.compose.ui.graphics.SolidColor(theme.backgroundColor))
                 .padding(horizontal = 20.dp, vertical = 16.dp)
                 .safeDrawingPadding()
         ) {
@@ -215,7 +215,7 @@ fun ProfileScreen(
                         letterSpacing = 2.sp
                     )
                     Text(
-                        text = "N E O N   R U S H",
+                        text = if (theme.usesSprites) "E L E M E N T A L   S P R I T E S" else "N E O N   R U S H",
                         color = theme.primaryColor,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.ExtraBold,
@@ -263,7 +263,9 @@ fun ProfileScreen(
                                     .background(Brush.verticalGradient(listOf(theme.primaryColor, theme.secondaryColor))),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(
+                                if (theme.usesSprites) {
+                                    com.avfusionapps.game_2048.ui.sprites.SpriteTile(64, Modifier.size(56.dp), showCard = false, showNumber = false, showAura = false, showEffects = false)
+                                } else Icon(
                                     imageVector = Icons.Rounded.Person,
                                     contentDescription = null,
                                     tint = Color.White,
@@ -291,7 +293,7 @@ fun ProfileScreen(
                                     )
                                 }
                                 Text(
-                                    text = "Neon Master",
+                                    text = if (theme.usesSprites) spriteRank(com.avfusionapps.game_2048.data.progress.Progress.stats.collectAsState().value.biggestTile) else "Neon Master",
                                     color = theme.textColor.copy(alpha = 0.6f),
                                     fontSize = 12.sp
                                 )
@@ -646,7 +648,7 @@ private fun ProfileScreenLandscape(
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
-            .background(theme.backgroundColor)
+            .background(if (theme.usesSprites) NightBrush else androidx.compose.ui.graphics.SolidColor(theme.backgroundColor))
             .safeDrawingPadding()
     ) {
         val screenW = maxWidth
@@ -700,7 +702,7 @@ private fun ProfileScreenLandscape(
                             letterSpacing = 2.sp
                         )
                         Text(
-                            text = "N E O N   R U S H",
+                            text = if (theme.usesSprites) "E L E M E N T A L   S P R I T E S" else "N E O N   R U S H",
                             color = theme.primaryColor,
                             fontSize = with(density) { (screenH * 0.020f).toSp() },
                             fontWeight = FontWeight.ExtraBold,
@@ -762,7 +764,7 @@ private fun ProfileScreenLandscape(
                                 )
                             }
                             Text(
-                                text = "Neon Master",
+                                text = if (theme.usesSprites) spriteRank(com.avfusionapps.game_2048.data.progress.Progress.stats.collectAsState().value.biggestTile) else "Neon Master",
                                 color = theme.textColor.copy(alpha = 0.6f),
                                 fontSize = with(density) { (screenH * 0.025f).toSp() }
                             )

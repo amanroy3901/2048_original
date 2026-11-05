@@ -132,6 +132,19 @@ private fun pingPong(c: Float): Float = EaseInOut.transform(if (c < 0.5f) c * 2f
 
 // ─────────────────────────────── Background ───────────────────────────────
 
+/** The prototypes' phone background as a brush, for screens that just need the colour. */
+internal val NightBrush = Brush.verticalGradient(0f to Color(0xFF2B1870), 0.45f to Color(0xFF1A0E45), 1f to Color(0xFF140A33))
+
+/** A title for the player from the biggest sprite they have raised. */
+internal fun spriteRank(biggest: Int): String = when {
+    biggest >= 2048 -> "Ember Royalty"
+    biggest >= 1024 -> "Crystal Sage"
+    biggest >= 256 -> "Star Herder"
+    biggest >= 64 -> "Blaze Keeper"
+    biggest >= 8 -> "Sprite Tamer"
+    else -> "Drip Sitter"
+}
+
 /**
  * The prototypes' phone background: a deep violet gradient. With [scene], the v3 night sky too:
  * thirty twinkling stars in the top half, dark hills and a crescent moon behind the hero banner.

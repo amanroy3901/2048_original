@@ -206,7 +206,7 @@ fun TimeAttackScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .testTag("TimeAttackScreen_Root")
-                .background(theme.backgroundColor)
+                .background(if (theme.usesSprites) NightBrush else androidx.compose.ui.graphics.SolidColor(theme.backgroundColor))
                 .safeDrawingPadding()
                 .padding(horizontal = 16.dp, vertical = 8.dp)
                 .pointerInput(Unit) {
@@ -237,6 +237,37 @@ fun TimeAttackScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top
         ) {
+            if (theme.usesSprites) {
+                SpriteTimeAttackHeader(
+                    timeRemainingMillis = gameState.timeRemainingMillis,
+                    isPaused = gameState.isPaused,
+                    onPauseToggle = { viewModel.togglePause() },
+                    onHelp = {
+                        forceShowTutorial = true
+                        viewModel.setPaused(true)
+                    },
+                    onBack = { navController.popBackStack() },
+                    bonuses = floatingBonuses,
+                    onBonusDone = { id -> floatingBonuses = floatingBonuses.filter { it.id != id } }
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                SpriteScoreRow(score = gameState.score, best = highScore)
+                Spacer(modifier = Modifier.height(14.dp))
+                GameBoard(
+                    grid = gameState.grid,
+                    tileAnimationInfo = gameState.tileAnimationInfo,
+                    moveCount = gameState.moveCount,
+                    onAnimationsComplete = { viewModel.clearAnimationInfo() },
+                    isGameOver = gameState.isGameOver
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                SpriteTimeAttackActions(
+                    onUndo = { viewModel.undoMove() },
+                    onNewGame = { viewModel.startNewGame() },
+                    onHint = { viewModel.showHint(context) }
+                )
+                return@Column
+            }
             // Header
             TimeAttackTopBar(
                 timeRemainingMillis = gameState.timeRemainingMillis,
@@ -397,7 +428,7 @@ private fun TimeAttackScreenLandscape(
     Row(
         modifier = Modifier
             .fillMaxSize()
-            .background(theme.backgroundColor)
+            .background(if (theme.usesSprites) NightBrush else androidx.compose.ui.graphics.SolidColor(theme.backgroundColor))
             .safeDrawingPadding()
             .padding(horizontal = containerPaddingHorizontal, vertical = containerPaddingVertical)
             .pointerInput(Unit) {

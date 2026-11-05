@@ -73,7 +73,7 @@ fun ThemeSettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .testTag("ThemeSettingsScreen_Root")
-                .background(bgColor)
+                .background(if (selectedTheme.usesSprites) NightBrush else androidx.compose.ui.graphics.SolidColor(bgColor))
                 .padding(horizontal = 16.dp, vertical = 16.dp)
                 .safeDrawingPadding()
         ) {
@@ -339,9 +339,9 @@ private fun ThemePreviewCard(theme: GameTheme, isCurrent: Boolean) {
                 }
 
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FeatureRow(Icons.Rounded.GridView, "Bold Colors", theme.primaryColor, theme.textColor)
-                    FeatureRow(Icons.Rounded.Star, "Neon Glow", theme.primaryColor, theme.textColor)
-                    FeatureRow(Icons.Rounded.RemoveRedEye, "Easy on the eyes", theme.primaryColor, theme.textColor)
+                    FeatureRow(Icons.Rounded.GridView, if (theme.usesSprites) "11 living sprites" else "Bold Colors", theme.primaryColor, theme.textColor)
+                    FeatureRow(Icons.Rounded.Star, if (theme.usesSprites) "Moods, pokes and naps" else "Neon Glow", theme.primaryColor, theme.textColor)
+                    FeatureRow(Icons.Rounded.RemoveRedEye, if (theme.usesSprites) "Night-sky boards" else "Easy on the eyes", theme.primaryColor, theme.textColor)
                 }
             }
         }
@@ -504,7 +504,7 @@ private fun ThemeSettingsScreenLandscape(
     Row(
         modifier = Modifier
             .fillMaxSize()
-            .background(bgColor)
+            .background(if (selectedTheme.usesSprites) NightBrush else androidx.compose.ui.graphics.SolidColor(bgColor))
             .safeDrawingPadding()
             .padding(horizontal = containerPaddingHorizontal, vertical = containerPaddingVertical),
         horizontalArrangement = Arrangement.spacedBy(columnSpacing),
@@ -765,8 +765,8 @@ private fun ThemePreviewCardLandscape(theme: GameTheme, isCurrent: Boolean, scal
                 }
 
                 Column(verticalArrangement = Arrangement.spacedBy((6 * scaleFactor).dp)) {
-                    FeatureRowLandscape(Icons.Rounded.GridView, "Bold Colors", theme.primaryColor, theme.textColor, scaleFactor)
-                    FeatureRowLandscape(Icons.Rounded.Star, "Neon Glow", theme.primaryColor, theme.textColor, scaleFactor)
+                    FeatureRowLandscape(Icons.Rounded.GridView, if (theme.usesSprites) "11 living sprites" else "Bold Colors", theme.primaryColor, theme.textColor, scaleFactor)
+                    FeatureRowLandscape(Icons.Rounded.Star, if (theme.usesSprites) "Moods, pokes and naps" else "Neon Glow", theme.primaryColor, theme.textColor, scaleFactor)
                 }
             }
         }
