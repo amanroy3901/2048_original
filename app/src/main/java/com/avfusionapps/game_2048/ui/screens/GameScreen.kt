@@ -151,6 +151,24 @@ fun GameScreen(
     }
     LaunchedEffect(viewModel, soundEnabled) {
         viewModel.soundEvent.collect { soundId ->
+            if (theme.usesSprites) {
+                // The sprite sound set: slide, a merge chime pitched by the sprite made, a pop as the new one lands.
+                val s = viewModel.gameState
+                when (soundId) {
+                    SoundManager.SOUND_MOVE -> { com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.SLIDE); com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.POP, delayMs = 335) }
+                    SoundManager.SOUND_MERGE -> {
+                        val top = s.tileAnimationInfo.filterValues { it.isMerged }.keys.maxOfOrNull { (r, c) -> s.grid.getOrNull(r)?.getOrNull(c) ?: 0 } ?: 4
+                        com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.SLIDE)
+                        com.avfusionapps.game_2048.utils.SpriteSfx.merge(top, delayMs = 130)
+                        if ((s.lastGain?.multiplier ?: 1) >= 2) com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.COMBO, delayMs = 260)
+                        com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.POP, delayMs = 335)
+                    }
+                    SoundManager.SOUND_LEVEL_UP -> com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.FANFARE, delayMs = 130)
+                    SoundManager.SOUND_GAME_OVER -> com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.SAD)
+                    else -> if (soundEnabled) soundManager.playSound(soundId)
+                }
+                return@collect
+            }
             if (soundEnabled) soundManager.playSound(soundId)
         }
     }

@@ -180,7 +180,21 @@ fun DropMergeScreen(
                     DropGameEvent.SHOOT, DropGameEvent.SKIP, DropGameEvent.POWER -> Unit
                 }
             }
-            if (soundEnabled) {
+            if (theme.usesSprites) {
+                val step = viewModel.gameState.value.lastStep
+                when (event) {
+                    DropGameEvent.SHOOT -> { com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.SHOT); com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.IMPACT, delayMs = 200) }
+                    DropGameEvent.SKIP -> com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.WHOOSH)
+                    DropGameEvent.POWER -> com.avfusionapps.game_2048.utils.SpriteSfx.play(if (viewModel.gameState.value.freezeShots > 0) com.avfusionapps.game_2048.utils.SpriteSfx.Sound.FREEZE else com.avfusionapps.game_2048.utils.SpriteSfx.Sound.WHOOSH)
+                    DropGameEvent.MERGE -> com.avfusionapps.game_2048.utils.SpriteSfx.merge(step?.gained ?: 4, delayMs = 155)
+                    DropGameEvent.COMBO -> { com.avfusionapps.game_2048.utils.SpriteSfx.merge(step?.gained ?: 4, delayMs = 155); com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.COMBO, delayMs = 260) }
+                    DropGameEvent.PURGE -> com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.CRUNCH)
+                    DropGameEvent.REMOVE_HIT -> com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.CRUNCH, delayMs = 340)
+                    DropGameEvent.UNLOCK -> com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.FANFARE, delayMs = 155)
+                    DropGameEvent.LEVEL_UP -> com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.CHIME)
+                    DropGameEvent.GAME_OVER -> com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.SAD)
+                }
+            } else if (soundEnabled) {
                 // SoundManager sleeps between tones — keep it off the main thread.
                 withContext(Dispatchers.Default) {
                     when (event) {

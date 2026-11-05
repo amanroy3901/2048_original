@@ -319,6 +319,8 @@ internal fun ProgressCelebrations() {
         Progress.events.collect { e ->
             current = e
             visible = true
+            com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.CHIME)
+            if (e is ProgressEvent.Unlocked) com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.COIN, delayMs = 420)
             delay(2600)
             visible = false
             delay(400)

@@ -166,6 +166,7 @@ class MainActivity : ComponentActivity() {
         reminderManager = ReminderManager(this)
         settingsRepository = GameSettingsRepository(this)
         com.avfusionapps.game_2048.data.progress.Progress.init(this)
+        com.avfusionapps.game_2048.utils.SpriteSfx.init(this)
         pendingNavDestination.value = intent?.getStringExtra(GameReminderWorker.EXTRA_DESTINATION)
         firebaseAuth = Firebase.auth
         

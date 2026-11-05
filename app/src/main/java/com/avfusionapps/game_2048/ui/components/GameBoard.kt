@@ -240,7 +240,9 @@ fun GameBoard(
     val moodScope = rememberCoroutineScope()
     if (sprites) {
         LaunchedEffect(moveCount) {
+            if (tileAnimationInfo.values.any { it.shuffled }) com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.WHOOSH)
             if (idleLevel >= 2) {
+                com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.WAKE)
                 startled = true
                 moodScope.launch { delay(600); startled = false }
             }
@@ -274,6 +276,7 @@ fun GameBoard(
     val boardMotions = remember { mutableStateMapOf<Pair<Int, Int>, SpriteMotion>() }
     LaunchedEffect(bonkKey) {
         if (bonkKey == 0) return@LaunchedEffect
+        if (sprites) com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.BONK)
         dizzy = true
         val dir = bonkDirection?.toSpriteDir()
         if (sprites && dir != null) {
@@ -296,6 +299,7 @@ fun GameBoard(
     // Undo: every sprite fades back in with a little twist.
     LaunchedEffect(rewindKey) {
         if (rewindKey == 0 || !sprites) return@LaunchedEffect
+        com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.WAKE)
         grid.forEachIndexed { r, row -> row.forEachIndexed { c, v -> if (v != 0) boardMotions[r to c] = SpriteMotion(SpriteMotionKind.REWIND, nextMotionKey()) } }
     }
 
@@ -305,6 +309,7 @@ fun GameBoard(
     LaunchedEffect(breakingCell) {
         if (breakingCell == null || !sprites) return@LaunchedEffect
         flinch = true
+        com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.CRUNCH, delayMs = HAMMER_HIT_MS.toLong())
         moodScope.launch { delay(800); flinch = false }
         delay(HAMMER_HIT_MS.toLong())
         bump.snapTo(0f)
@@ -318,6 +323,7 @@ fun GameBoard(
     LaunchedEffect(frozen) {
         if (frozen && !wasFrozen && sprites) {
             freezeBurstKey++
+            com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.FREEZE)
             chilled = true
             moodScope.launch { delay(700); chilled = false }
         }
@@ -423,6 +429,7 @@ fun GameBoard(
                                             else {
                                                 pokes[i to j] = (pokes[i to j] ?: 0) + 1
                                                 com.avfusionapps.game_2048.data.progress.Progress.poked()
+                                                com.avfusionapps.game_2048.utils.SpriteSfx.play(if (cellValue < 0) com.avfusionapps.game_2048.utils.SpriteSfx.Sound.GRR else com.avfusionapps.game_2048.utils.SpriteSfx.Sound.GIGGLE)
                                             }
                                         }
                                     } else Modifier

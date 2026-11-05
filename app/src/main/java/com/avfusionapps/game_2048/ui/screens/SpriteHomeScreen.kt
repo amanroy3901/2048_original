@@ -251,7 +251,9 @@ private fun DailyCard(daily: DailyChallenge?, actions: HomeActions) {
             d.claimed -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
                 Text("✓ Claimed. Next challenge in ${untilMidnight()}", color = Muted, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
             }
-            d.done -> SpriteGoldButton("Claim ${d.reward} coins", { scope.launch { Progress.claimDaily() } }, Modifier.fillMaxWidth())
+            d.done -> SpriteGoldButton("Claim ${d.reward} coins", {
+                scope.launch { if (Progress.claimDaily() > 0) com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.COIN) }
+            }, Modifier.fillMaxWidth())
             else -> Row(verticalAlignment = Alignment.CenterVertically) {
                 Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
                     CoinIcon(Modifier.size(18.dp))

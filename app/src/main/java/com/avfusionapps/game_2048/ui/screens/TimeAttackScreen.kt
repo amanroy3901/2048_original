@@ -122,11 +122,29 @@ fun TimeAttackScreen(
 
     // Sound effects: one cue per swipe (slide / merge / game over), gated by the sound setting.
     val soundManager = remember { SoundManager(context) }
+    val spriteTheme = LocalGameTheme.current.usesSprites
     DisposableEffect(Unit) {
         onDispose { soundManager.release() }
     }
     LaunchedEffect(viewModel, soundEnabled) {
         viewModel.soundEvent.collect { soundId ->
+            if (spriteTheme) {
+                // The sprite sound set: slide, a merge chime pitched by the sprite made, a pop as the new one lands.
+                val s = viewModel.gameState.value
+                when (soundId) {
+                    SoundManager.SOUND_MOVE -> { com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.SLIDE); com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.POP, delayMs = 335) }
+                    SoundManager.SOUND_MERGE -> {
+                        val top = s.tileAnimationInfo.filterValues { it.isMerged }.keys.maxOfOrNull { (r, c) -> s.grid.getOrNull(r)?.getOrNull(c) ?: 0 } ?: 4
+                        com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.SLIDE)
+                        com.avfusionapps.game_2048.utils.SpriteSfx.merge(top, delayMs = 130)
+                        com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.POP, delayMs = 335)
+                    }
+                    SoundManager.SOUND_LEVEL_UP -> com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.FANFARE, delayMs = 130)
+                    SoundManager.SOUND_GAME_OVER -> com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.SAD)
+                    else -> if (soundEnabled) soundManager.playSound(soundId)
+                }
+                return@collect
+            }
             if (soundEnabled) soundManager.playSound(soundId)
         }
     }
