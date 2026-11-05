@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -255,7 +256,11 @@ fun TimeAttackScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top
         ) {
-            if (theme.usesSprites) {
+            if (theme.usesSprites) Column(
+                // Tablets: a centred, phone-width column.
+                modifier = Modifier.widthIn(max = 600.dp).fillMaxHeight(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
                 SpriteTimeAttackHeader(
                     timeRemainingMillis = gameState.timeRemainingMillis,
                     isPaused = gameState.isPaused,
@@ -284,8 +289,8 @@ fun TimeAttackScreen(
                     onNewGame = { viewModel.startNewGame() },
                     onHint = { viewModel.showHint(context) }
                 )
-                return@Column
             }
+            if (theme.usesSprites) return@Column
             // Header
             TimeAttackTopBar(
                 timeRemainingMillis = gameState.timeRemainingMillis,

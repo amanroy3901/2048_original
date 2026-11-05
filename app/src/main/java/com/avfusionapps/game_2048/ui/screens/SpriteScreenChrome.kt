@@ -318,8 +318,8 @@ internal fun SpriteHero(
     val scale = (height.value / 224f).coerceIn(0.75f, 1.15f)
     BoxWithConstraints(modifier = modifier.fillMaxWidth().height(height)) {
         val w = maxWidth
-        // title
-        Column(Modifier.align(Alignment.TopCenter), horizontalAlignment = Alignment.CenterHorizontally) {
+        // title (Blaze stands below it; on tall banners there is room to spare)
+        Column(Modifier.align(Alignment.TopCenter).offset(y = if (height > 240.dp) (-6).dp else 0.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Box {
                 Text("2048", fontFamily = SpriteDisplayFont, fontSize = (54 * scale).sp, lineHeight = (49 * scale).sp, letterSpacing = 1.sp, color = Color(0xFF7A2A08), modifier = Modifier.offset(y = 3.dp))
                 Text(

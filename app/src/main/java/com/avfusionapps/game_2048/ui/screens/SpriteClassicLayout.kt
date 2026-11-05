@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -190,14 +192,15 @@ internal fun SpriteClassicLayout(
                     }
                 }
         ) {
-            val w = maxWidth
+            // Tablets: keep the phone proportions in a centred column.
+            val w = minOf(maxWidth, 600.dp)
             val h = maxHeight
             val gap = 10.dp
             // header, two-line bubble, power-ups (with badges), bottom menu, gaps
             val fixed = 46.dp + 52.dp + 78.dp + 72.dp + gap * 5
             val heroH = (h - fixed - w).coerceIn(170.dp, 224.dp)
             val board = minOf(w, h - fixed - heroH)
-            Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(Modifier.align(Alignment.TopCenter).fillMaxHeight().width(w), horizontalAlignment = Alignment.CenterHorizontally) {
                 SpriteClassicHeader(
                     level = level,
                     progress = progress,

@@ -165,6 +165,7 @@ object Progress {
     private val DAILY_CLAIMED = booleanPreferencesKey("daily_claimed")
     private val LAST_DAILY_DONE = stringPreferencesKey("last_daily_done")
     private val SEEN_WELCOME = booleanPreferencesKey("seen_elemental_welcome")
+    private val AUTH_PROMPT_DONE = booleanPreferencesKey("auth_prompt_done")
 
     private lateinit var app: Context
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -180,6 +181,9 @@ object Progress {
     /** null until loaded. */
     private val _seenWelcome = MutableStateFlow<Boolean?>(null)
     val seenWelcome: StateFlow<Boolean?> = _seenWelcome.asStateFlow()
+    /** The home sign-in prompt was answered (signed in or chose guest); null until loaded. */
+    private val _authPromptDone = MutableStateFlow<Boolean?>(null)
+    val authPromptDone: StateFlow<Boolean?> = _authPromptDone.asStateFlow()
     private val _events = MutableSharedFlow<ProgressEvent>(extraBufferCapacity = 8)
     val events: SharedFlow<ProgressEvent> = _events.asSharedFlow()
 
@@ -196,6 +200,7 @@ object Progress {
         _stats.value = p.toStats(GameSettingsRepository(app).seenSpritesFlow.first().count { it in 2..2048 })
         _unlocked.value = p[UNLOCKED] ?: emptySet()
         _seenWelcome.value = p[SEEN_WELCOME] ?: false
+        _authPromptDone.value = p[AUTH_PROMPT_DONE] ?: false
         _daily.value = refreshDaily()
     }
 
@@ -289,6 +294,12 @@ object Progress {
             checkAchievements(stats)
             reward
         }
+    }
+
+    fun markAuthPromptDone() {
+        if (!started.get()) return
+        _authPromptDone.value = true
+        scope.launch { store.edit { it[AUTH_PROMPT_DONE] = true } }
     }
 
     fun markWelcomeSeen() {

@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -126,9 +127,11 @@ internal fun SpriteHomeScreen(
                 HomeTopBar(playerName, coins, actions)
                 Spacer(Modifier.height(8.dp))
                 if (wide) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(20.dp), modifier = Modifier.widthIn(max = 1100.dp)) {
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            SpriteHero(0, 0, SpriteEmotion.HAPPY, 0, 0, 0, height = 250.dp, showScores = false)
+                    // Wide screens: two columns, centred in the space below the top bar.
+                    Box(Modifier.fillMaxWidth().heightIn(min = this@BoxWithConstraints.maxHeight - 76.dp), contentAlignment = Alignment.Center) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(24.dp), modifier = Modifier.widthIn(max = 1100.dp)) {
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                            SpriteHero(0, 0, SpriteEmotion.HAPPY, 0, 0, 0, height = 300.dp, showScores = false)
                             DailyCard(daily, actions)
                             ContinueCard(hasSaved, savedScore, savedGrid, actions)
                         }
@@ -136,6 +139,7 @@ internal fun SpriteHomeScreen(
                             ModeCards(actions)
                             ExtrasRow(best, spritesFound, unlocked.size, actions)
                         }
+                    }
                     }
                 } else {
                     Column(Modifier.widthIn(max = 560.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
