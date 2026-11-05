@@ -50,6 +50,9 @@ import kotlin.random.Random
 /** The prototype's display face (banners, "Combo ×3"). */
 internal val SpriteDisplayFont = FontFamily(Font(R.font.lilitaone_regular))
 
+/** The prototype's number face: Baloo 2 ExtraBold (Latin subset, SIL OFL; licence in assets/licenses). */
+internal val SpriteNumberFont = FontFamily(Font(R.font.baloo2_extrabold, FontWeight.ExtraBold))
+
 private val Outline = Color(0xFF2A0F4A)
 private val FxEaseOut = CubicBezierEasing(0f, 0f, 0.58f, 1f)
 
@@ -75,8 +78,8 @@ internal fun SpriteFloatText(
         text = text,
         color = color,
         fontSize = fontSize,
-        fontFamily = if (display) SpriteDisplayFont else null,
-        fontWeight = if (display) FontWeight.Normal else FontWeight.Black,
+        fontFamily = if (display) SpriteDisplayFont else SpriteNumberFont,
+        fontWeight = if (display) FontWeight.Normal else FontWeight.ExtraBold,
         maxLines = 1,
         softWrap = false,
         style = TextStyle(shadow = Shadow(Outline, Offset(0f, 4f), 3f)),

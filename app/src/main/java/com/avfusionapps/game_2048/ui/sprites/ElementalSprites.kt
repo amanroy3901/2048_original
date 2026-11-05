@@ -70,6 +70,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.PI
@@ -444,6 +445,17 @@ private val labelPaint by lazy {
     }
 }
 
+/** Gives the canvas labels (z, ?, !) the prototype's Baloo 2 once a context is around. */
+private object LabelFont {
+    private var loaded = false
+    fun ensure(context: android.content.Context) {
+        if (loaded) return
+        loaded = true
+        runCatching { context.resources.getFont(com.avfusionapps.game_2048.R.font.baloo2_extrabold) }
+            .onSuccess { labelPaint.typeface = it }
+    }
+}
+
 private val Ink = Color(0xFF2B1442)
 private val MouthDark = Color(0xFF6A1E3E)
 private val Tongue = Color(0xFFFF7A9A)
@@ -513,6 +525,7 @@ fun SpriteTile(
     val rock = value < 0
     val spec = ElementalSprites.specFor(value)
     val index = if (rock) 5 else ElementalSprites.indexFor(value)
+    LabelFont.ensure(androidx.compose.ui.platform.LocalContext.current)
     val clock = rememberInfiniteTransition(label = "sprite")
     val time = clock.animateFloat(
         initialValue = 0f,
@@ -931,8 +944,21 @@ private fun NumberBadge(value: Int, text: String, tileWidthPx: Float, fontSizeMu
     }
     val fontSize = with(density) { (tileWidthPx * factor * fontSizeMultiplier.coerceIn(0.6f, 1.4f)).toSp() }
     val outline = with(density) { (tileWidthPx * 0.044f).coerceAtLeast(2f) }
-    val base = TextStyle(fontSize = fontSize, fontWeight = FontWeight.Black, lineHeight = fontSize)
-    Box(modifier = modifier.offset(y = 1.dp)) {
+    val base = TextStyle(
+        fontSize = fontSize,
+        fontFamily = SpriteNumberFont,
+        fontWeight = FontWeight.ExtraBold,
+        lineHeight = fontSize,
+        letterSpacing = (-0.01f).em,
+        platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false),
+        lineHeightStyle = androidx.compose.ui.text.style.LineHeightStyle(
+            alignment = androidx.compose.ui.text.style.LineHeightStyle.Alignment.Center,
+            trim = androidx.compose.ui.text.style.LineHeightStyle.Trim.None
+        )
+    )
+    // Baloo 2 sits high in its line box; this puts the digits where the prototype has them (bottom ~94 %).
+    val drop = with(density) { (tileWidthPx * 0.095f).toDp() }
+    Box(modifier = modifier.offset(y = drop)) {
         Text(
             text = text,
             color = Color(0xFF2A0F4A),
