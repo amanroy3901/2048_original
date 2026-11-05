@@ -1,6 +1,7 @@
 package com.avfusionapps.game_2048.shared.game
 
 import com.avfusionapps.game_2048.shared.platform.KeyValueStore
+import com.avfusionapps.game_2048.shared.platform.Telemetry
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -482,6 +483,7 @@ class DropMergeViewModel {
         )
         if (reward != null) {
             _events.tryEmit(DropGameEvent.LEVEL_UP)
+            Telemetry.event("shooter_level_up", "level" to level)
             notice("Level $level! The chest gave you +1 ${reward.label()}")
         }
         viewModelScope.launch { repository.saveLevel(level, xp) }
@@ -491,9 +493,8 @@ class DropMergeViewModel {
         _gameState.update { it.copy(notice = DropNotice(text, ++noticeKey)) }
     }
 
-    private fun logPowerUp(power: DropPower, bought: Boolean) {
-        // Analytics dropped in the multiplatform port.
-    }
+    private fun logPowerUp(power: DropPower, bought: Boolean) =
+        Telemetry.event("power_up_used", "power_up" to power.name.lowercase(), "mode" to "shooter", "bought" to bought)
 
     private fun DropPower.label() = name.lowercase().replaceFirstChar { it.uppercase() }
 

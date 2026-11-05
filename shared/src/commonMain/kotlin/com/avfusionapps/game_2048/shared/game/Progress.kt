@@ -1,6 +1,7 @@
 package com.avfusionapps.game_2048.shared.game
 
 import com.avfusionapps.game_2048.shared.platform.KeyValueStore
+import com.avfusionapps.game_2048.shared.platform.Telemetry
 import com.avfusionapps.game_2048.shared.platform.todayKey
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -270,7 +271,10 @@ object Progress {
                 _stats.value = stats
                 dailyNow?.let { now ->
                     _daily.value = now
-                    if (now.done && !(daily?.done ?: false)) _events.tryEmit(ProgressEvent.DailyDone(now))
+                    if (now.done && !(daily?.done ?: false)) {
+                        _events.tryEmit(ProgressEvent.DailyDone(now))
+                        Telemetry.event("daily_challenge_done", "kind" to now.kind.name.lowercase(), "target" to now.target)
+                    }
                 }
                 checkAchievements(stats)
             }
@@ -285,7 +289,10 @@ object Progress {
         KeyValueStore.putString(UNLOCKED, all.joinToString(","))
         _unlocked.value = all
         addCoins(fresh.sumOf { it.tier.coins })
-        fresh.forEach { _events.tryEmit(ProgressEvent.Unlocked(it)) }
+        fresh.forEach {
+            _events.tryEmit(ProgressEvent.Unlocked(it))
+            Telemetry.event("achievement_unlocked", "achievement_id" to it.id, "tier" to it.tier.name.lowercase())
+        }
     }
 
     // ── Coins (delegated to GameSettingsRepository) ──
@@ -309,6 +316,7 @@ object Progress {
             putStat("best_streak", maxOf(stat("best_streak"), streak))
             putStat("daily_done", stat("daily_done") + 1)
             addCoins(reward)
+            Telemetry.event("daily_challenge_claimed", "reward" to reward, "streak" to streak)
             _daily.value = d.copy(claimed = true, streak = stat("daily_streak"))
             val stats = readStats()
             _stats.value = stats
@@ -330,6 +338,8 @@ object Progress {
     // ── Events from the games ──
 
     fun gameStarted(mode: GameMode) = update { e ->
+        Telemetry.event("game_start", "mode" to mode.name.lowercase())
+        Telemetry.breadcrumb("game_start ${mode.name.lowercase()}")
         e.add("games", 1)
         e.add(when (mode) { GameMode.CLASSIC -> "classic_games"; GameMode.TIME_ATTACK -> "ta_games"; GameMode.SHOOTER -> "shooter_games" }, 1)
     }

@@ -1,6 +1,7 @@
 package com.avfusionapps.game_2048.shared.game
 
 import com.avfusionapps.game_2048.shared.platform.nowMillis
+import com.avfusionapps.game_2048.shared.platform.Telemetry
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -551,6 +552,7 @@ class GameViewModel {
                 )
             )
 
+                Telemetry.event("level_unlocked", "level" to newlyUnlockedLevel)
             // Handle level unlock
             if (newlyUnlockedLevel != null) {
                 _newlyUnlockedLevel.value = newlyUnlockedLevel
@@ -683,7 +685,8 @@ class GameViewModel {
 
     private fun PowerUp.label() = name.lowercase()
 
-    private fun logPowerUp(kind: PowerUp, bought: Boolean) {}
+    private fun logPowerUp(kind: PowerUp, bought: Boolean) =
+        Telemetry.event("power_up_used", "power_up" to kind.name.lowercase(), "mode" to "classic", "bought" to bought)
 
     /** Arms the hammer, or puts it away if it is already armed. The charge is taken on the hit. */
     fun toggleHammer() {

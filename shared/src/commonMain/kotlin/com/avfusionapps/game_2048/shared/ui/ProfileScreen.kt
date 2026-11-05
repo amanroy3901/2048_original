@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.avfusionapps.game_2048.shared.game.GameSettingsRepository
 import com.avfusionapps.game_2048.shared.game.Progress
+import com.avfusionapps.game_2048.shared.platform.Telemetry
 import com.avfusionapps.game_2048.shared.sprites.SpriteTile
 
 private val ProfileMuted = Color(0xFFC9B8F0)
@@ -84,6 +85,13 @@ fun ProfileScreen() {
                 SettingSwitch("Sound", "Sprite pops, chimes and coins", sound) { GameSettingsRepository.updateSoundEnabled(it) }
                 Box(Modifier.fillMaxWidth().height(1.dp).background(ProfileLine))
                 SettingSwitch("Vibration", "Enable or disable vibration", vibration) { GameSettingsRepository.updateVibrationEnabled(it) }
+            }
+            Spacer(Modifier.height(14.dp))
+            Text("PRIVACY", color = ProfileMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth().widthIn(max = 600.dp).padding(start = 8.dp, bottom = 6.dp))
+            Column(Modifier.fillMaxWidth().widthIn(max = 600.dp).spritePanel().padding(horizontal = 18.dp, vertical = 8.dp)) {
+                SettingSwitch("Share crash reports", "Send a report when the game crashes, so we can fix it", Telemetry.crashReports) { Telemetry.setCrashReportsEnabled(it) }
+                Box(Modifier.fillMaxWidth().height(1.dp).background(ProfileLine))
+                SettingSwitch("Share gameplay stats", "Anonymous stats on modes and power-ups you use", Telemetry.analytics) { Telemetry.setAnalyticsEnabled(it) }
             }
         }
     }
