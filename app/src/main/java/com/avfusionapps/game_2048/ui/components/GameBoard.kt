@@ -134,7 +134,8 @@ fun GameBoard(viewModel: GameViewModel) {
         rockTtl = state.rockTtl,
         bonkKey = state.bonkKey,
         bonkDirection = state.bonkDirection,
-        notice = state.notice,
+        // The sprite screen reads its notices aloud in Blaze's bubble; only a bonk also flashes on the board.
+        notice = if (LocalGameTheme.current.usesSprites) state.notice?.takeIf { it.text.startsWith("Bonk") } else state.notice,
         rewindKey = state.rewindKey
     )
 }
@@ -457,7 +458,20 @@ fun GameBoard(
         } else if (lastGain != null) {
             ScorePopup(lastGain)
         }
-        if (notice != null) NoticePopup(notice)
+        if (notice != null) {
+            if (sprites) key(notice.key) { BonkFloat() } else NoticePopup(notice)
+        }
+    }
+}
+
+/** The prototype's "Bonk!": big gold letters popping up in the middle of the board. */
+@Composable
+private fun BoxScope.BonkFloat() {
+    val clock = remember { Animatable(0f) }
+    LaunchedEffect(Unit) { clock.animateTo(1300f, tween(1300, easing = LinearEasing)) }
+    BoxWithConstraints(Modifier.matchParentSize()) {
+        val at = with(LocalDensity.current) { Offset(maxWidth.toPx() / 2f, maxHeight.toPx() / 2f) }
+        SpriteFloatText("Bonk!", at, clock, 0f, 1200f, 60f, Color(0xFFFFC93A), 34.sp, display = true)
     }
 }
 

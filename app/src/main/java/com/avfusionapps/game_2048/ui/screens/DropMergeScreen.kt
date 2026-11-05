@@ -230,7 +230,11 @@ fun DropMergeScreen(
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
-            .background(theme.backgroundColor)
+            .then(
+                if (theme.usesSprites) Modifier.drawBehind {
+                    drawRect(Brush.verticalGradient(0f to Color(0xFF2B1870), 0.45f to Color(0xFF1A0E45), 1f to Color(0xFF140A33)))
+                } else Modifier.background(theme.backgroundColor)
+            )
             .safeDrawingPadding()
             .testTag("DropMergeScreen_Root")
     ) {
@@ -384,7 +388,18 @@ private fun DropMergePortrait(
         Spacer(Modifier.height(vGap))
 
         // ── Gamified HUD: pause + score / combo / next-goal ──
-        DropHud(
+        if (LocalGameTheme.current.usesSprites) {
+            SpriteShooterHud(
+                score = gameState.score,
+                best = maxOf(bestScore, gameState.score),
+                combo = gameState.comboCount,
+                goalTarget = gameState.unlockTarget,
+                goalNear = (gameState.columns.maxOfOrNull { c -> c.maxOfOrNull { it.value } ?: 0 } ?: 0) * 2 >= gameState.unlockTarget,
+                height = hudH,
+                onPause = { viewModel.togglePause() },
+                goalModifier = Modifier.tutorialAnchor(TutorialAnchor.GOAL)
+            )
+        } else DropHud(
             score = gameState.score,
             best = maxOf(bestScore, gameState.score),
             combo = gameState.comboCount,

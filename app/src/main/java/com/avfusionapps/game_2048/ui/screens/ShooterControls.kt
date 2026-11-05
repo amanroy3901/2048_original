@@ -107,17 +107,17 @@ private inline fun DrawScope.inBox(box: Float, block: DrawScope.() -> Unit) {
     }
 }
 
-private fun DrawScope.drawUndoIcon() = inBox(40f) {
+internal fun DrawScope.drawUndoIcon() = inBox(40f) {
     drawPath(undoArc, Color.White, style = Stroke(width = 5f, cap = StrokeCap.Round))
     drawPath(undoHead, Color.White)
 }
 
-private fun DrawScope.drawShuffleIcon() = inBox(40f) {
+internal fun DrawScope.drawShuffleIcon() = inBox(40f) {
     drawPath(shuffleLines, Color.White, style = Stroke(width = 4f, cap = StrokeCap.Round, join = StrokeJoin.Round))
     drawPath(shuffleHeads, Color.White)
 }
 
-private fun DrawScope.drawFreezeIcon(color: Color = Color.White) = inBox(40f) {
+internal fun DrawScope.drawFreezeIcon(color: Color = Color.White) = inBox(40f) {
     val stroke = Stroke(width = 3.4f, cap = StrokeCap.Round, join = StrokeJoin.Round)
     drawPath(flakeArms, color, style = stroke)
     drawPath(flakeTips, color, style = stroke)
@@ -134,7 +134,7 @@ internal fun DrawScope.drawHammerIcon() = inBox(40f) {
     }
 }
 
-private fun DrawScope.drawChest() = inBox(34f) {
+internal fun DrawScope.drawChest() = inBox(34f) {
     val outline = Color(0xFF6A3A10)
     drawPath(chestLid, Color(0xFFC8792A))
     drawPath(chestLid, outline, style = Stroke(1.4f))

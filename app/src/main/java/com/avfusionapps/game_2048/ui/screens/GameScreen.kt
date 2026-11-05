@@ -245,6 +245,25 @@ fun GameScreen(
             onRestartClick = { showGridSizeDialog = true },
             onHintClick = { viewModel.showHint(context) }
         )
+    } else if (theme.usesSprites) {
+        SpriteClassicLayout(
+            viewModel = viewModel,
+            gameState = gameState,
+            best = persistentHighScore,
+            coins = coins,
+            soundEnabled = soundEnabled,
+            onMenu = { showExitDialog = true },
+            onHelp = { forceShowTutorial = true },
+            onCollection = { showCollection = true },
+            onProfile = {
+                viewModel.saveCurrentGameState()
+                navController.navigate("profile")
+            },
+            onThemes = {
+                viewModel.saveCurrentGameState()
+                navController.navigate("themeSettings")
+            }
+        )
     } else {
         Column(
             modifier = Modifier
