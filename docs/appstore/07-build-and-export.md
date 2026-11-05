@@ -35,6 +35,10 @@ Source: [Upcoming requirements](https://developer.apple.com/news/upcoming-requir
 4. The Organizer opens. Select the archive → **Distribute App** → **App Store Connect** → **Upload** → keep the defaults (upload symbols on, manage version and build number off) → **Upload**.
 5. About 10 to 30 minutes later the build appears in ASC → TestFlight, and Apple emails you if processing finds a problem.
 
+**Tested on Nov 5, 2026:** an unsigned `xcodebuild archive` (Release, `generic/platform=iOS`) succeeded, and the 31 MB app included `PrivacyInfo.xcprivacy`, `GoogleService-Info.plist` and a dSYM. Signing and the upload itself need your team, so they weren't tested.
+
+The Crashlytics dSYM step ran without errors but printed nothing. Check that it uploads: after the first TestFlight build, open Firebase → Crashlytics → dSYMs, which should list version 1.0.0 (1).
+
 **Folder note:** this project lives under `Documents`, which macOS syncs to iCloud. A build output folder *inside* the project failed to sign ("resource fork, Finder information, or similar detritus not allowed"). Xcode's default DerivedData folder (`~/Library/Developer/Xcode/DerivedData`) works. Don't change Xcode's build location to a folder inside the project.
 
 ## 7.5 TestFlight before submitting
