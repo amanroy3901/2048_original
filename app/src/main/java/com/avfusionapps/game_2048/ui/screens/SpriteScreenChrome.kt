@@ -150,7 +150,7 @@ internal fun spriteRank(biggest: Int): String = when {
  * thirty twinkling stars in the top half, dark hills and a crescent moon behind the hero banner.
  */
 @Composable
-internal fun SpriteNightBackground(modifier: Modifier = Modifier, scene: Boolean, hillsTop: Dp = 106.dp) {
+internal fun SpriteNightBackground(modifier: Modifier = Modifier, scene: Boolean, hillsTop: Dp = 106.dp, moon: Boolean = true) {
     val stars = remember {
         val rnd = Random(2048)
         List(30) { Triple(rnd.nextFloat(), rnd.nextFloat() * 0.45f, 1f + rnd.nextFloat() * 2.2f) to rnd.nextFloat() * 3f }
@@ -172,8 +172,10 @@ internal fun SpriteNightBackground(modifier: Modifier = Modifier, scene: Boolean
                 drawPath(hillBack, Color(0xFF241356), alpha = 0.9f)
                 drawPath(hillFront, Color(0xFF1A0D42))
             }
-            drawCircle(Color(0xFFFFF2C6).copy(alpha = 0.85f), radius = 18f * sx, center = Offset(330f * sx, 28f * sy))
-            drawCircle(Color(0xFF2B1870), radius = 16f * sx, center = Offset(338f * sx, 22f * sy))
+            if (moon) {
+                drawCircle(Color(0xFFFFF2C6).copy(alpha = 0.85f), radius = 18f * sx, center = Offset(330f * sx, 28f * sy))
+                drawCircle(Color(0xFF2B1870), radius = 16f * sx, center = Offset(338f * sx, 22f * sy))
+            }
         }
         // stars twinkle .15 ↔ .9 every 3 s
         val t = clock
@@ -288,7 +290,8 @@ internal fun SpriteHero(
     reactKey: Int,
     height: Dp,
     modifier: Modifier = Modifier,
-    showScores: Boolean = true
+    showScores: Boolean = true,
+    maxScale: Float = 1.15f
 ) {
     val clock by rememberInfiniteTransition(label = "hero").animateFloat(0f, 3600f, infiniteRepeatable(tween(3_600_000, easing = LinearEasing)), label = "heroT")
     // Side sprites: Drip, Sprig, Starla, Orbi (left to right), floating on a 3.2 s loop.
@@ -315,7 +318,7 @@ internal fun SpriteHero(
         delay(900)
         sideHappy = -1
     }
-    val scale = (height.value / 224f).coerceIn(0.75f, 1.15f)
+    val scale = (height.value / 224f).coerceIn(0.75f, maxScale)
     BoxWithConstraints(modifier = modifier.fillMaxWidth().height(height)) {
         val w = maxWidth
         // title (Blaze stands below it; on tall banners there is room to spare)
