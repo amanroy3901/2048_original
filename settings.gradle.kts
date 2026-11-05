@@ -21,3 +21,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "2048 Original"
 include(":app")
+include(":shared")
