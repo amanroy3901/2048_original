@@ -179,6 +179,38 @@ fun MainScreen(navController: NavController, viewModel: GameViewModel = viewMode
         }
     }
 
+    if (LocalGameTheme.current.usesSprites) {
+        val coins by viewModel.coins.collectAsState()
+        val seen by viewModel.seenSprites.collectAsState()
+        var showCollection by remember { mutableStateOf(false) }
+        SpriteHomeScreen(
+            playerName = playerName,
+            coins = coins,
+            best = persistentHighScore,
+            hasSaved = hasSaved,
+            savedScore = gameState.score,
+            savedGrid = gameState.grid,
+            spritesFound = seen.count { it in 2..2048 },
+            actions = HomeActions(
+                onContinue = {
+                    viewModel.resumeSavedGame()
+                    navController.navigate("game?resume=true&newGame=false")
+                },
+                onNewClassic = { showGridSizeDialogMain = true },
+                onTimeAttack = { navController.navigate("timeAttack") },
+                onShooter = { navController.navigate("dropMerge") },
+                onProfile = { navController.navigate("profile") },
+                onSettings = { navController.navigate("themeSettings") },
+                onCollection = { showCollection = true },
+                onAchievements = { navController.navigate("achievements") }
+            )
+        )
+        if (showCollection) {
+            com.avfusionapps.game_2048.ui.components.SpriteCollectionSheet(seen = seen, onDismiss = { showCollection = false })
+        }
+        return
+    }
+
     MainScreenContent(
         navController = navController,
         playerName = playerName,

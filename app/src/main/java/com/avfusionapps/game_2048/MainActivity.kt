@@ -257,6 +257,9 @@ class MainActivity : ComponentActivity() {
                         composable("timeAttack") {
                             TimeAttackScreen(navController = navController)
                         }
+                        composable("achievements") {
+                            com.avfusionapps.game_2048.ui.screens.AchievementsScreen(navController = navController)
+                        }
                         composable("dropMerge") {
                             DropMergeScreen(navController = navController)
                         }

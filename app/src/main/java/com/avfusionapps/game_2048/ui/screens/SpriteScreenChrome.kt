@@ -240,7 +240,7 @@ internal fun SpriteClassicHeader(
 }
 
 @Composable
-private fun RoundButton(size: Dp, description: String, onClick: () -> Unit, modifier: Modifier = Modifier, icon: DrawScope.() -> Unit) {
+internal fun RoundButton(size: Dp, description: String, onClick: () -> Unit, modifier: Modifier = Modifier, icon: DrawScope.() -> Unit) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     Box(
@@ -274,7 +274,8 @@ internal fun SpriteHero(
     reactValue: Int,
     reactKey: Int,
     height: Dp,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    showScores: Boolean = true
 ) {
     val clock by rememberInfiniteTransition(label = "hero").animateFloat(0f, 3600f, infiniteRepeatable(tween(3_600_000, easing = LinearEasing)), label = "heroT")
     // Side sprites: Drip, Sprig, Starla, Orbi (left to right), floating on a 3.2 s loop.
@@ -364,15 +365,17 @@ internal fun SpriteHero(
             )
         }
         // score panels
-        ScoreBox("Score", score, Modifier.align(Alignment.BottomStart))
-        ScoreBox("Best", best, Modifier.align(Alignment.BottomEnd))
+        if (showScores) {
+            ScoreBox("Score", score, Modifier.align(Alignment.BottomStart))
+            ScoreBox("Best", best, Modifier.align(Alignment.BottomEnd))
+        }
     }
 }
 
 private class SideSprite(val value: Int, val size: Dp, val x: Float, val left: Boolean, val bottom: Dp, val delay: Float)
 
 @Composable
-private fun ScoreBox(label: String, value: Int, modifier: Modifier) {
+internal fun ScoreBox(label: String, value: Int, modifier: Modifier) {
     Box(modifier = modifier.width(104.dp)) {
         Column(
             modifier = Modifier
