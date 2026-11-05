@@ -44,12 +44,25 @@ object DropAnim {
     const val PURGE_STEP = 320L
     const val SETTLE_STEP = 480L
     const val REMOVE_HIT = 420L
+
+    // The Elemental Sprites board plays the prototype's slower, showier timing.
+    /** Flight (up to 220 ms) plus the 90 ms impact before the cascade starts. */
+    const val SPRITE_SHOT = 310L
+    /** The eaten sprites fly in (155 ms), then the survivor evolves and holds for 240 ms. */
+    const val SPRITE_MERGE = 395L
+    /** Purged sprites crumble (560 ms), then a 240 ms beat. */
+    const val SPRITE_PURGE = 800L
+    /** The hammer lands at 340 ms; the sprite crumbles for 420 ms before the lane closes. */
+    const val SPRITE_REMOVE = 760L
     const val TILE_MOVE = 180
     const val MERGE_POP = 190
     const val CONSUME_FLY = 160
 }
 
 class DropMergeViewModel(application: Application) : AndroidViewModel(application) {
+
+    /** Set by the Elemental Sprites board: play steps at the sprite prototype's pace. */
+    var spritePacing = false
 
     private val repository = DropMergeRepository(application.applicationContext)
     private val settingsRepository = GameSettingsRepository(application)
@@ -322,7 +335,7 @@ class DropMergeViewModel(application: Application) : AndroidViewModel(applicatio
                     comboCount = 0, justUndid = false, actionCount = now.actionCount + 1
                 )
                 _events.tryEmit(DropGameEvent.REMOVE_HIT)
-                delay(DropAnim.REMOVE_HIT)
+                delay(if (spritePacing) DropAnim.SPRITE_REMOVE else DropAnim.REMOVE_HIT)
                 val result = engine.removeTile(now.columns, tileId, now.bestTileEver)
                 _gameState.update { it.copy(removingTileId = null) }
                 if (result == null) {
@@ -390,16 +403,16 @@ class DropMergeViewModel(application: Application) : AndroidViewModel(applicatio
             )
 
             when (step.kind) {
-                DropStepKind.PLACE -> delay(DropAnim.SHOT_TRAVEL)
+                DropStepKind.PLACE -> delay(if (spritePacing) DropAnim.SPRITE_SHOT else DropAnim.SHOT_TRAVEL)
                 DropStepKind.SETTLE -> delay(DropAnim.SETTLE_STEP)
                 DropStepKind.MERGE -> {
                     _events.tryEmit(if (step.chainIndex > 1) DropGameEvent.COMBO else DropGameEvent.MERGE)
                     if (step.unlockedValue != null) _events.tryEmit(DropGameEvent.UNLOCK)
-                    delay(DropAnim.MERGE_STEP)
+                    delay(if (spritePacing) DropAnim.SPRITE_MERGE else DropAnim.MERGE_STEP)
                 }
                 DropStepKind.PURGE -> {
                     _events.tryEmit(DropGameEvent.PURGE)
-                    delay(DropAnim.PURGE_STEP)
+                    delay(if (spritePacing) DropAnim.SPRITE_PURGE else DropAnim.PURGE_STEP)
                 }
             }
         }

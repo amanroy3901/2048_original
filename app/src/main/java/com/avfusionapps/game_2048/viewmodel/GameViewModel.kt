@@ -81,7 +81,9 @@ data class GameState(
     val bonkKey: Int = 0,
     val bonkDirection: Direction? = null,
     /** A short message floated over the middle of the board ("Bonk!", "New friend: Frosty!"). */
-    val notice: BoardNotice? = null
+    val notice: BoardNotice? = null,
+    /** Bumped on every undo so the sprites can fade back in. */
+    val rewindKey: Int = 0
 )
 
 /** Grid value of the Shadow Rock penalty tile: it slides but never merges. */
@@ -869,7 +871,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 return@launch
             }
             updateGameState(gameState.copy(hammerArmed = false, breakingCell = row to col))
-            kotlinx.coroutines.delay(420)
+            // The hammer lands at 340 ms and the sprite crumbles for 560 ms before the cell empties.
+            kotlinx.coroutines.delay(900)
             val grid = gameState.grid.map { it.toMutableList() }.toMutableList()
             grid[row][col] = 0
             commitPowerUpBoard(grid, emptyMap())
@@ -894,7 +897,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             tiles.forEachIndexed { k, (from, v) ->
                 val to = cells[k]
                 grid[to.first][to.second] = v
-                anim[to] = TileAnimationInfo(startPosition = from)
+                anim[to] = TileAnimationInfo(startPosition = from, shuffled = true)
             }
             commitPowerUpBoard(grid, anim)
         }
@@ -967,6 +970,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                         combo = 0,
                         hammerArmed = false,
                         lastGain = null,
+                        rewindKey = gameState.rewindKey + 1,
                         rockTtl = if (restoredGrid.flatten().contains(SHADOW_ROCK)) {
                             if (gameState.rockTtl > 0) (gameState.rockTtl + 1).coerceAtMost(ROCK_LIFETIME) else 1
                         } else 0,

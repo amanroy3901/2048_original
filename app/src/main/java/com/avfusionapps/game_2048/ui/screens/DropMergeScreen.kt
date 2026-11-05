@@ -273,7 +273,8 @@ fun DropMergeScreen(
 
         // ── Unlock banner ──
         AnimatedVisibility(
-            visible = gameState.justUnlockedValue != null,
+            // The sprite board shows its own banner and confetti inside the board.
+            visible = gameState.justUnlockedValue != null && !theme.usesSprites,
             enter = fadeIn() + scaleIn(initialScale = 0.7f),
             exit = fadeOut() + scaleOut(targetScale = 0.9f),
             modifier = Modifier
