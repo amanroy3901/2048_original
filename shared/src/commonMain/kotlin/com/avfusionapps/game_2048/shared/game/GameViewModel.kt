@@ -121,9 +121,6 @@ class GameViewModel {
         viewModelScope.cancel()
     }
 
-    /** The shared app always uses the Elemental Sprites look. */
-    val usesSprites: Boolean = true
-
     /** One-shot user messages (replaces Android Toasts); the UI shows them as snackbars/toasts. */
     private val _toast = MutableSharedFlow<String>(replay = 0, extraBufferCapacity = 4, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     val toastMessages: SharedFlow<String> = _toast.asSharedFlow()
@@ -552,10 +549,10 @@ class GameViewModel {
                 )
             )
 
-                Telemetry.event("level_unlocked", "level" to newlyUnlockedLevel)
             // Handle level unlock
             if (newlyUnlockedLevel != null) {
                 _newlyUnlockedLevel.value = newlyUnlockedLevel
+                Telemetry.event("level_unlocked", "level" to newlyUnlockedLevel)
                 settingsRepository.saveLevels(currentLevel, newUnlockedLevels)
             }
 

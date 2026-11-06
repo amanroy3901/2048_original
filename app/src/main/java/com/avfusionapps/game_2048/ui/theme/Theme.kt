@@ -16,11 +16,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple80, secondary = PurpleGrey80, tertiary = Pink80
-)
-
 /**
  * Extension function to find the Activity from a Context.
  * This is useful in Compose Previews where the context might be a BridgeContext.
@@ -36,7 +31,7 @@ fun Context.findActivity(): Activity? {
 
 @Composable
 fun _2048OriginalTheme(
-    theme: GameTheme = GameTheme.NeonPink,
+    theme: GameTheme = GameTheme.ElementalSprites,
     darkTheme: Boolean = theme.isDark,
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit
@@ -94,4 +89,4 @@ fun _2048OriginalTheme(
 }
 
 // Add a CompositionLocal to provide GameTheme
-val LocalGameTheme = androidx.compose.runtime.staticCompositionLocalOf<GameTheme> { GameTheme.NeonPink }
+val LocalGameTheme = androidx.compose.runtime.staticCompositionLocalOf<GameTheme> { GameTheme.ElementalSprites }

@@ -205,8 +205,6 @@ private fun f(vararg v: Float) = v
 
 private fun clamp01(x: Float) = x.coerceIn(0f, 1f)
 
-private fun bell(p: Float) = sin(PI * p).toFloat()
-
 // Mood loops (CSS keyframes from the prototype).
 private val A3 = f(0f, 0.5f, 1f)
 private val BOUNCE_AT = f(0f, 0.15f, 0.45f, 0.75f, 1f)
@@ -254,7 +252,6 @@ private val FIDGET0_Y = f(1f, 0.89f, 1.09f, 0.95f, 1f)
 private val FIDGET1_R = f(0f, -9f, 8f, 0f)
 private val FIDGET3_R = f(0f, 7f, -7f, 0f)
 private val FIDGET3_S = f(1f, 1.05f, 1f, 1f)
-private val HOP_AT = f(0f, 0.15f, 0.5f, 0.82f, 1f)
 private val HOP_SQ_AT = f(0f, 0.15f, 0.35f, 0.6f, 0.86f, 1f)
 private val HOP_SQ_X = f(1f, 1.14f, 0.9f, 1f, 1.14f, 1f)
 private val HOP_SQ_Y = f(1f, 0.84f, 1.14f, 1f, 0.86f, 1f)
@@ -456,9 +453,6 @@ private object ArtCache {
     /** Frees all cached art (it is redrawn on demand). */
     fun trim() { cards.clear(); bodies.clear(); bytes = 0L }
 }
-
-/** Frees the sprites' cached art; call when Android reports low memory. */
-fun trimSpriteArt() = ArtCache.trim()
 
 /** Text measurer and face for the canvas labels (z, ?, !), captured from the latest composed sprite. */
 private object LabelFont {
@@ -1196,7 +1190,6 @@ private fun renderCard(spec: SpriteSpec, legend: Boolean, locked: Boolean, w: Fl
         }
     }
 }
-
 
 /** The character's body, accessories and gloss, plus a blurred silhouette for its glow. */
 private fun renderBody(spec: SpriteSpec, bodyPx: Int, u: Float, locked: Boolean, density: Density): BodyArt {

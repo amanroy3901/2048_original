@@ -458,7 +458,7 @@ private fun HomeTopBar(playerName: String, coins: Int, actions: HomeActions) {
             Spacer(Modifier.width(6.dp))
             Text(spriteFmt(coins), color = Color.White, fontFamily = numberFont(), fontWeight = FontWeight.ExtraBold, fontSize = 15.sp)
         }
-        RoundButton(size = 40.dp, description = "Settings and themes", onClick = actions.onSettings) { drawGear() }
+        RoundButton(size = 40.dp, description = "Settings", onClick = actions.onSettings) { drawGear() }
     }
 }
 

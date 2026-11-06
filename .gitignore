@@ -19,3 +19,13 @@ local.properties
 /iosApp/build/
 /iosApp/iosApp.xcodeproj/project.xcworkspace/xcuserdata/
 /iosApp/iosApp.xcodeproj/xcuserdata/
+
+# Release signing secrets
+keystore.properties
+*.jks
+*.keystore
+
+# Local build outputs and captures
+/apk/
+*.aab
+/Screenshot_*.png

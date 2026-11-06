@@ -78,21 +78,9 @@ fun GoogleSignInCard(
             .build()
     }
 
-    // The sprite theme dresses the card as Blaze asking to keep your sprites safe; the sign-in logic is shared.
-    val sprites = theme.usesSprites
+    // Blaze asks to keep your sprites safe.
     val container: @Composable (@Composable () -> Unit) -> Unit = { body ->
-        if (sprites) {
-            Box(modifier.fillMaxWidth().testTag("GoogleSignInCard_Root").spritePanel(24.dp)) { body() }
-        } else {
-            NeonCard(
-                accentColor = theme.primaryColor,
-                isSelected = true,
-                onClick = null,
-                cornerRadius = 24.dp,
-                borderWidth = 1.5.dp,
-                modifier = modifier.fillMaxWidth().testTag("GoogleSignInCard_Root")
-            ) { body() }
-        }
+        Box(modifier.fillMaxWidth().testTag("GoogleSignInCard_Root").spritePanel(24.dp)) { body() }
     }
     container {
         Column(
@@ -102,28 +90,21 @@ fun GoogleSignInCard(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             if (currentUser == null) {
-                if (sprites) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        com.avfusionapps.game_2048.ui.sprites.SpriteTile(
-                            value = 64, modifier = Modifier.size(64.dp), showCard = false, showNumber = false,
-                            emotion = com.avfusionapps.game_2048.ui.sprites.SpriteEmotion.EXCITED
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column {
-                            Text("Keep your sprites safe", color = Color.White, fontFamily = com.avfusionapps.game_2048.ui.sprites.SpriteDisplayFont, fontSize = 22.sp)
-                            Text(
-                                "Sign in to save your scores, coins and collection, and carry them to any device.",
-                                color = Color(0xFFC9B8F0), fontSize = 14.sp, lineHeight = 18.sp
-                            )
-                        }
-                    }
-                } else {
-                    Text(
-                        text = stringResource(R.string.sign_in_sync_progress),
-                        color = theme.textColor.copy(alpha = 0.75f),
-                        style = MaterialTheme.typography.bodyMedium
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    com.avfusionapps.game_2048.ui.sprites.SpriteTile(
+                        value = 64, modifier = Modifier.size(64.dp), showCard = false, showNumber = false,
+                        emotion = com.avfusionapps.game_2048.ui.sprites.SpriteEmotion.EXCITED
                     )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text("Keep your sprites safe", color = Color.White, fontFamily = com.avfusionapps.game_2048.ui.sprites.SpriteDisplayFont, fontSize = 22.sp)
+                        Text(
+                            "Sign in to save your scores, coins and collection, and carry them to any device.",
+                            color = Color(0xFFC9B8F0), fontSize = 14.sp, lineHeight = 18.sp
+                        )
+                    }
                 }
+
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),

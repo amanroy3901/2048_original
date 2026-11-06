@@ -31,9 +31,6 @@ class TimeAttackViewModel {
     private val repository = TimeAttackRepository
     private val settingsRepository = GameSettingsRepository
 
-    /** The shared app always uses the Elemental Sprites look. */
-    val usesSprites: Boolean = true
-
     /** One-shot user messages (replaces Android Toasts). */
     private val _toast = MutableSharedFlow<String>(replay = 0, extraBufferCapacity = 4, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     val toastMessages: SharedFlow<String> = _toast.asSharedFlow()

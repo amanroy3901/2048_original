@@ -41,15 +41,11 @@ import com.avfusionapps.game_2048.notification.GameReminderWorker
 import com.avfusionapps.game_2048.notification.ReminderManager
 import com.avfusionapps.game_2048.ui.screens.DropMergeScreen
 import com.avfusionapps.game_2048.ui.screens.GameScreen
-import com.avfusionapps.game_2048.ui.screens.GoogleAuthScreen
 import com.avfusionapps.game_2048.ui.screens.MainScreen
-import com.avfusionapps.game_2048.ui.screens.ThemeSettingsScreen
 import com.avfusionapps.game_2048.ui.screens.TimeAttackScreen
 import com.avfusionapps.game_2048.ui.screens.ProfileScreen
-import com.avfusionapps.game_2048.ui.theme.GameTheme
 import com.avfusionapps.game_2048.ui.theme._2048OriginalTheme
 import com.avfusionapps.game_2048.viewmodel.GameViewModel
-import com.avfusionapps.game_2048.viewmodel.ThemeViewModel
 import com.google.android.play.core.appupdate.AppUpdateInfo
 import com.google.android.play.core.appupdate.AppUpdateManager
 import com.google.android.play.core.appupdate.AppUpdateManagerFactory
@@ -177,11 +173,8 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         setContent {
-            val themeViewModel: ThemeViewModel = viewModel()
-            val currentTheme by themeViewModel.currentTheme.collectAsState()
-
             com.avfusionapps.game_2048.ui.sprites.ProvideSpriteClock {
-            _2048OriginalTheme(theme = currentTheme) {
+            _2048OriginalTheme {
                 val navController = rememberNavController()
                 snackbarHostState = remember { SnackbarHostState() }
 
@@ -231,19 +224,6 @@ class MainActivity : ComponentActivity() {
                         route = "root",
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        composable("googleAuth") { backStackEntry ->
-                            val parentEntry = remember(backStackEntry) { navController.getBackStackEntry("root") }
-                            val vm: GameViewModel = viewModel(parentEntry)
-                            GoogleAuthScreen(
-                                firebaseAuth = firebaseAuth,
-                                onAuthSuccess = {
-                                    vm.loadUserDataFromFirebase()
-                                    navController.navigate("main") {
-                                        popUpTo("googleAuth") { inclusive = true }
-                                    }
-                                }
-                            )
-                        }
                         composable("main") { backStackEntry ->
                             val parentEntry = remember(backStackEntry) { navController.getBackStackEntry("root") }
                             val vm: GameViewModel = viewModel(parentEntry)
@@ -253,9 +233,6 @@ class MainActivity : ComponentActivity() {
                             val parentEntry = remember(backStackEntry) { navController.getBackStackEntry("root") }
                             val vm: GameViewModel = viewModel(parentEntry)
                             ProfileScreen(navController = navController, gameViewModel = vm)
-                        }
-                        composable("themeSettings") {
-                            ThemeSettingsScreen(navController = navController)
                         }
                         composable("timeAttack") {
                             TimeAttackScreen(navController = navController)
@@ -286,25 +263,20 @@ class MainActivity : ComponentActivity() {
                             GameScreen(navController = navController, viewModel = vm)
                         }
                     }
-                    if (currentTheme.usesSprites) {
-                        // Elemental Sprites: a playful hello on cold start, then a one-time welcome, and banners
-                        // for achievements and the daily challenge on every screen.
-                        var showIntro by rememberSaveable { mutableStateOf(true) }
-                        val seenWelcome by com.avfusionapps.game_2048.data.progress.Progress.seenWelcome.collectAsState()
-                        val bestEver by settingsRepository.highScoreFlow.collectAsState(initial = 0)
-                        com.avfusionapps.game_2048.ui.screens.StartupFlow.introShowing.value = showIntro
-                        com.avfusionapps.game_2048.ui.screens.StartupFlow.welcomeShowing.value = seenWelcome != true
-                        com.avfusionapps.game_2048.ui.screens.ProgressCelebrations()
-                        if (!showIntro && seenWelcome == false) {
-                            com.avfusionapps.game_2048.ui.screens.ElementalWelcome(updating = bestEver > 0) {
-                                com.avfusionapps.game_2048.data.progress.Progress.markWelcomeSeen()
-                            }
+                    // Elemental Sprites: a playful hello on cold start, then a one-time welcome, and banners
+                    // for achievements and the daily challenge on every screen.
+                    var showIntro by rememberSaveable { mutableStateOf(true) }
+                    val seenWelcome by com.avfusionapps.game_2048.data.progress.Progress.seenWelcome.collectAsState()
+                    val bestEver by settingsRepository.highScoreFlow.collectAsState(initial = 0)
+                    com.avfusionapps.game_2048.ui.screens.StartupFlow.introShowing.value = showIntro
+                    com.avfusionapps.game_2048.ui.screens.StartupFlow.welcomeShowing.value = seenWelcome != true
+                    com.avfusionapps.game_2048.ui.screens.ProgressCelebrations()
+                    if (!showIntro && seenWelcome == false) {
+                        com.avfusionapps.game_2048.ui.screens.ElementalWelcome(updating = bestEver > 0) {
+                            com.avfusionapps.game_2048.data.progress.Progress.markWelcomeSeen()
                         }
-                        if (showIntro) com.avfusionapps.game_2048.ui.screens.SpriteSplashIntro { showIntro = false }
-                    } else {
-                        com.avfusionapps.game_2048.ui.screens.StartupFlow.introShowing.value = false
-                        com.avfusionapps.game_2048.ui.screens.StartupFlow.welcomeShowing.value = false
                     }
+                    if (showIntro) com.avfusionapps.game_2048.ui.screens.SpriteSplashIntro { showIntro = false }
                 }
             }
             }

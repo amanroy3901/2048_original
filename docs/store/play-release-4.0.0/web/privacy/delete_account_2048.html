@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Delete Your Account – 2048 Elemental Sprites</title>
+<meta name="description" content="How to delete your 2048 Elemental Sprites account and cloud save data.">
+<link rel="icon" href="assets/2048/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --sky-top:#3a1a8c; --sky:#1b0c47; --sky-deep:#0e0628;
+    --panel:#24124f; --panel-2:#2c1762; --line:rgba(255,214,120,.28); --line-soft:rgba(255,255,255,.09);
+    --gold-1:#ffe27a; --gold-2:#ffb43c; --gold-3:#e9821f;
+    --text:#fff; --muted:#cbc1ef; --dim:#968bc2;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Nunito,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--text);line-height:1.65;min-height:100vh;overflow-x:hidden;
+    background:radial-gradient(1200px 600px at 50% -10%,rgba(140,80,255,.45),transparent 60%),linear-gradient(180deg,var(--sky-top) 0%,var(--sky) 38%,var(--sky-deep) 100%);
+    background-attachment:fixed}
+  .stars,.stars:after{position:fixed;inset:0;pointer-events:none;z-index:0;
+    background-image:
+      radial-gradient(1.5px 1.5px at 12% 18%,#fff 60%,transparent),radial-gradient(1px 1px at 28% 72%,#fff 60%,transparent),
+      radial-gradient(2px 2px at 44% 30%,#fff7c9 60%,transparent),radial-gradient(1px 1px at 63% 12%,#fff 60%,transparent),
+      radial-gradient(1.5px 1.5px at 78% 58%,#fff 60%,transparent),radial-gradient(1px 1px at 88% 24%,#fff 60%,transparent),
+      radial-gradient(2px 2px at 8% 86%,#fff7c9 60%,transparent),radial-gradient(1px 1px at 52% 90%,#fff 60%,transparent);
+    opacity:.75}
+  .stars:after{content:"";transform:translate(37vw,23vh) scale(1.3);opacity:.45;animation:twinkle 5s ease-in-out infinite alternate}
+  @keyframes twinkle{to{opacity:.12}}
+  .wrap{position:relative;z-index:1;max-width:760px;margin:0 auto;padding:40px 16px 56px}
+
+  .hero{text-align:center}
+  .mascot{position:relative;width:150px;height:150px;margin:0 auto 10px}
+  .mascot img{width:150px;height:150px;border-radius:36px;box-shadow:0 0 0 3px rgba(255,214,120,.55),0 18px 40px rgba(0,0,0,.45),0 0 70px rgba(255,150,60,.4);animation:bob 3.2s ease-in-out infinite}
+  .bubble{position:absolute;right:-118px;top:10px;background:#fff;color:#2a0f4a;font-weight:900;font-size:.9rem;padding:8px 14px;border-radius:16px;white-space:nowrap;
+    box-shadow:0 8px 18px rgba(0,0,0,.3)}
+  .bubble:before{content:"";position:absolute;left:-7px;top:16px;border:8px solid transparent;border-right-color:#fff;border-left:0}
+  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+  .badge{display:inline-block;padding:6px 14px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid var(--line-soft);color:var(--muted);font-weight:800;font-size:.85rem;letter-spacing:.04em}
+  h1{font-family:"Lilita One",system-ui,sans-serif;font-weight:400;font-size:clamp(2.4rem,7vw,3.6rem);line-height:1.05;margin:14px 0 10px;
+    background:linear-gradient(180deg,var(--gold-1) 10%,var(--gold-2) 60%,var(--gold-3));-webkit-background-clip:text;background-clip:text;color:transparent;
+    filter:drop-shadow(0 4px 0 #6b2a08) drop-shadow(0 10px 18px rgba(0,0,0,.4))}
+  .lead{color:var(--muted);font-size:1.05rem;max-width:560px;margin:0 auto}
+
+  .card{background:linear-gradient(180deg,rgba(44,23,98,.92),rgba(30,15,70,.92));border:1px solid var(--line);border-radius:24px;padding:24px;margin-top:18px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 14px 30px rgba(0,0,0,.28)}
+  .card h2{font-family:"Lilita One",system-ui,sans-serif;font-weight:400;font-size:1.5rem;color:var(--gold-1);text-shadow:0 2px 0 #6b2a08;margin-bottom:10px}
+  .card p,.card li{color:var(--muted)}
+  strong{color:var(--text)}
+  a{color:var(--gold-1)}
+
+  .steps{list-style:none;counter-reset:s;display:grid;gap:12px}
+  .steps li{counter-increment:s;display:grid;grid-template-columns:44px 1fr;gap:14px;align-items:center;background:rgba(255,255,255,.05);border-radius:16px;padding:12px 14px}
+  .steps li:before{content:counter(s);display:grid;place-items:center;width:44px;height:44px;border-radius:14px;font-family:"Lilita One",sans-serif;font-size:1.4rem;color:#3a1600;
+    background:linear-gradient(180deg,var(--gold-1),var(--gold-2));box-shadow:0 4px 0 #a5560f}
+  .btn{display:inline-block;margin-top:18px;padding:14px 24px;border-radius:16px;font-weight:900;text-decoration:none;color:#3a1600;
+    background:linear-gradient(180deg,var(--gold-1),var(--gold-2));box-shadow:0 5px 0 #a5560f,0 12px 24px rgba(0,0,0,.3)}
+  .btn:active{transform:translateY(3px);box-shadow:0 2px 0 #a5560f}
+
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .split .card{margin-top:18px}
+  .head{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+  .head img{width:52px;height:52px;border-radius:14px;box-shadow:0 6px 14px rgba(0,0,0,.3)}
+  .head h2{margin:0}
+  ul.ticks{list-style:none}
+  ul.ticks li{position:relative;padding-left:24px;margin:7px 0}
+  ul.ticks li:before{content:"";position:absolute;left:2px;top:.55em;width:11px;height:11px;border-radius:3px;transform:rotate(45deg);background:linear-gradient(180deg,var(--gold-1),var(--gold-2))}
+  ul.gone li:before{background:#ff7aa2;border-radius:50%;transform:none}
+
+  footer{text-align:center;margin-top:40px;color:var(--dim);font-weight:700}
+  footer .heart{color:#ff6b8b} footer a{color:var(--muted)}
+  @media (max-width:640px){ .split{grid-template-columns:1fr;gap:0} .bubble{display:none} }
+  @media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</head>
+<body>
+<div class="stars" aria-hidden="true"></div>
+<main class="wrap">
+  <header class="hero">
+    <div class="mascot"><img src="assets/2048/blaze.png" alt="Blaze, the fire sprite"><span class="bubble">Sad to see you go!</span></div>
+    <span class="badge">2048 ELEMENTAL SPRITES · developer: OrganizeEmail (Aman)</span>
+    <h1>Delete your account</h1>
+    <p class="lead">You can ask us to delete your 2048 Elemental Sprites account and everything saved in the cloud at any time.</p>
+  </header>
+
+  <section class="card">
+    <h2>How to request deletion</h2>
+    <ol class="steps">
+      <li><span>Email <strong>aman.kroy2001@gmail.com</strong> with the subject <strong>“Delete my 2048 account”</strong>.</span></li>
+      <li><span>Send it from, or mention, the <strong>Google account email</strong> you signed in with.</span></li>
+      <li><span>We confirm by email and delete your account and cloud data within <strong>30 days</strong>.</span></li>
+    </ol>
+    <a class="btn" href="mailto:aman.kroy2001@gmail.com?subject=Delete%20my%202048%20account">Email a deletion request</a>
+  </section>
+
+  <div class="split">
+    <section class="card">
+      <div class="head"><img src="assets/2048/frosty.png" alt=""><h2>What's deleted</h2></div>
+      <ul class="ticks gone">
+        <li>Your sign-in record: Google account ID, name and email</li>
+        <li>Your cloud save: scores, level and XP, coins, medals and collected sprites</li>
+      </ul>
+    </section>
+    <section class="card">
+      <div class="head"><img src="assets/2048/orbi.png" alt=""><h2>What's kept</h2></div>
+      <ul class="ticks">
+        <li>Anonymous analytics and crash reports, not linked to your name or email, deleted automatically within 14 months</li>
+        <li>Game data stored only on your phone, until you clear the app's data or uninstall</li>
+      </ul>
+    </section>
+  </div>
+
+  <section class="card">
+    <div class="head"><img src="assets/2048/drip.png" alt=""><h2>Just want to stop syncing?</h2></div>
+    <p>Sign out any time from the <strong>Profile</strong> screen in the game. Everything keeps working offline without an account.</p>
+  </section>
+
+  <footer>
+    <p>Last updated November 6, 2026 · Made with <span class="heart">❤️</span> by Aman · <a href="privacy_neon_rush_2048.html">Privacy policy</a></p>
+  </footer>
+</main>
+</body>
+</html>

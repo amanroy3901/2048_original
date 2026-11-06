@@ -135,7 +135,7 @@ fun GameBoard(viewModel: GameViewModel) {
         bonkKey = state.bonkKey,
         bonkDirection = state.bonkDirection,
         // The sprite screen reads its notices aloud in Blaze's bubble; only a bonk also flashes on the board.
-        notice = if (LocalGameTheme.current.usesSprites) state.notice?.takeIf { it.text.startsWith("Bonk") } else state.notice,
+        notice = state.notice?.takeIf { it.text.startsWith("Bonk") },
         rewindKey = state.rewindKey
     )
 }
@@ -206,14 +206,13 @@ fun GameBoard(
 ) {
     val theme = LocalGameTheme.current
     val density = LocalDensity.current
-    val sprites = theme.usesSprites
 
     // Measure cell size once from the board dimensions
     var boardSize by remember { mutableStateOf(IntSize.Zero) }
     val gridSize = grid.size
     // The sprite board has the prototype's roomier gaps (8 of 360).
-    val spacingPx = if (sprites && boardSize.width > 0) boardSize.width * 0.022f else with(density) { 4.dp.toPx() }
-    val paddingPx = if (sprites && boardSize.width > 0) boardSize.width * 0.022f else with(density) { 6.dp.toPx() }
+    val spacingPx = if (boardSize.width > 0) boardSize.width * 0.022f else with(density) { 4.dp.toPx() }
+    val paddingPx = if (boardSize.width > 0) boardSize.width * 0.022f else with(density) { 6.dp.toPx() }
     val spacingDp = with(density) { spacingPx.toDp() }
     val paddingDp = with(density) { paddingPx.toDp() }
 
@@ -228,7 +227,7 @@ fun GameBoard(
     // Clear animations after they complete
     LaunchedEffect(moveCount) {
         if (tileAnimationInfo.isNotEmpty() && onAnimationsComplete != null) {
-            delay(if (sprites) 700 else 350)
+            delay(700)
             onAnimationsComplete()
         }
     }
@@ -238,23 +237,22 @@ fun GameBoard(
     var startled by remember { mutableStateOf(false) }
     // Timers that switch a mood back off must outlive the effect that started them.
     val moodScope = rememberCoroutineScope()
-    if (sprites) {
-        LaunchedEffect(moveCount) {
-            if (tileAnimationInfo.values.any { it.shuffled }) com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.WHOOSH)
-            if (idleLevel >= 2) {
-                com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.WAKE)
-                startled = true
-                moodScope.launch { delay(600); startled = false }
-            }
-            idleLevel = 0
-            delay(6_000)
-            idleLevel = 1
-            delay(8_000)
-            idleLevel = 2
+    LaunchedEffect(moveCount) {
+        if (tileAnimationInfo.values.any { it.shuffled }) com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.WHOOSH)
+        if (idleLevel >= 2) {
+            com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.WAKE)
+            startled = true
+            moodScope.launch { delay(600); startled = false }
         }
+        idleLevel = 0
+        delay(6_000)
+        idleLevel = 1
+        delay(8_000)
+        idleLevel = 2
     }
+
     val emptyCount = remember(grid) { grid.sumOf { row -> row.count { it == 0 } } }
-    val danger = sprites && emptyCount <= 2 && !isGameOver
+    val danger = emptyCount <= 2 && !isGameOver
 
     val track = remember { BoardTrack() }
     remember(moveCount, grid) { track.advance(grid, tileAnimationInfo, moveCount); 0 }
@@ -276,10 +274,10 @@ fun GameBoard(
     val boardMotions = remember { mutableStateMapOf<Pair<Int, Int>, SpriteMotion>() }
     LaunchedEffect(bonkKey) {
         if (bonkKey == 0) return@LaunchedEffect
-        if (sprites) com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.BONK)
+        com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.BONK)
         dizzy = true
         val dir = bonkDirection?.toSpriteDir()
-        if (sprites && dir != null) {
+        if (dir != null) {
             grid.forEachIndexed { r, row -> row.forEachIndexed { c, v -> if (v != 0) boardMotions[r to c] = SpriteMotion(SpriteMotionKind.BONK, nextMotionKey(), dir) } }
         }
         val myKey = bonkKey
@@ -298,7 +296,7 @@ fun GameBoard(
 
     // Undo: every sprite fades back in with a little twist.
     LaunchedEffect(rewindKey) {
-        if (rewindKey == 0 || !sprites) return@LaunchedEffect
+        if (rewindKey == 0) return@LaunchedEffect
         com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.WAKE)
         grid.forEachIndexed { r, row -> row.forEachIndexed { c, v -> if (v != 0) boardMotions[r to c] = SpriteMotion(SpriteMotionKind.REWIND, nextMotionKey()) } }
     }
@@ -307,7 +305,7 @@ fun GameBoard(
     val bump = remember { Animatable(1f) }
     var flinch by remember { mutableStateOf(false) }
     LaunchedEffect(breakingCell) {
-        if (breakingCell == null || !sprites) return@LaunchedEffect
+        if (breakingCell == null) return@LaunchedEffect
         flinch = true
         com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.CRUNCH, delayMs = HAMMER_HIT_MS.toLong())
         moodScope.launch { delay(800); flinch = false }
@@ -321,7 +319,7 @@ fun GameBoard(
     var chilled by remember { mutableStateOf(false) }
     var wasFrozen by remember { mutableStateOf(frozen) }
     LaunchedEffect(frozen) {
-        if (frozen && !wasFrozen && sprites) {
+        if (frozen && !wasFrozen) {
             freezeBurstKey++
             com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.FREEZE)
             chilled = true
@@ -332,22 +330,20 @@ fun GameBoard(
 
     // Idle fidgets: every 1.9 s one relaxed sprite wiggles, rocks, hops or twirls.
     val relaxedCells = remember { ArrayList<Pair<Int, Int>>() }
-    if (sprites) {
-        LaunchedEffect(Unit) {
-            while (true) {
-                delay(1900)
-                if (idleLevel < 2 && !isGameOver && relaxedCells.isNotEmpty()) {
-                    val cell = relaxedCells[Random.nextInt(relaxedCells.size)]
-                    boardMotions[cell] = SpriteMotion(SpriteMotionKind.FIDGET, nextMotionKey(), variant = Random.nextInt(4))
-                }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(1900)
+            if (idleLevel < 2 && !isGameOver && relaxedCells.isNotEmpty()) {
+                val cell = relaxedCells[Random.nextInt(relaxedCells.size)]
+                boardMotions[cell] = SpriteMotion(SpriteMotionKind.FIDGET, nextMotionKey(), variant = Random.nextInt(4))
             }
         }
     }
 
     val pokes = remember { mutableStateMapOf<Pair<Int, Int>, Int>() }
-    val over by animateFloatAsState(if (isGameOver && sprites) 1f else 0f, tween(600), label = "over")
+    val over by animateFloatAsState(if (isGameOver) 1f else 0f, tween(600), label = "over")
     val clock by com.avfusionapps.game_2048.ui.sprites.spriteTime()
-    val boardRadius = if (sprites && boardSize.width > 0) with(density) { (boardSize.width * 0.072f).toDp() } else 12.dp
+    val boardRadius = if (boardSize.width > 0) with(density) { (boardSize.width * 0.072f).toDp() } else 12.dp
     val boardShape = RoundedCornerShape(boardRadius)
 
     relaxedCells.clear()
@@ -370,16 +366,12 @@ fun GameBoard(
             }
             .onSizeChanged { boardSize = it }
             .then(
-                if (sprites) Modifier
+                Modifier
                     .drawBehind { drawSpriteBoardGlow(boardRadius.toPx(), danger, if (danger) (clock % 1.1f) / 1.1f else 0f) }
                     .clip(boardShape)
                     .background(Brush.verticalGradient(listOf(Color(0xBF3C1E82), Color(0xD9200E50))))
                     .drawBehind { drawInnerShadow(boardRadius.toPx(), 30.dp.toPx(), Color.Black.copy(alpha = 0.35f)) }
                     .border(2.dp, Color(0x66BE96FF), boardShape)
-                else Modifier
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(theme.surfaceColor)
-                    .border(2.dp, theme.primaryColor.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
             )
             .padding(paddingDp)
     ) {
@@ -403,7 +395,7 @@ fun GameBoard(
                     row.forEachIndexed { j, cellValue ->
                         val tileInfo = tileAnimationInfo[Pair(i, j)]
                         val mood = when {
-                            !sprites || cellValue == 0 -> SpriteMood.Neutral
+                            cellValue == 0 -> SpriteMood.Neutral
                             else -> spriteMood(
                                 grid = grid, i = i, j = j, value = cellValue,
                                 isGameOver = isGameOver, idleLevel = idleLevel, emptyCount = emptyCount,
@@ -413,10 +405,10 @@ fun GameBoard(
                                 glance = if (glancing) moveDir else null
                             )
                         }
-                        if (sprites && cellValue > 0 && mood.emotion == SpriteEmotion.IDLE) relaxedCells.add(i to j)
+                        if (cellValue > 0 && mood.emotion == SpriteEmotion.IDLE) relaxedCells.add(i to j)
                         // Tap: the hammer hits when armed, otherwise a sprite gets poked.
                         val canHammer = hammerArmed && onCellTap != null && cellValue != 0
-                        val canPoke = sprites && cellValue != 0
+                        val canPoke = cellValue != 0
                         GameCell(
                             value = cellValue,
                             modifier = Modifier
@@ -450,6 +442,7 @@ fun GameBoard(
                             wobble = hammerArmed && cellValue != 0,
                             breaking = breakingCell == Pair(i, j),
                             pokeKey = pokes[i to j],
+                            nameTagSide = when (j) { 0 -> -1; gridSize - 1 -> 1; else -> 0 },
                             badgeText = if (cellValue < 0) rockTtl.toString() else null,
                             shuffled = tileInfo?.shuffled ?: false,
                             boardMotion = boardMotions[i to j]
@@ -458,18 +451,12 @@ fun GameBoard(
                 }
             }
         }
-        if (frozen) FrostOverlay(sprites)
-        if (sprites) {
-            if (lastGain != null && cellSizePx > 0f) {
-                key(lastGain.key) { MergeFloats(lastGain, tileAnimationInfo, grid, cellSizePx, stride, boardSize, paddingPx) }
-            }
-            if (freezeBurstKey > 0) key(freezeBurstKey) { FreezeBurst() }
-        } else if (lastGain != null) {
-            ScorePopup(lastGain)
+        if (frozen) FrostOverlay()
+        if (lastGain != null && cellSizePx > 0f) {
+            key(lastGain.key) { MergeFloats(lastGain, tileAnimationInfo, grid, cellSizePx, stride, boardSize, paddingPx) }
         }
-        if (notice != null) {
-            if (sprites) key(notice.key) { BonkFloat() } else NoticePopup(notice)
-        }
+        if (freezeBurstKey > 0) key(freezeBurstKey) { FreezeBurst() }
+        if (notice != null) key(notice.key) { BonkFloat() }
     }
 }
 
@@ -542,61 +529,20 @@ private fun DrawScope.drawInnerShadow(radius: Float, blur: Float, color: Color, 
     clipPath(card) { drawContext.canvas.nativeCanvas.drawPath(ring.asAndroidPath(), paint) }
 }
 
-/** A short message in the middle of the board: bonks, rocks, new friends. */
-@Composable
-private fun BoxScope.NoticePopup(notice: BoardNotice) {
-    val p = remember(notice.key) { Animatable(0f) }
-    LaunchedEffect(notice.key) { p.animateTo(1f, tween(1700, easing = LinearEasing)) }
-    val t = p.value
-    if (t >= 1f) return
-    val alpha = when {
-        t < 0.1f -> t / 0.1f
-        t > 0.8f -> (1f - t) / 0.2f
-        else -> 1f
-    }
-    Text(
-        text = notice.text,
-        color = Color(0xFFFFC93A),
-        fontSize = 22.sp,
-        fontWeight = FontWeight.Black,
-        textAlign = TextAlign.Center,
-        style = TextStyle(shadow = Shadow(Outline, Offset(0f, 3f), 3f)),
-        modifier = Modifier
-            .align(Alignment.Center)
-            .padding(horizontal = 24.dp)
-            .background(Color(0xCC12082E), RoundedCornerShape(16.dp))
-            .padding(horizontal = 16.dp, vertical = 10.dp)
-            .graphicsLayer {
-                this.alpha = alpha.coerceIn(0f, 1f)
-                val pop = if (t < 0.1f) 0.8f + 2f * t else 1f
-                scaleX = pop
-                scaleY = pop
-            }
-    )
-}
-
 /** Icy rim while Freeze is active (the prototype's frost: a bright inner rim and frosted corners). */
 @Composable
-private fun BoxScope.FrostOverlay(sprites: Boolean) {
-    val pulse = rememberInfiniteTransition(label = "frost")
-    val a by pulse.animateFloat(0.55f, 0.95f, infiniteRepeatable(tween(1100), androidx.compose.animation.core.RepeatMode.Reverse), label = "frostAlpha")
+private fun BoxScope.FrostOverlay() {
     Box(
         modifier = Modifier
             .matchParentSize()
             .then(
-                if (sprites) Modifier.drawBehind {
+                Modifier.drawBehind {
                     drawInnerShadow(12.dp.toPx(), 40.dp.toPx(), Color(0xFFA0E6FF).copy(alpha = 0.55f))
                     drawCircle(Brush.radialGradient(listOf(Color(0x59DCFAFF), Color.Transparent), center = Offset.Zero, radius = size.width * 0.3f), radius = size.width * 0.3f, center = Offset.Zero)
                     drawCircle(Brush.radialGradient(listOf(Color(0x59DCFAFF), Color.Transparent), center = Offset(size.width, size.height), radius = size.width * 0.3f), radius = size.width * 0.3f, center = Offset(size.width, size.height))
-                } else Modifier
+                }
             )
-            .border(3.dp, Color(0xFFC8F5FF).copy(alpha = if (sprites) 0.9f else a), RoundedCornerShape(10.dp))
-            .then(
-                if (sprites) Modifier else Modifier.background(
-                    Brush.radialGradient(listOf(Color.Transparent, Color(0xFFA6ECFF).copy(alpha = 0.22f * a)), radius = 900f),
-                    RoundedCornerShape(10.dp)
-                )
-            )
+            .border(3.dp, Color(0xFFC8F5FF).copy(alpha = 0.9f), RoundedCornerShape(10.dp))
     )
 }
 
@@ -653,38 +599,6 @@ private fun BoxScope.MergeFloats(
     if (gain.multiplier >= 2) {
         val inner = boardSize.width - 2 * paddingPx
         SpriteFloatText("Combo x${gain.multiplier}", Offset(inner / 2f, inner * 0.18f), clock, start, 1200f, 90f, Color(0xFFFFC93A), 32.sp, display = true)
-    }
-}
-
-/** "+64", "Combo x3" and "+2 coins" floating up over the board after a scoring move (non-sprite themes). */
-@Composable
-private fun BoxScope.ScorePopup(gain: MoveGain) {
-    val p = remember(gain.key) { Animatable(0f) }
-    LaunchedEffect(gain.key) { p.animateTo(1f, tween(1000, easing = LinearEasing)) }
-    val t = p.value
-    if (t >= 1f) return
-    val alpha = if (t < 0.15f) t / 0.15f else (1f - (t - 0.15f) / 0.85f)
-    Column(
-        modifier = Modifier
-            .align(Alignment.TopCenter)
-            .padding(top = 18.dp)
-            .graphicsLayer {
-                translationY = -60f * t
-                this.alpha = alpha.coerceIn(0f, 1f)
-                val pop = if (t < 0.2f) 0.7f + 1.6f * t else 1f
-                scaleX = pop
-                scaleY = pop
-            },
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        val outline = Shadow(Outline, Offset(0f, 3f), 2f)
-        Text("+${gain.points}", color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Black, style = TextStyle(shadow = outline))
-        if (gain.multiplier >= 2) {
-            Text("Combo x${gain.multiplier}", color = Color(0xFFFFC93A), fontSize = 22.sp, fontWeight = FontWeight.Black, style = TextStyle(shadow = outline))
-        }
-        if (gain.coins > 0) {
-            Text("+${gain.coins} coins", color = Color(0xFFFFE07A), fontSize = 16.sp, fontWeight = FontWeight.Bold, style = TextStyle(shadow = outline))
-        }
     }
 }
 
@@ -746,94 +660,21 @@ fun GameCell(
     wobble: Boolean = false,
     breaking: Boolean = false,
     pokeKey: Int? = null,
+    nameTagSide: Int = 0,
     badgeText: String? = null,
     shuffled: Boolean = false,
     boardMotion: SpriteMotion? = null
 ) {
-    val sprites = LocalGameTheme.current.usesSprites
-    if (sprites && value != 0) {
-        SpriteCell(
-            value = value, modifier = modifier, isNew = isNew, isMerged = isMerged, startPosition = startPosition,
-            currentPosition = currentPosition, moveCount = moveCount, cellSizePx = cellSizePx, spacingPx = spacingPx,
-            fontSizeMultiplier = fontSizeMultiplier, emotion = emotion, lookX = lookX, lookY = lookY, wobble = wobble,
-            breaking = breaking, pokeKey = pokeKey, badgeText = badgeText, shuffled = shuffled, boardMotion = boardMotion
-        )
+    if (value == 0) {
+        Box(modifier = modifier.aspectRatio(1f)) { EmptySpriteCell(Modifier.fillMaxSize()) }
         return
     }
-    // Hammer armed: tiles wiggle, asking to be hit. Breaking: shake, then shrink away.
-    val wiggle = rememberInfiniteTransition(label = "wiggle")
-    val wigglePhase by wiggle.animateFloat(0f, 1f, infiniteRepeatable(tween(500, easing = LinearEasing)), label = "wigglePhase")
-    val breakProgress = remember { Animatable(0f) }
-    LaunchedEffect(breaking) {
-        if (breaking) {
-            breakProgress.snapTo(0f)
-            breakProgress.animateTo(1f, tween(420, easing = LinearEasing))
-        } else breakProgress.snapTo(0f)
-    }
-    // Compute pixel offsets based on grid coordinate difference
-    val hasSlide = startPosition != null && startPosition != currentPosition
-    val rowDiff = if (hasSlide) (startPosition!!.first - currentPosition!!.first) else 0
-    val colDiff = if (hasSlide) (startPosition!!.second - currentPosition!!.second) else 0
-    val cellStride = cellSizePx + spacingPx
-
-    // Synchronously initialize state based on moveCount to avoid a 1-frame flash at target position
-    val slideProgress = remember(moveCount) { Animatable(if (hasSlide) 0f else 1f) }
-    var scale by remember(moveCount) { mutableStateOf(if (isNew) 0f else 1f) }
-
-    LaunchedEffect(moveCount) {
-        if (hasSlide || isMerged || isNew) {
-            if (hasSlide) {
-                slideProgress.animateTo(1f, animationSpec = tween(durationMillis = 150))
-            }
-            if (isMerged) {
-                animate(1f, 1.15f, animationSpec = tween(100)) { v, _ -> scale = v }
-                animate(1.15f, 1f, animationSpec = tween(100)) { v, _ -> scale = v }
-            }
-            if (isNew) {
-                animate(0f, 1f, animationSpec = tween(durationMillis = 120)) { v, _ -> scale = v }
-            }
-        }
-    }
-
-    val progress = slideProgress.value
-    val offsetX = colDiff * cellStride * (1f - progress)
-    val offsetY = rowDiff * cellStride * (1f - progress)
-
-    val bp = breakProgress.value
-    val breakScale = if (breaking && bp > 0.55f) (1f - (bp - 0.55f) / 0.45f).coerceIn(0f, 1f) else 1f
-    val shake = if (breaking && bp in 0.35f..0.6f) sin(bp * 90f) * 6f else 0f
-    Box(
-        modifier = modifier.aspectRatio(1f),
-        contentAlignment = Alignment.Center
-    ) {
-        TileView(
-            value = value,
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer {
-                    translationX = offsetX + shake
-                    translationY = offsetY
-                    scaleX = scale * breakScale
-                    scaleY = scale * breakScale
-                    rotationZ = if (wobble) sin(wigglePhase * 2f * PI.toFloat()) * 3f else 0f
-                },
-            fontSizeMultiplier = fontSizeMultiplier
-        )
-        if (breaking && bp < 0.75f) {
-            val swing = if (bp < 0.4f) 60f - 100f * (bp / 0.4f) else -40f + 15f * ((bp - 0.4f) / 0.35f)
-            Canvas(
-                modifier = Modifier
-                    .fillMaxSize(0.75f)
-                    .graphicsLayer {
-                        translationX = size.width * 0.35f
-                        translationY = -size.height * 0.35f
-                        rotationZ = swing
-                        transformOrigin = TransformOrigin(0.15f, 0.85f)
-                        alpha = if (bp > 0.6f) (0.75f - bp) / 0.15f else 1f
-                    }
-            ) { drawHammerIcon() }
-        }
-    }
+    SpriteCell(
+        value = value, modifier = modifier, isNew = isNew, isMerged = isMerged, startPosition = startPosition,
+        currentPosition = currentPosition, moveCount = moveCount, cellSizePx = cellSizePx, spacingPx = spacingPx,
+        fontSizeMultiplier = fontSizeMultiplier, emotion = emotion, lookX = lookX, lookY = lookY, wobble = wobble,
+        breaking = breaking, pokeKey = pokeKey, nameTagSide = nameTagSide, badgeText = badgeText, shuffled = shuffled, boardMotion = boardMotion
+    )
 }
 
 /** What this cell's sprite is doing on this move, fixed when the move starts. */
@@ -862,6 +703,7 @@ private fun SpriteCell(
     wobble: Boolean,
     breaking: Boolean,
     pokeKey: Int?,
+    nameTagSide: Int,
     badgeText: String?,
     shuffled: Boolean,
     boardMotion: SpriteMotion?
@@ -940,6 +782,7 @@ private fun SpriteCell(
                     breaking = breaking,
                     breakHitMs = HAMMER_HIT_MS,
                     pokeKey = pokeKey,
+                    nameTagSide = nameTagSide,
                     badgeText = badgeText,
                     fontSizeMultiplier = fontSizeMultiplier,
                     wantHitDeg = if (wobble) 3f else 0f
@@ -1003,176 +846,6 @@ private fun kfLinear(p: Float, at: FloatArray, v: FloatArray): Float {
     return v.last()
 }
 
-@Composable
-fun TileView(
-    value: Int,
-    modifier: Modifier = Modifier,
-    fontSizeMultiplier: Float = 1.0f,
-    emotion: SpriteEmotion = SpriteEmotion.IDLE,
-    lookX: Float = 0f,
-    lookY: Float = 0f,
-    charScaleX: Float = 1f,
-    charScaleY: Float = 1f,
-    mergeKey: Int? = null,
-    spawnKey: Int? = null,
-    breaking: Boolean = false,
-    pokeKey: Int? = null,
-    badgeText: String? = null
-) {
-    val theme = LocalGameTheme.current
-    // The Shadow Rock is always drawn as a sprite, whatever the theme.
-    if ((theme.usesSprites && value != 0) || value < 0) {
-        SpriteTile(
-            value = value,
-            modifier = modifier,
-            emotion = emotion,
-            lookX = lookX,
-            lookY = lookY,
-            charScaleX = charScaleX,
-            charScaleY = charScaleY,
-            mergeKey = mergeKey,
-            spawnKey = spawnKey,
-            breaking = breaking,
-            pokeKey = pokeKey,
-            badgeText = badgeText,
-            fontSizeMultiplier = fontSizeMultiplier
-        )
-        return
-    }
-    if (theme.usesSprites && value == 0) {
-        EmptySpriteCell(modifier)
-        return
-    }
-    val backgroundColor = theme.tileColors[value] ?: theme.tileColors[0]!!
-    val textColor = if (value <= 4) theme.textColor else Color.White
-
-    val textSize = remember(value, fontSizeMultiplier) {
-        val baseSize = when {
-            value >= 10000 -> 14
-            value >= 1000 -> 20
-            value >= 100 -> 24
-            else -> 28
-        }
-        (baseSize * fontSizeMultiplier).sp
-    }
-
-    val cellShadowModifier = if (value > 0) {
-        Modifier.shadow(
-            elevation = 10.dp,
-            shape = RoundedCornerShape(8.dp),
-            clip = false,
-            ambientColor = backgroundColor.copy(alpha = 0.4f),
-            spotColor = backgroundColor.copy(alpha = 0.6f)
-        )
-    } else {
-        Modifier
-    }
-
-    val textShadow = remember(value) {
-        if (value > 0) {
-            val logValue = log2(value.toFloat()).coerceAtLeast(1f)
-            val baseBlur = 2f
-            val scaleFactor = 1.5f
-            val blurRadius = (baseBlur + (logValue * scaleFactor)).coerceIn(2f, 25f)
-            Shadow(
-                color = if (value > 128) textColor.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.6f),
-                offset = Offset.Zero,
-                blurRadius = blurRadius
-            )
-        } else {
-            null
-        }
-    }
-
-    val borderModifier = if (value > 0) {
-        Modifier.border(
-            width = 1.2.dp,
-            brush = Brush.verticalGradient(
-                colors = listOf(
-                    Color.White.copy(alpha = 0.5f),
-                    backgroundColor.copy(alpha = 0.2f)
-                )
-            ),
-            shape = RoundedCornerShape(8.dp)
-        )
-    } else {
-        Modifier.border(
-            width = 1.dp,
-            color = theme.textColor.copy(alpha = 0.1f),
-            shape = RoundedCornerShape(8.dp)
-        )
-    }
-
-    val backgroundBrush = remember(value, backgroundColor) {
-        if (value > 0) {
-            Brush.verticalGradient(
-                colors = listOf(
-                    backgroundColor.copy(alpha = 0.95f),
-                    backgroundColor.copy(alpha = 0.6f),
-                    backgroundColor.copy(alpha = 0.6f),
-                    backgroundColor.copy(alpha = 0.45f),
-                    backgroundColor.copy(alpha = 1f)
-                )
-            )
-        } else {
-            Brush.verticalGradient(
-                colors = listOf(
-                    Color.White.copy(alpha = 0.05f),
-                    Color.White.copy(alpha = 0.01f)
-                )
-            )
-        }
-    }
-
-    Box(
-        modifier = modifier
-            .then(cellShadowModifier)
-            .clip(RoundedCornerShape(8.dp))
-            .background(brush = backgroundBrush)
-            .then(borderModifier),
-        contentAlignment = Alignment.Center
-    ) {
-        if (value != 0) {
-            Text(
-                text = value.toString(),
-                color = textColor,
-                fontSize = textSize,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                style = TextStyle(
-                    shadow = textShadow
-                ),
-                modifier = Modifier.drawBehind {
-                    val paint = Paint()
-                        .asFrameworkPaint().apply {
-                            this.style = android.graphics.Paint.Style.STROKE
-                            this.strokeWidth = 2f
-                            this.color = Color.White.copy(alpha = 0.7f).toArgb()
-                            this.textSize = textSize.toPx()
-                            this.isAntiAlias = true
-                            this.flags = this.flags or android.graphics.Paint.SUBPIXEL_TEXT_FLAG
-                        }
-
-                    val textBounds = android.graphics.Rect()
-                    val text = value.toString()
-                    paint.getTextBounds(text, 0, text.length, textBounds)
-
-                    drawIntoCanvas { canvas ->
-                        val x = (size.width - textBounds.width()) / 2f
-                        val y = (size.height + textBounds.height()) / 2f
-                        canvas.nativeCanvas.drawText(
-                            text,
-                            x,
-                            y,
-                            paint
-                        )
-                    }
-                }
-            )
-        }
-    }
-}
-
 /** An empty slot on the sprite board: a dark well with an inner shadow and a faint lower lip. */
 @Composable
 private fun EmptySpriteCell(modifier: Modifier) {
@@ -1189,28 +862,4 @@ private fun EmptySpriteCell(modifier: Modifier) {
             }
         }
     )
-}
-
-@Preview
-@Composable
-fun GameCellBoardPreview() {
-    val values = listOf(0, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048)
-
-    _2048OriginalTheme(theme = GameTheme.NeonPink) {
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(4),
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            contentPadding = PaddingValues(16.dp)
-        ) {
-            items(values) { value ->
-                Box(
-                    modifier = Modifier.padding(4.dp)
-                ) {
-                    TileView(value, Modifier.size(75.dp))
-                }
-            }
-        }
-    }
 }

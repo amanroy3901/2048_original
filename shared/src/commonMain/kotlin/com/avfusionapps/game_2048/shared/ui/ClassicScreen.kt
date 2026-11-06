@@ -69,8 +69,7 @@ internal fun SpriteClassicLayout(
     onMenu: () -> Unit,
     onHelp: () -> Unit,
     onCollection: () -> Unit,
-    onProfile: () -> Unit,
-    onThemes: () -> Unit
+    onProfile: () -> Unit
 ) {
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
@@ -246,8 +245,7 @@ internal fun SpriteClassicLayout(
                         SpriteNavItem("Menu", onMenu) { navMenuIcon() },
                         SpriteNavItem("Help", onHelp) { navHelpIcon() },
                         SpriteNavItem("Collection", onCollection) { navCollectionIcon() },
-                        SpriteNavItem("Profile", onProfile) { navProfileIcon() },
-                        SpriteNavItem("Themes", onThemes) { navThemesIcon() }
+                        SpriteNavItem("Profile", onProfile) { navProfileIcon() }
                     )
                 )
             }
@@ -371,8 +369,7 @@ fun ClassicScreen(game: GameViewModel, resume: Boolean) {
         onMenu = { showExitDialog = true },
         onHelp = { forceShowTutorial = true },
         onCollection = { showCollection = true },
-        onProfile = { viewModel.saveCurrentGameState(); Nav.navigate("profile") },
-        onThemes = { viewModel.saveCurrentGameState(); Nav.navigate("themeSettings") }
+        onProfile = { viewModel.saveCurrentGameState(); Nav.navigate("profile") }
     )
 
     if (showCollection) {

@@ -66,8 +66,7 @@ internal fun SpriteClassicLayout(
     onMenu: () -> Unit,
     onHelp: () -> Unit,
     onCollection: () -> Unit,
-    onProfile: () -> Unit,
-    onThemes: () -> Unit
+    onProfile: () -> Unit
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -244,8 +243,7 @@ internal fun SpriteClassicLayout(
                         SpriteNavItem("Menu", onMenu) { navMenuIcon() },
                         SpriteNavItem("Help", onHelp) { navHelpIcon() },
                         SpriteNavItem("Collection", onCollection) { navCollectionIcon() },
-                        SpriteNavItem("Profile", onProfile) { navProfileIcon() },
-                        SpriteNavItem("Themes", onThemes) { navThemesIcon() }
+                        SpriteNavItem("Profile", onProfile) { navProfileIcon() }
                     )
                 )
             }

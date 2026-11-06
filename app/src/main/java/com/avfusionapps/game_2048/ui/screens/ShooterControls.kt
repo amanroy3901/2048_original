@@ -64,6 +64,9 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -446,7 +449,8 @@ private fun PowerSlot(
             Canvas(Modifier.size(sq * 0.6f)) { icon() }
         }
         Spacer(Modifier.height(3.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        FitWidth {
+          Row(verticalAlignment = Alignment.CenterVertically) {
             Text(style.label, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
             Spacer(Modifier.width(3.dp))
             if (buy) {
@@ -454,6 +458,24 @@ private fun PowerSlot(
                 Text("${DropPowerUps.COST}", color = Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
             } else {
                 Text("($charges)", color = Muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+            }
+          }
+        }
+    }
+}
+
+/** Lays [content] out at its natural width and shrinks it, centred, when that is wider than the slot. */
+@Composable
+private fun FitWidth(content: @Composable () -> Unit) {
+    Layout(content) { measurables, constraints ->
+        val p = measurables.first().measure(constraints.copy(minWidth = 0, maxWidth = Constraints.Infinity))
+        val w = p.width.coerceAtMost(constraints.maxWidth)
+        val s = if (p.width > w) w.toFloat() / p.width else 1f
+        layout(w, p.height) {
+            p.placeWithLayer((w - p.width) / 2, 0) {
+                scaleX = s
+                scaleY = s
+                transformOrigin = TransformOrigin.Center
             }
         }
     }

@@ -34,27 +34,6 @@ import com.avfusionapps.game_2048.ui.theme.HighLighter
 
 import androidx.compose.ui.semantics.contentDescription
 
-@Composable
-fun NeonCutCornerButton(
-    text: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    buttonColor: Color = HighLighter,
-    cornerRadius: Int = 8
-) {
-    Button(
-        onClick = onClick,
-        modifier = modifier.semantics { 
-            this.contentDescription = text 
-        },
-        shape = CutCornerShape(cornerRadius.dp),
-        colors = ButtonDefaults.buttonColors(buttonColor),
-        contentPadding = PaddingValues(8.dp)
-    ) {
-        Text(text = text, color = Color.White)
-    }
-}
-
 fun ContentDrawScope.drawNeonGlow(
     color: Color, radius: Dp
 ) {

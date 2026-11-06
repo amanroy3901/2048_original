@@ -7,7 +7,7 @@ import androidx.compose.runtime.setValue
 
 /**
  * Replaces the Android NavController in shared code. Routes keep the Android names:
- * "main", "game?resume=true", "game?resume=false", "timeAttack", "dropMerge", "achievements", "profile", "themeSettings".
+ * "main", "game?resume=true", "game?resume=false", "timeAttack", "dropMerge", "achievements", "profile".
  * `navController.navigate(x)` → `Nav.navigate(x)`, `navController.popBackStack()` → `Nav.back()`.
  */
 object Nav {

@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy Policy – 2048 Elemental Sprites</title>
+<meta name="description" content="How 2048 Elemental Sprites handles your data: plays offline, optional Google sign-in, no ads and no data selling.">
+<link rel="icon" href="assets/2048/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --sky-top:#3a1a8c; --sky:#1b0c47; --sky-deep:#0e0628;
+    --panel:#24124f; --panel-2:#2c1762; --line:rgba(255,214,120,.28); --line-soft:rgba(255,255,255,.09);
+    --gold-1:#ffe27a; --gold-2:#ffb43c; --gold-3:#e9821f;
+    --text:#fff; --muted:#cbc1ef; --dim:#968bc2;
+    --radius:24px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:Nunito,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    color:var(--text); line-height:1.65; min-height:100vh; overflow-x:hidden;
+    background:
+      radial-gradient(1200px 600px at 50% -10%, rgba(140,80,255,.45), transparent 60%),
+      linear-gradient(180deg,var(--sky-top) 0%,var(--sky) 38%,var(--sky-deep) 100%);
+    background-attachment:fixed;
+  }
+  /* starfield */
+  .stars,.stars:after{position:fixed;inset:0;pointer-events:none;z-index:0;
+    background-image:
+      radial-gradient(1.5px 1.5px at 12% 18%,#fff 60%,transparent),
+      radial-gradient(1px 1px at 28% 72%,#fff 60%,transparent),
+      radial-gradient(2px 2px at 44% 30%,#fff7c9 60%,transparent),
+      radial-gradient(1px 1px at 63% 12%,#fff 60%,transparent),
+      radial-gradient(1.5px 1.5px at 78% 58%,#fff 60%,transparent),
+      radial-gradient(1px 1px at 88% 24%,#fff 60%,transparent),
+      radial-gradient(2px 2px at 8% 86%,#fff7c9 60%,transparent),
+      radial-gradient(1px 1px at 52% 90%,#fff 60%,transparent),
+      radial-gradient(1.5px 1.5px at 94% 82%,#fff 60%,transparent),
+      radial-gradient(1px 1px at 36% 50%,#fff 60%,transparent);
+    opacity:.75}
+  .stars:after{content:"";transform:translate(37vw,23vh) scale(1.3);opacity:.45;animation:twinkle 5s ease-in-out infinite alternate}
+  @keyframes twinkle{to{opacity:.12}}
+  .moon{position:fixed;top:64px;right:7vw;width:86px;height:86px;border-radius:50%;
+    box-shadow:-18px 10px 0 0 #f3dfa8;transform:rotate(-20deg);opacity:.85;z-index:0;pointer-events:none}
+
+  .wrap{position:relative;z-index:1;max-width:980px;margin:0 auto;padding:40px 16px 56px}
+
+  /* hero */
+  .hero{text-align:center;padding:12px 0 8px}
+  .app-icon{width:112px;height:112px;border-radius:28px;display:block;margin:0 auto 18px;
+    box-shadow:0 0 0 3px rgba(255,214,120,.55),0 18px 40px rgba(0,0,0,.45),0 0 60px rgba(255,150,60,.35);
+    animation:bob 3.2s ease-in-out infinite}
+  .badge{display:inline-flex;align-items:center;gap:8px;padding:6px 14px;border-radius:999px;
+    background:rgba(255,255,255,.08);border:1px solid var(--line-soft);color:var(--muted);font-weight:800;font-size:.85rem;letter-spacing:.04em}
+  h1{font-family:"Lilita One",system-ui,sans-serif;font-weight:400;font-size:clamp(2.6rem,7vw,4.2rem);line-height:1.05;margin:14px 0 10px;
+    background:linear-gradient(180deg,var(--gold-1) 10%,var(--gold-2) 60%,var(--gold-3));-webkit-background-clip:text;background-clip:text;color:transparent;
+    filter:drop-shadow(0 4px 0 #6b2a08) drop-shadow(0 10px 18px rgba(0,0,0,.4))}
+  .lead{max-width:620px;margin:0 auto;color:var(--muted);font-size:1.08rem}
+  .updated{display:inline-block;margin-top:16px;padding:8px 16px;border-radius:999px;font-weight:800;font-size:.85rem;
+    color:#3a1600;background:linear-gradient(180deg,var(--gold-1),var(--gold-2));box-shadow:0 4px 0 #a5560f}
+
+  /* sprite parade */
+  .parade{display:flex;justify-content:center;flex-wrap:wrap;gap:10px;margin:30px auto 6px;max-width:760px}
+  .parade img{width:64px;height:64px;border-radius:16px;box-shadow:0 8px 18px rgba(0,0,0,.35);animation:bob 2.8s ease-in-out infinite}
+  .parade img:nth-child(2){animation-delay:.15s}.parade img:nth-child(3){animation-delay:.3s}.parade img:nth-child(4){animation-delay:.45s}
+  .parade img:nth-child(5){animation-delay:.6s}.parade img:nth-child(6){animation-delay:.75s}.parade img:nth-child(7){animation-delay:.9s}.parade img:nth-child(8){animation-delay:1.05s}
+  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+
+  /* glance */
+  .glance{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:34px 0 14px}
+  .chip{background:linear-gradient(180deg,var(--panel-2),var(--panel));border:1px solid var(--line);border-radius:20px;padding:16px 14px;text-align:center;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 10px 24px rgba(0,0,0,.25)}
+  .chip img{width:46px;height:46px;border-radius:12px;margin-bottom:8px}
+  .chip b{display:block;font-weight:900;font-size:1rem}
+  .chip span{color:var(--dim);font-size:.85rem;font-weight:700}
+
+  /* nav */
+  .toc{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:22px 0 30px}
+  .toc a{color:var(--muted);text-decoration:none;font-weight:800;font-size:.88rem;padding:7px 14px;border-radius:999px;border:1px solid var(--line-soft);background:rgba(255,255,255,.04)}
+  .toc a:hover{color:var(--text);border-color:var(--line)}
+
+  /* sections */
+  .card{position:relative;display:grid;grid-template-columns:72px 1fr;gap:18px;align-items:start;
+    background:linear-gradient(180deg,rgba(44,23,98,.92),rgba(30,15,70,.92));border:1px solid var(--line);border-radius:var(--radius);
+    padding:24px;margin-bottom:16px;box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 14px 30px rgba(0,0,0,.28);scroll-margin-top:20px}
+  .card > img{width:72px;height:72px;border-radius:18px;box-shadow:0 8px 16px rgba(0,0,0,.35)}
+  .card h2{font-family:"Lilita One",system-ui,sans-serif;font-weight:400;font-size:1.55rem;letter-spacing:.01em;color:var(--gold-1);margin-bottom:6px;
+    text-shadow:0 2px 0 #6b2a08}
+  .card p{color:var(--muted)}
+  .card p + p{margin-top:8px}
+  ul.ticks{list-style:none;margin-top:8px}
+  ul.ticks li{position:relative;padding-left:26px;margin:7px 0;color:var(--muted)}
+  ul.ticks li:before{content:"";position:absolute;left:2px;top:.55em;width:12px;height:12px;border-radius:4px;transform:rotate(45deg);
+    background:linear-gradient(180deg,var(--gold-1),var(--gold-2))}
+  ul.no li:before{background:#ff7aa2;border-radius:50%;transform:none}
+  strong{color:var(--text)}
+  a{color:var(--gold-1)}
+
+  .data{width:100%;border-collapse:separate;border-spacing:0 8px;margin-top:6px}
+  .data td{padding:12px 14px;background:rgba(255,255,255,.05);vertical-align:top;color:var(--muted);font-size:.95rem}
+  .data td:first-child{border-radius:14px 0 0 14px;color:var(--text);font-weight:800;width:34%}
+  .data td:last-child{border-radius:0 14px 14px 0}
+  .tag{display:inline-block;margin-top:4px;font-size:.72rem;font-weight:900;letter-spacing:.05em;text-transform:uppercase;padding:2px 8px;border-radius:999px;
+    background:rgba(127,216,255,.16);color:#9fe2ff}
+  .tag.opt{background:rgba(140,230,120,.16);color:#b6f29f}
+
+  .btn{display:inline-block;margin-top:14px;padding:12px 22px;border-radius:16px;font-weight:900;text-decoration:none;color:#3a1600;
+    background:linear-gradient(180deg,var(--gold-1),var(--gold-2));box-shadow:0 5px 0 #a5560f,0 12px 24px rgba(0,0,0,.3);transition:transform .1s}
+  .btn:active{transform:translateY(3px);box-shadow:0 2px 0 #a5560f}
+
+  /* gallery */
+  .gallery{margin:40px 0 10px;text-align:center}
+  .gallery h3{font-family:"Lilita One",system-ui,sans-serif;font-weight:400;font-size:1.7rem;color:var(--gold-1);text-shadow:0 2px 0 #6b2a08}
+  .gallery p{color:var(--dim);font-weight:700;margin-top:2px}
+  .phones{display:flex;justify-content:center;gap:18px;margin-top:22px;flex-wrap:wrap}
+  .phone{width:180px;border-radius:26px;padding:7px;background:#120830;border:2px solid rgba(214,160,70,.8);box-shadow:0 20px 40px rgba(0,0,0,.45);transition:transform .25s}
+  .phone img{display:block;width:100%;border-radius:19px}
+  .phone:nth-child(1){transform:rotate(-5deg) translateY(10px)}.phone:nth-child(2){transform:rotate(-1.5deg)}
+  .phone:nth-child(3){transform:rotate(1.5deg)}.phone:nth-child(4){transform:rotate(5deg) translateY(10px)}
+  .phone:hover{transform:rotate(0) translateY(-6px) scale(1.03)}
+
+  footer{text-align:center;margin-top:46px;color:var(--dim);font-weight:700}
+  footer .heart{color:#ff6b8b}
+  footer a{color:var(--muted)}
+
+  @media (max-width:760px){
+    .glance{grid-template-columns:repeat(2,1fr)}
+    .card{grid-template-columns:1fr;padding:20px}
+    .card > img{width:56px;height:56px;border-radius:14px}
+    .data td:first-child{width:40%}
+    .phone{width:44%}
+    .phone:nth-child(n){transform:none}
+    .moon{display:none}
+  }
+  @media (max-width:420px){ .data td{display:block;width:100%!important;border-radius:0!important} .data td:first-child{border-radius:14px 14px 0 0!important;padding-bottom:4px} .data td:last-child{border-radius:0 0 14px 14px!important;padding-top:4px} }
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="stars" aria-hidden="true"></div>
+<div class="moon" aria-hidden="true"></div>
+
+<main class="wrap">
+  <header class="hero">
+    <img class="app-icon" src="assets/2048/icon.png" alt="2048 Elemental Sprites app icon" width="112" height="112">
+    <span class="badge">2048 ELEMENTAL SPRITES · formerly 2048 Neon Rush</span>
+    <h1>Privacy Policy</h1>
+    <p class="lead">Your sprites are cute, and your data stays safe. Here's exactly what the game collects, why, and how to delete it.</p>
+    <span class="updated">Last updated · November 6, 2026</span>
+
+    <div class="parade" aria-hidden="true">
+      <img src="assets/2048/drip.png" alt=""><img src="assets/2048/sprig.png" alt=""><img src="assets/2048/sunny.png" alt=""><img src="assets/2048/frosty.png" alt="">
+      <img src="assets/2048/orbi.png" alt=""><img src="assets/2048/blaze.png" alt=""><img src="assets/2048/bloom.png" alt=""><img src="assets/2048/splash.png" alt="">
+    </div>
+  </header>
+
+  <section class="glance" aria-label="At a glance">
+    <div class="chip"><img src="assets/2048/drip.png" alt=""><b>Plays offline</b><span>No internet needed</span></div>
+    <div class="chip"><img src="assets/2048/sprig.png" alt=""><b>Sign-in optional</b><span>Only for cloud saves</span></div>
+    <div class="chip"><img src="assets/2048/sunny.png" alt=""><b>No ads</b><span>No in-app purchases</span></div>
+    <div class="chip"><img src="assets/2048/frosty.png" alt=""><b>Never sold</b><span>Your data isn't for sale</span></div>
+  </section>
+
+  <nav class="toc" aria-label="Sections">
+    <a href="#collect">What we collect</a><a href="#not">What we don't</a><a href="#who">Who handles it</a>
+    <a href="#delete">Keeping &amp; deleting</a><a href="#age">Age</a><a href="#contact">Contact</a>
+  </nav>
+
+  <section class="card" id="collect">
+    <img src="assets/2048/drip.png" alt="Drip, the water sprite">
+    <div>
+      <h2>What we collect</h2>
+      <p>If you just play, your game stays on your phone. A few things leave the device to keep the game working and help us fix bugs:</p>
+      <table class="data">
+        <tr><td>Google sign-in<br><span class="tag opt">Optional</span></td><td>Your Google account ID, name and email address, used to create your game account.</td></tr>
+        <tr><td>Cloud save<br><span class="tag opt">Optional</span></td><td>Scores, level and XP, coins, medals and the sprites you've collected, so your progress follows you to a new phone.</td></tr>
+        <tr><td>App analytics<br><span class="tag">Firebase Analytics</span></td><td>How the game is used (screens opened, games played), device and app info, and identifiers including the Android advertising ID. Used only to improve the game, never for ads.</td></tr>
+        <tr><td>Crash reports<br><span class="tag">Crashlytics</span></td><td>Crash logs and diagnostics about your device and the app, used to find and fix bugs.</td></tr>
+        <tr><td>On your phone only</td><td>Your saved game, best scores and settings. They never leave the device unless you sign in.</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <section class="card" id="not">
+    <img src="assets/2048/frosty.png" alt="Frosty, the ice sprite">
+    <div>
+      <h2>What we don't collect</h2>
+      <ul class="ticks no">
+        <li>Location, contacts, photos, videos or files</li>
+        <li>Messages, microphone or camera</li>
+        <li>Payment or financial information</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="card" id="who">
+    <img src="assets/2048/orbi.png" alt="Orbi, the planet sprite">
+    <div>
+      <h2>Who handles your data</h2>
+      <p>Your data is processed for us by <strong>Google Firebase</strong> (Authentication, Cloud Firestore, Analytics and Crashlytics), under <a href="https://firebase.google.com/support/privacy" rel="noopener">Firebase's privacy terms</a>.</p>
+      <ul class="ticks">
+        <li>Everything is <strong>encrypted in transit</strong>.</li>
+        <li>Your cloud save can only be read or changed by <strong>your own signed-in account</strong>.</li>
+        <li>We don't share, rent or sell your data to anyone else.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="card" id="delete">
+    <img src="assets/2048/blaze.png" alt="Blaze, the fire sprite">
+    <div>
+      <h2>Keeping &amp; deleting</h2>
+      <ul class="ticks">
+        <li>Account and cloud save data are kept until you ask us to delete them.</li>
+        <li>Analytics data is deleted automatically after at most 14 months.</li>
+        <li>You can sign out any time from the Profile screen, clear the app's data, or uninstall.</li>
+      </ul>
+      <a class="btn" href="delete_account_2048.html">Delete my account &amp; data</a>
+    </div>
+  </section>
+
+  <section class="card" id="age">
+    <img src="assets/2048/sprig.png" alt="Sprig, the sprout sprite">
+    <div>
+      <h2>Age</h2>
+      <p>The game is meant for players aged <strong>13 and over</strong>. We don't knowingly collect personal information from children under 13. If you think a child has signed in, tell us and we'll delete their data.</p>
+    </div>
+  </section>
+
+  <section class="card" id="contact">
+    <img src="assets/2048/sunny.png" alt="Sunny, the sun sprite">
+    <div>
+      <h2>Changes &amp; contact</h2>
+      <p>If this policy changes, we'll update it here and change the date at the top.</p>
+      <p>Questions about privacy? Email <a href="mailto:aman.kroy2001@gmail.com">aman.kroy2001@gmail.com</a>.</p>
+    </div>
+  </section>
+
+  <section class="gallery" aria-label="Screenshots">
+    <h3>The game this policy covers</h3>
+    <p>Classic · Time Attack · Shooter, and 11 sprites to collect</p>
+    <div class="phones">
+      <div class="phone"><img src="assets/2048/home.jpg" alt="Home screen" loading="lazy"></div>
+      <div class="phone"><img src="assets/2048/classic.jpg" alt="Classic mode" loading="lazy"></div>
+      <div class="phone"><img src="assets/2048/shooter.jpg" alt="Shooter mode" loading="lazy"></div>
+      <div class="phone"><img src="assets/2048/collection.jpg" alt="Sprite collection" loading="lazy"></div>
+    </div>
+  </section>
+
+  <footer>
+    <p>Made with <span class="heart">❤️</span> by Aman · <a href="delete_account_2048.html">Account deletion</a></p>
+  </footer>
+</main>
+</body>
+</html>

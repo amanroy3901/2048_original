@@ -88,15 +88,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.avfusionapps.game_2048.ui.NeonRoundedButton
 import com.avfusionapps.game_2048.ui.theme.HighLighter
-import com.avfusionapps.game_2048.ui.theme.Purple80
-import com.avfusionapps.game_2048.ui.theme.PurpleDarkBackground
 import com.avfusionapps.game_2048.viewmodel.Direction
-import com.avfusionapps.game_2048.ui.components.TimeAttackTopBar
 import com.avfusionapps.game_2048.ui.components.FloatingBonus
 import com.avfusionapps.game_2048.ui.components.GameTutorialOverlay
-import com.avfusionapps.game_2048.ui.components.GameScoreBoard
-import com.avfusionapps.game_2048.ui.components.GameSwipeIndicator
-import com.avfusionapps.game_2048.ui.components.TimeAttackBottomBar
 import com.avfusionapps.game_2048.ui.components.GameBoard
 import com.avfusionapps.game_2048.ui.components.TimeAttackGameOverDialog
 import com.avfusionapps.game_2048.ui.theme.LocalGameTheme
@@ -122,31 +116,21 @@ fun TimeAttackScreen(
     val context = LocalContext.current
 
     // Sound effects: one cue per swipe (slide / merge / game over), gated by the sound setting.
-    val soundManager = remember { SoundManager(context) }
-    val spriteTheme = LocalGameTheme.current.usesSprites
-    DisposableEffect(Unit) {
-        onDispose { soundManager.release() }
-    }
     LaunchedEffect(viewModel, soundEnabled) {
         viewModel.soundEvent.collect { soundId ->
-            if (spriteTheme) {
-                // The sprite sound set: slide, a merge chime pitched by the sprite made, a pop as the new one lands.
-                val s = viewModel.gameState.value
-                when (soundId) {
-                    SoundManager.SOUND_MOVE -> { com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.SLIDE); com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.POP, delayMs = 335) }
-                    SoundManager.SOUND_MERGE -> {
-                        val top = s.tileAnimationInfo.filterValues { it.isMerged }.keys.maxOfOrNull { (r, c) -> s.grid.getOrNull(r)?.getOrNull(c) ?: 0 } ?: 4
-                        com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.SLIDE)
-                        com.avfusionapps.game_2048.utils.SpriteSfx.merge(top, delayMs = 130)
-                        com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.POP, delayMs = 335)
-                    }
-                    SoundManager.SOUND_LEVEL_UP -> com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.FANFARE, delayMs = 130)
-                    SoundManager.SOUND_GAME_OVER -> com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.SAD)
-                    else -> if (soundEnabled) soundManager.playSound(soundId)
+            // The sprite sound set: slide, a merge chime pitched by the sprite made, a pop as the new one lands.
+            val s = viewModel.gameState.value
+            when (soundId) {
+                SoundManager.SOUND_MOVE -> { com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.SLIDE); com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.POP, delayMs = 335) }
+                SoundManager.SOUND_MERGE -> {
+                    val top = s.tileAnimationInfo.filterValues { it.isMerged }.keys.maxOfOrNull { (r, c) -> s.grid.getOrNull(r)?.getOrNull(c) ?: 0 } ?: 4
+                    com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.SLIDE)
+                    com.avfusionapps.game_2048.utils.SpriteSfx.merge(top, delayMs = 130)
+                    com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.POP, delayMs = 335)
                 }
-                return@collect
+                SoundManager.SOUND_LEVEL_UP -> com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.FANFARE, delayMs = 130)
+                SoundManager.SOUND_GAME_OVER -> com.avfusionapps.game_2048.utils.SpriteSfx.play(com.avfusionapps.game_2048.utils.SpriteSfx.Sound.SAD)
             }
-            if (soundEnabled) soundManager.playSound(soundId)
         }
     }
 
@@ -225,7 +209,7 @@ fun TimeAttackScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .testTag("TimeAttackScreen_Root")
-                .background(if (theme.usesSprites) NightBrush else androidx.compose.ui.graphics.SolidColor(theme.backgroundColor))
+                .background(NightBrush)
                 .safeDrawingPadding()
                 .padding(horizontal = 16.dp, vertical = 8.dp)
                 .pointerInput(Unit) {
@@ -256,7 +240,7 @@ fun TimeAttackScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top
         ) {
-            if (theme.usesSprites) Column(
+            Column(
                 // Tablets: a centred, phone-width column.
                 modifier = Modifier.widthIn(max = 600.dp).fillMaxHeight(),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -290,47 +274,6 @@ fun TimeAttackScreen(
                     onHint = { viewModel.showHint(context) }
                 )
             }
-            if (theme.usesSprites) return@Column
-            // Header
-            TimeAttackTopBar(
-                timeRemainingMillis = gameState.timeRemainingMillis,
-                isPaused = gameState.isPaused,
-                onPauseToggle = { viewModel.togglePause() },
-                onHelpClick = {
-                    forceShowTutorial = true
-                    viewModel.setPaused(true)
-                },
-                onBack = { navController.popBackStack() },
-                floatingBonuses = floatingBonuses,
-                onBonusAnimationFinished = { id ->
-                    floatingBonuses = floatingBonuses.filter { it.id != id }
-                }
-            )
-
-            GameScoreBoard(
-                score = gameState.score,
-                highScore = highScore
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Game grid
-            GameBoard(
-                grid = gameState.grid,
-                tileAnimationInfo = gameState.tileAnimationInfo,
-                moveCount = gameState.moveCount,
-                onAnimationsComplete = { viewModel.clearAnimationInfo() }
-            )
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            GameSwipeIndicator()
-
-            TimeAttackBottomBar(
-                onUndoClick = { viewModel.undoMove() },
-                onNewGameClick = { viewModel.startNewGame() },
-                onHintClick = { viewModel.showHint(context) }
-            )
         }
     }
 
@@ -366,41 +309,6 @@ fun TimeAttackScreen(
                 viewModel.setPaused(false)
             }
         )
-    }
-}
-
-@Composable
-private fun BonusNotification(bonus: com.avfusionapps.game_2048.model.BonusType) {
-    val theme = LocalGameTheme.current
-    val buttonColor = theme.primaryColor
-    val isLight = (buttonColor.red * 0.2126f + buttonColor.green * 0.7152f + buttonColor.blue * 0.0722f) > 0.5f
-    val contentColor = if (isLight) Color(0xFF1F1F1F) else Color.White
-
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = theme.primaryColor.copy(alpha = 0.9f)
-        ),
-        shape = RoundedCornerShape(8.dp)
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.Timer,
-                contentDescription = null,
-                tint = contentColor
-            )
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            Text(
-                text = bonus.message,
-                style = MaterialTheme.typography.titleMedium,
-                color = contentColor,
-                fontWeight = FontWeight.Bold
-            )
-        }
     }
 }
 
@@ -451,7 +359,7 @@ private fun TimeAttackScreenLandscape(
     Row(
         modifier = Modifier
             .fillMaxSize()
-            .background(if (theme.usesSprites) NightBrush else androidx.compose.ui.graphics.SolidColor(theme.backgroundColor))
+            .background(NightBrush)
             .safeDrawingPadding()
             .padding(horizontal = containerPaddingHorizontal, vertical = containerPaddingVertical)
             .pointerInput(Unit) {
@@ -843,9 +751,4 @@ private fun LandscapeActionCard(
         }
     }
 }
-
-
-
-
-
 

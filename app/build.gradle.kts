@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -19,10 +21,29 @@ android {
         versionName = "4.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // The app is English-only: drop the translations bundled by libraries.
+        resourceConfigurations += "en"
+    }
+
+    // Release signing: put your upload key's details in keystore.properties (see keystore.properties.example,
+    // kept out of git). Without that file the release build is left unsigned.
+    val keystoreProps = rootProject.file("keystore.properties").takeIf { it.exists() }?.let { f ->
+        Properties().apply { f.inputStream().use { load(it) } }
+    }
+    signingConfigs {
+        if (keystoreProps != null) {
+            create("release") {
+                storeFile = rootProject.file(keystoreProps.getProperty("storeFile"))
+                storePassword = keystoreProps.getProperty("storePassword")
+                keyAlias = keystoreProps.getProperty("keyAlias")
+                keyPassword = keystoreProps.getProperty("keyPassword")
+            }
+        }
     }
 
     buildTypes {
         release {
+            if (keystoreProps != null) signingConfig = signingConfigs.getByName("release")
             // R8: shrink, optimise and obfuscate code, and drop unused resources (rules in proguard-rules.pro).
             isMinifyEnabled = true
             isShrinkResources = true
@@ -62,7 +83,6 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.firebase.crashlytics)
-    implementation("com.google.firebase:firebase-auth")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -79,7 +99,6 @@ dependencies {
     implementation("com.google.android.play:app-update:2.1.0")
     implementation("com.google.android.play:app-update-ktx:2.1.0")
     implementation("com.google.android.gms:play-services-tasks:18.0.2")
-    implementation("androidx.work:work-runtime-ktx:2.9.0")
     
     // Room dependencies
     implementation(libs.androidx.room.runtime)
@@ -89,14 +108,10 @@ dependencies {
     // Gson for JSON serialization/deserialization
     implementation("com.google.code.gson:gson:2.10.1")
 
-    implementation(platform("com.google.firebase:firebase-bom:34.2.0"))
     implementation("com.google.firebase:firebase-analytics")
     implementation(platform("com.google.firebase:firebase-bom:34.6.0"))
     implementation("com.google.firebase:firebase-firestore")
     implementation("com.google.firebase:firebase-auth")
-    
-    // Google Sign-In - Updated to latest version
-    implementation("com.google.android.gms:play-services-auth:21.3.0")
     
     // Credential Manager for modern authentication
     implementation("androidx.credentials:credentials:1.3.0")

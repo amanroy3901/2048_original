@@ -29,7 +29,7 @@ fun MainMenu(game: GameViewModel) {
             onTimeAttack = { Nav.navigate("timeAttack") },
             onShooter = { Nav.navigate("dropMerge") },
             onProfile = { Nav.navigate("profile") },
-            onSettings = { Nav.navigate("themeSettings") },
+            onSettings = { Nav.navigate("profile") },
             onCollection = { /* SpriteCollectionSheet not ported */ },
             onAchievements = { Nav.navigate("achievements") }
         )

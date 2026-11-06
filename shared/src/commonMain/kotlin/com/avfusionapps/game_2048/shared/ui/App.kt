@@ -33,11 +33,10 @@ fun App() {
                     "dropMerge" -> ShooterScreen(dropMerge)
                     "achievements" -> AchievementsScreen()
                     "profile" -> ProfileScreen()
-                    "themeSettings" -> ThemeSettingsScreen()
                     else -> MainMenu(game)
                 }
-                ConsentPrompt()
                 ProgressCelebrations()
+                ConsentPrompt()
             }
         }
     }

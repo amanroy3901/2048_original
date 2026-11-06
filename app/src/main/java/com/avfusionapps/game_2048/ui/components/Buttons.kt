@@ -20,43 +20,6 @@ import androidx.compose.ui.unit.dp
 import com.avfusionapps.game_2048.ui.theme.LocalGameTheme
 
 @Composable
-fun CylinderActionButton(
-    modifier: Modifier = Modifier
-        .width(220.dp)
-        .height(60.dp),
-    text: String,
-    onClick: () -> Unit,
-    leadingIcon: Int? = null,
-) {
-    val theme = LocalGameTheme.current
-    val buttonColor = theme.primaryColor
-    val isLight = (buttonColor.red * 0.2126f + buttonColor.green * 0.7152f + buttonColor.blue * 0.0722f) > 0.5f
-    val contentColor = if (isLight) Color(0xFF1F1F1F) else Color.White
-
-    Button(
-        onClick = onClick,
-        modifier = modifier.semantics { this.contentDescription = text },
-        colors = ButtonDefaults.buttonColors(containerColor = buttonColor),
-        shape = RoundedCornerShape(percent = 50),
-        elevation = ButtonDefaults.buttonElevation(
-            defaultElevation = 8.dp,
-            pressedElevation = 4.dp
-        ),
-        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            if (leadingIcon != null) {
-                Icon(painter = painterResource(leadingIcon), contentDescription = null, tint = contentColor)
-            }
-            Text(text, color = contentColor, style = MaterialTheme.typography.titleMedium)
-        }
-    }
-}
-
-@Composable
 fun SquareIconButton(
     icon: ImageVector,
     contentDescription: String?,

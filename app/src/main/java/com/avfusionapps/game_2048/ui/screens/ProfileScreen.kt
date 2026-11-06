@@ -59,7 +59,6 @@ import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import com.avfusionapps.game_2048.viewmodel.GameViewModel
-import com.avfusionapps.game_2048.viewmodel.ThemeViewModel
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import android.content.res.Configuration
@@ -81,11 +80,9 @@ import androidx.compose.material.icons.automirrored.rounded.Undo
 @Composable
 fun ProfileScreen(
     navController: NavController,
-    gameViewModel: GameViewModel = viewModel(),
-    themeViewModel: ThemeViewModel = viewModel()
+    gameViewModel: GameViewModel = viewModel()
 ) {
     val theme = LocalGameTheme.current
-    val currentTheme by themeViewModel.currentTheme.collectAsState()
     val persistentHighScore by gameViewModel.persistentHighScore.collectAsState()
     val persistentPlayerName by gameViewModel.persistentPlayerName.collectAsState()
     
@@ -126,7 +123,6 @@ fun ProfileScreen(
             navController = navController,
             playerName = playerName,
             persistentHighScore = persistentHighScore,
-            currentTheme = currentTheme,
             soundEnabled = soundEnabled,
             vibrationEnabled = vibrationEnabled,
             versionName = versionName,
@@ -182,7 +178,7 @@ fun ProfileScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .testTag("ProfileScreen_Root")
-                .background(if (theme.usesSprites) NightBrush else androidx.compose.ui.graphics.SolidColor(theme.backgroundColor))
+                .background(NightBrush)
                 .padding(horizontal = 20.dp, vertical = 16.dp)
                 .safeDrawingPadding()
         ) {
@@ -215,7 +211,7 @@ fun ProfileScreen(
                         letterSpacing = 2.sp
                     )
                     Text(
-                        text = if (theme.usesSprites) "E L E M E N T A L   S P R I T E S" else "N E O N   R U S H",
+                        text = "E L E M E N T A L   S P R I T E S",
                         color = theme.primaryColor,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.ExtraBold,
@@ -263,14 +259,7 @@ fun ProfileScreen(
                                     .background(Brush.verticalGradient(listOf(theme.primaryColor, theme.secondaryColor))),
                                 contentAlignment = Alignment.Center
                             ) {
-                                if (theme.usesSprites) {
-                                    com.avfusionapps.game_2048.ui.sprites.SpriteTile(64, Modifier.size(56.dp), showCard = false, showNumber = false, showAura = false, showEffects = false)
-                                } else Icon(
-                                    imageVector = Icons.Rounded.Person,
-                                    contentDescription = null,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(40.dp)
-                                )
+                                com.avfusionapps.game_2048.ui.sprites.SpriteTile(64, Modifier.size(56.dp), showCard = false, showNumber = false, showAura = false, showEffects = false)
                             }
                             Spacer(modifier = Modifier.width(16.dp))
                             Column {
@@ -293,7 +282,7 @@ fun ProfileScreen(
                                     )
                                 }
                                 Text(
-                                    text = if (theme.usesSprites) spriteRank(com.avfusionapps.game_2048.data.progress.Progress.stats.collectAsState().value.biggestTile) else "Neon Master",
+                                    text = spriteRank(com.avfusionapps.game_2048.data.progress.Progress.stats.collectAsState().value.biggestTile),
                                     color = theme.textColor.copy(alpha = 0.6f),
                                     fontSize = 12.sp
                                 )
@@ -355,72 +344,6 @@ fun ProfileScreen(
                             }
                         }
                     )
-                }
-
-                // Appearance Section
-                SectionHeader(icon = Icons.Rounded.Palette, title = "APPEARANCE")
-                SettingsCard(
-                    onClick = { navController.navigate("themeSettings") },
-                    modifier = Modifier.testTag("ProfileScreen_Button_ThemeSettings")
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(48.dp)
-                                .clip(CircleShape)
-                                .background(Brush.sweepGradient(listOf(Color.Red, Color.Yellow, Color.Green, Color.Blue, Color.Magenta))),
-                            contentAlignment = Alignment.Center
-                        ) {}
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Current Theme",
-                                color = theme.textColor.copy(alpha = 0.6f),
-                                fontSize = 12.sp
-                            )
-                            Text(
-                                text = currentTheme.name,
-                                color = theme.primaryColor,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                        // Mini preview
-                        Box(
-                            modifier = Modifier
-                                .size(64.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(theme.backgroundColor.copy(alpha = 0.5f))
-                                .padding(4.dp)
-                        ) {
-                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                Row(modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                                    Box(modifier = Modifier.weight(1f).fillMaxHeight().background(theme.tileColors[2]!!, RoundedCornerShape(2.dp)))
-                                    Box(modifier = Modifier.weight(1f).fillMaxHeight().background(theme.tileColors[4]!!, RoundedCornerShape(2.dp)))
-                                    Box(modifier = Modifier.weight(1f).fillMaxHeight().background(theme.tileColors[16]!!, RoundedCornerShape(2.dp)))
-                                }
-                                Row(modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                                    Box(modifier = Modifier.weight(1f).fillMaxHeight().background(theme.tileColors[8]!!, RoundedCornerShape(2.dp)))
-                                    Box(modifier = Modifier.weight(1f).fillMaxHeight().background(theme.tileColors[16]!!, RoundedCornerShape(2.dp)))
-                                    Box(modifier = Modifier.weight(1f).fillMaxHeight().background(theme.tileColors[32]!!, RoundedCornerShape(2.dp)))
-                                }
-                                Row(modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                                    Box(modifier = Modifier.weight(1f).fillMaxHeight().background(theme.tileColors[64]!!, RoundedCornerShape(2.dp)))
-                                    Box(modifier = Modifier.weight(1f).fillMaxHeight().background(theme.tileColors[128]!!, RoundedCornerShape(2.dp)))
-                                    Box(modifier = Modifier.weight(1f).fillMaxHeight().background(theme.tileColors[256]!!, RoundedCornerShape(2.dp)))
-                                }
-                            }
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                            contentDescription = null,
-                            tint = theme.textColor.copy(alpha = 0.5f)
-                        )
-                    }
                 }
 
                 // Preferences Section
@@ -611,7 +534,6 @@ private fun ProfileScreenLandscape(
     navController: NavController,
     playerName: String,
     persistentHighScore: Int,
-    currentTheme: GameTheme,
     soundEnabled: Boolean,
     vibrationEnabled: Boolean,
     versionName: String,
@@ -648,7 +570,7 @@ private fun ProfileScreenLandscape(
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
-            .background(if (theme.usesSprites) NightBrush else androidx.compose.ui.graphics.SolidColor(theme.backgroundColor))
+            .background(NightBrush)
             .safeDrawingPadding()
     ) {
         val screenW = maxWidth
@@ -702,7 +624,7 @@ private fun ProfileScreenLandscape(
                             letterSpacing = 2.sp
                         )
                         Text(
-                            text = if (theme.usesSprites) "E L E M E N T A L   S P R I T E S" else "N E O N   R U S H",
+                            text = "E L E M E N T A L   S P R I T E S",
                             color = theme.primaryColor,
                             fontSize = with(density) { (screenH * 0.020f).toSp() },
                             fontWeight = FontWeight.ExtraBold,
@@ -764,7 +686,7 @@ private fun ProfileScreenLandscape(
                                 )
                             }
                             Text(
-                                text = if (theme.usesSprites) spriteRank(com.avfusionapps.game_2048.data.progress.Progress.stats.collectAsState().value.biggestTile) else "Neon Master",
+                                text = spriteRank(com.avfusionapps.game_2048.data.progress.Progress.stats.collectAsState().value.biggestTile),
                                 color = theme.textColor.copy(alpha = 0.6f),
                                 fontSize = with(density) { (screenH * 0.025f).toSp() }
                             )
@@ -786,102 +708,6 @@ private fun ProfileScreenLandscape(
                                 color = theme.primaryColor,
                                 fontSize = with(density) { (screenH * 0.045f).toSp() },
                                 fontWeight = FontWeight.ExtraBold
-                            )
-                        }
-                    }
-                }
-
-                // Theme Preview Card
-                NeonCard(
-                    accentColor = theme.primaryColor,
-                    isSelected = true,
-                    onClick = { navController.navigate("themeSettings") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(screenH * 0.38f)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding((screenH.value * 0.02f).dp),
-                        verticalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "THEME PREVIEW",
-                            color = theme.textColor.copy(alpha = 0.6f),
-                            fontSize = (screenH.value * 0.024f).sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp
-                        )
-
-                        // 4x4 Grid preview of standard neon tiles
-                        val previewValues = listOf(
-                            listOf(2, 4, 8, 16),
-                            listOf(8, 16, 32, 64),
-                            listOf(128, 256, 512, 1024),
-                            listOf(2048, 0, 0, 0)
-                        )
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height((screenH.value * 0.20f).dp),
-                            verticalArrangement = Arrangement.spacedBy((screenH.value * 0.005f).dp)
-                        ) {
-                            for (row in previewValues) {
-                                Row(
-                                    modifier = Modifier.weight(1f).fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy((screenH.value * 0.005f).dp)
-                                ) {
-                                    for (value in row) {
-                                        val tileBg = if (value > 0) theme.tileColors[value] ?: theme.primaryColor else theme.textColor.copy(alpha = 0.05f)
-                                        val tileBorderColor = if (value > 0) theme.primaryColor.copy(alpha = 0.3f) else theme.textColor.copy(alpha = 0.1f)
-                                        Box(
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .fillMaxHeight()
-                                                .clip(RoundedCornerShape((screenH.value * 0.01f).dp))
-                                                .background(tileBg)
-                                                .border(1.dp, tileBorderColor, RoundedCornerShape((screenH.value * 0.01f).dp)),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            if (value > 0) {
-                                                val tileTextColor = if (theme.isDark) Color.White else theme.textColor
-                                                Text(
-                                                    text = value.toString(),
-                                                    color = tileTextColor,
-                                                    fontWeight = FontWeight.ExtraBold,
-                                                    fontSize = (screenH.value * 0.026f).sp
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.Palette,
-                                contentDescription = null,
-                                tint = theme.primaryColor,
-                                modifier = Modifier.size((screenH.value * 0.04f).dp)
-                            )
-                            Spacer(modifier = Modifier.width((screenW.value * 0.01f).dp))
-                            Text(
-                                text = currentTheme.name,
-                                color = theme.primaryColor,
-                                fontSize = (screenH.value * 0.028f).sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Spacer(modifier = Modifier.weight(1f))
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                                contentDescription = null,
-                                tint = theme.textColor.copy(alpha = 0.5f),
-                                modifier = Modifier.size((screenH.value * 0.035f).dp)
                             )
                         }
                     }
@@ -1064,35 +890,6 @@ private fun ProfileScreenLandscape(
                             screenH = screenH
                         )
                     }
-                }
-
-                // APPEARANCE Group
-                LandscapeSectionHeader(icon = Icons.Rounded.Palette, title = "APPEARANCE", screenH = screenH)
-                LandscapeSettingsCard(accentColor = theme.primaryColor) {
-                    SettingsRow(
-                        iconVector = Icons.Rounded.Palette,
-                        title = "Theme",
-                        subtitle = "Customize the look and feel of the game",
-                        onClick = { navController.navigate("themeSettings") },
-                        control = {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = currentTheme.name,
-                                    color = theme.primaryColor,
-                                    fontSize = (screenH.value * 0.026f).sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Spacer(modifier = Modifier.width((screenW.value * 0.005f).dp))
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                                    contentDescription = null,
-                                    tint = theme.textColor.copy(alpha = 0.3f),
-                                    modifier = Modifier.size((screenH.value * 0.035f).dp)
-                                )
-                            }
-                        },
-                        screenH = screenH
-                    )
                 }
 
                 // PREFERENCES Group

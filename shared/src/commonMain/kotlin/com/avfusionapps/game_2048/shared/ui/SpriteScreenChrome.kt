@@ -103,7 +103,6 @@ private val trophyCup by lazy { svg("M9 4 H23 V12 Q23 19 16 19 Q9 19 9 12 Z") }
 private val trophyHandles by lazy { svg("M9 7 H4 Q4 13 9 13 M23 7 H28 Q28 13 23 13") }
 private val leafIcon by lazy { svg("M16 28 Q15 18 6 10 Q18 6 24 14 Q28 20 16 28 Z") }
 private val leafVein by lazy { svg("M16 27 Q17 18 10 12") }
-private val shirtIcon by lazy { svg("M11 5 L5 9 L7 15 L10 14 V27 H22 V14 L25 15 L27 9 L21 5 Q16 9 11 5 Z") }
 private val starIcon by lazy { svg("M16 8 L18.4 13.2 L24 13.6 L19.7 17.2 L21 22.6 L16 19.6 L11 22.6 L12.3 17.2 L8 13.6 L13.6 13.2 Z") }
 private val bulbIcon by lazy { svg("M20 5 C13 5 9 10 9 15.5 C9 19.5 11.5 22 13.5 24 V28 H26.5 V24 C28.5 22 31 19.5 31 15.5 C31 10 27 5 20 5 Z") }
 
@@ -612,11 +611,6 @@ internal fun DrawScope.navProfileIcon() = fit(32f) {
     drawRoundRect(Color(0xFFB57BFF), topLeft = Offset(5f, 16f), size = Size(5f, 11f), cornerRadius = CornerRadius(1.5f))
     drawRoundRect(Color(0xFFD8B9FF), topLeft = Offset(13.5f, 8f), size = Size(5f, 19f), cornerRadius = CornerRadius(1.5f))
     drawRoundRect(Color(0xFF9A5BFF), topLeft = Offset(22f, 12f), size = Size(5f, 15f), cornerRadius = CornerRadius(1.5f))
-}
-
-internal fun DrawScope.navThemesIcon() = fit(32f) {
-    drawPath(shirtIcon, Color(0xFFC28BFF))
-    drawPath(shirtIcon, Color(0xFF5A2CB8), style = Stroke(1.4f, join = StrokeJoin.Round))
 }
 
 internal fun DrawScope.navTrophyIcon() = fit(32f) {

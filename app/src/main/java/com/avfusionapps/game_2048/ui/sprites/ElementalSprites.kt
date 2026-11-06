@@ -206,8 +206,6 @@ private fun f(vararg v: Float) = v
 
 private fun clamp01(x: Float) = x.coerceIn(0f, 1f)
 
-private fun bell(p: Float) = sin(PI * p).toFloat()
-
 // Mood loops (CSS keyframes from the prototype).
 private val A3 = f(0f, 0.5f, 1f)
 private val BOUNCE_AT = f(0f, 0.15f, 0.45f, 0.75f, 1f)
@@ -255,7 +253,6 @@ private val FIDGET0_Y = f(1f, 0.89f, 1.09f, 0.95f, 1f)
 private val FIDGET1_R = f(0f, -9f, 8f, 0f)
 private val FIDGET3_R = f(0f, 7f, -7f, 0f)
 private val FIDGET3_S = f(1f, 1.05f, 1f, 1f)
-private val HOP_AT = f(0f, 0.15f, 0.5f, 0.82f, 1f)
 private val HOP_SQ_AT = f(0f, 0.15f, 0.35f, 0.6f, 0.86f, 1f)
 private val HOP_SQ_X = f(1f, 1.14f, 0.9f, 1f, 1.14f, 1f)
 private val HOP_SQ_Y = f(1f, 0.84f, 1.14f, 1f, 0.86f, 1f)
@@ -530,6 +527,8 @@ fun SpriteTile(
     breaking: Boolean = false,
     /** A new non-null value is a poke: squish, giggle, and a name tag. Four quick pokes make it grumpy. */
     pokeKey: Int? = null,
+    /** Which way the poke name tag may overflow the tile: -1 rightwards (left-edge tile), 1 leftwards, 0 both sides. */
+    nameTagSide: Int = 0,
     /** Collection silhouette for a sprite not found yet. */
     locked: Boolean = false,
     /** Replaces the number on the badge (the rock shows its countdown). */
@@ -912,7 +911,14 @@ fun SpriteTile(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .offset(y = (-14).dp)
-                    .wrapContentWidth(unbounded = true)
+                    .wrapContentWidth(
+                        align = when {
+                            nameTagSide < 0 -> Alignment.Start
+                            nameTagSide > 0 -> Alignment.End
+                            else -> Alignment.CenterHorizontally
+                        },
+                        unbounded = true
+                    )
                     .background(Color.White, androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
                     .padding(horizontal = 10.dp, vertical = 4.dp)
             )
@@ -1210,7 +1216,6 @@ private fun renderCard(spec: SpriteSpec, legend: Boolean, locked: Boolean, w: Fl
         }
     }
 }
-
 
 /** The character's body, accessories and gloss, plus a blurred silhouette for its glow. */
 private fun renderBody(spec: SpriteSpec, bodyPx: Int, u: Float, locked: Boolean, density: Density): BodyArt {

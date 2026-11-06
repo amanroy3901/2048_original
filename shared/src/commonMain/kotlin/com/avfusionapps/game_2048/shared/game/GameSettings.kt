@@ -57,9 +57,6 @@ object GameSettingsRepository {
     )
     val seenSpritesFlow: StateFlow<Set<Int>> = _seen.asStateFlow()
 
-    /** The shared app always uses the Elemental Sprites look. */
-    const val usesSprites: Boolean = true
-
     fun updatePlayerName(name: String) { _playerName.value = name; KeyValueStore.putString(K_NAME, name) }
     fun updateHighScoreIfHigher(score: Int) {
         if (score > _highScore.value) { _highScore.value = score; KeyValueStore.putInt(K_HIGH, score) }
